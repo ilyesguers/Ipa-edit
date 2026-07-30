@@ -422,8 +422,22 @@ router.post('/broadcast', async (req, res) => {
 // ── ORDERS ──
 router.get('/orders', async (req, res) => {
   try {
-    const { status, page = 1, limit = 20 } = req.query;
-    const query = status ? { status } : {};
+    const { status, search, page = 1, limit = 20 } = req.query;
+    const query = {};
+    if (status) query.status = status;
+    if (search) {
+      const searchRegex = new RegExp(search, 'i');
+      query.$or = [
+        { orderNumber: searchRegex },
+        { productName: searchRegex },
+        { durationName: searchRegex },
+        { username: searchRegex },
+        { user: isNaN(search) ? -1 : parseInt(search) },
+      ];
+      if (/^[a-f\d]{24}$/i.test(search)) {
+        query.$or.push({ _id: search });
+      }
+    }
     const [orders, total] = await Promise.all([
       Order.find(query).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(parseInt(limit)),
       Order.countDocuments(query)

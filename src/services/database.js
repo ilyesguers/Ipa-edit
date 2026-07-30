@@ -45,6 +45,7 @@ const seedDefaults = async () => {
     { key: 'maintenance_mode', value: false, description: 'Maintenance mode toggle' },
     { key: 'maintenance_message', value: '🔧 الموقع تحت الصيانة، يرجى المحاولة لاحقاً', description: 'Maintenance message' },
     { key: 'support_username', value: 'support', description: 'Support username' },
+    { key: 'channel_username', value: '', description: 'Telegram channel username' },
     { key: 'currency', value: 'USD', description: 'Default currency' },
     { key: 'min_deposit', value: 1, description: 'Minimum deposit amount' },
     { key: 'binance_api_key', value: '', description: 'Binance API Key', isSecret: true },
@@ -61,6 +62,41 @@ const seedDefaults = async () => {
     { key: 'admin_notification_on_payment', value: true, description: 'Notify admin on payment proof' },
     { key: 'channel_id', value: '', description: 'Telegram channel ID for announcements' },
     { key: 'force_join_channel', value: false, description: 'Force users to join channel' },
+    { key: 'ui_theme_preset', value: 'aurora', description: 'Visual theme preset for bot and mini apps' },
+    { key: 'ui_welcome_badge_ar', value: 'واجهة جديدة • بوت أذكى', description: 'Arabic welcome badge' },
+    { key: 'ui_welcome_badge_en', value: 'Fresh look • Smarter bot', description: 'English welcome badge' },
+    { key: 'ui_welcome_title_ar', value: 'متجر رقمي منظم وسريع', description: 'Arabic welcome title' },
+    { key: 'ui_welcome_title_en', value: 'A cleaner, faster digital storefront', description: 'English welcome title' },
+    { key: 'ui_welcome_subtitle_ar', value: 'تسوّق بسرعة، راقب طلباتك، وافتح المتجر أو لوحة التحكم من مكان واحد.', description: 'Arabic welcome subtitle' },
+    { key: 'ui_welcome_subtitle_en', value: 'Shop faster, track orders, and jump into the store or control panel from one place.', description: 'English welcome subtitle' },
+    { key: 'ui_footer_note_ar', value: 'جاهز دائماً للتحديثات والعروض الجديدة.', description: 'Arabic footer note' },
+    { key: 'ui_footer_note_en', value: 'Always ready for new updates and fresh offers.', description: 'English footer note' },
+    { key: 'admin_portal_label_ar', value: 'لوحة التحكم', description: 'Admin portal button label in Arabic' },
+    { key: 'admin_portal_label_en', value: 'Admin Portal', description: 'Admin portal button label in English' },
+    {
+      key: 'ui_home_highlights',
+      value: [
+        { icon: '⚡', textAr: 'تسليم فوري بعد تأكيد الدفع', textEn: 'Instant delivery right after payment confirmation' },
+        { icon: '🛡️', textAr: 'واجهة مرتبة وتجربة احترافية', textEn: 'Organized interface with a premium experience' },
+        { icon: '🎯', textAr: 'إدارة كاملة للمخزون والطلبات', textEn: 'Complete control over stock and orders' }
+      ],
+      description: 'Highlights shown across bot and mini app'
+    },
+    {
+      key: 'bot_quick_links',
+      value: [
+        { id: 'shop', icon: '🛍️', textAr: 'تصفح المنتجات', textEn: 'Browse Products', type: 'callback', value: 'shop', row: 1, visibility: 'all' },
+        { id: 'keys', icon: '🗂️', textAr: 'مفاتيحي', textEn: 'My Keys', type: 'callback', value: 'mykeys', row: 1, visibility: 'all' },
+        { id: 'history', icon: '🧾', textAr: 'طلباتي', textEn: 'My Orders', type: 'callback', value: 'history', row: 2, visibility: 'all' },
+        { id: 'profile', icon: '👤', textAr: 'حسابي', textEn: 'Profile', type: 'callback', value: 'profile', row: 2, visibility: 'all' },
+        { id: 'balance', icon: '💳', textAr: 'شحن الرصيد', textEn: 'Top Up Balance', type: 'callback', value: 'addbalance', row: 3, visibility: 'all' },
+        { id: 'help', icon: '🆘', textAr: 'الدعم والمساعدة', textEn: 'Help & Support', type: 'callback', value: 'help', row: 3, visibility: 'all' },
+        { id: 'customer_app', icon: '📱', textAr: 'فتح المتجر', textEn: 'Open Store', type: 'webapp', value: '/customer', row: 4, visibility: 'all' },
+        { id: 'support', icon: '💬', textAr: 'التواصل مع الدعم', textEn: 'Contact Support', type: 'url', value: 'https://t.me/{support}', row: 4, visibility: 'all' },
+        { id: 'channel', icon: '📣', textAr: 'القناة الرسمية', textEn: 'Official Channel', type: 'url', value: 'https://t.me/{channel}', row: 5, visibility: 'all' }
+      ],
+      description: 'Configurable bot quick links'
+    }
   ];
 
   for (const s of defaults) {
