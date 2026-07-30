@@ -4,7 +4,7 @@ const User = require('../../models/User');
 const logger = require('../../utils/logger');
 const { Markup } = require('telegraf');
 const { createCaptcha } = require('../../utils/captcha');
-const { emojiHtml, buttonEmojiId } = require('../../utils/customEmoji');
+const { emojiHtml, buttonEmojiId, buttonLabel } = require('../../utils/customEmoji');
 
 const buildWelcomeMessage = async (user, lang = 'ar') => {
   const ui = await getUiSettings();
@@ -153,7 +153,7 @@ const startHandler = async (ctx) => {
               parse_mode: 'HTML',
               ...Markup.inlineKeyboard([
                 [{
-                  text: `${emojiHtml('admin')} ${lang === 'en' ? ui.adminPortalLabel.en : ui.adminPortalLabel.ar}`,
+                  text: buttonLabel('admin', lang === 'en' ? ui.adminPortalLabel.en : ui.adminPortalLabel.ar),
                   web_app: { url: `${process.env.BASE_URL}/admin#users?search=${user.telegramId}` },
                   style: 'primary',
                   icon_custom_emoji_id: buttonEmojiId('primary')

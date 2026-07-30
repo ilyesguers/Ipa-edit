@@ -98,6 +98,21 @@ const UNICODE_FALLBACK = {
 };
 
 /**
+ * Global toggle. Premium animated emojis require the bot owner to have a
+ * Telegram Premium subscription (or Fragment usernames). If an emoji ID is
+ * invalid/inaccessible, Telegram rejects the WHOLE message/keyboard with a 400
+ * error — which would silently break the bot. Set USE_PREMIUM_EMOJI=false to
+ * fall back to plain unicode everywhere. Defaults to enabled.
+ * The resilient send wrapper (src/utils/safeSend.js) auto-retries without
+ * premium emoji if a 400 happens, so leaving this on is safe.
+ * @returns {boolean}
+ */
+const premiumEnabled = () => {
+  const flag = (process.env.USE_PREMIUM_EMOJI || 'true').toString().trim().toLowerCase();
+  return !['false', '0', 'no', 'off'].includes(flag);
+};
+
+/**
  * Get raw custom emoji ID by key.
  * @param {string} key
  * @returns {string|null}
@@ -110,8 +125,44 @@ const getEmojiId = (key) => EMOJI[key] || null;
  * @returns {string|undefined}
  */
 const getStyleEmojiId = (style) => {
+  if (!premiumEnabled()) return undefined;
   const map = { primary: EMOJI.star, success: EMOJI.sparkle, danger: EMOJI.fire };
   return map[style] || undefined;
+};
+
+/**
+ * Plain unicode glyph for a key — SAFE for inline-keyboard BUTTON LABELS.
+ *
+ * ⚠️ Button `text` does NOT render HTML, so <tg-emoji> tags must never be put
+ * there (they would show as literal broken text). Premium animated emoji on a
+ * button must be supplied via the separate `icon_custom_emoji_id` field.
+ *
+ * @param {string} key
+ * @returns {string} unicode emoji (or '' if unknown)
+ */
+const emojiChar = (key) => UNICODE_FALLBACK[key] || '';
+
+/**
+ * Build a clean button LABEL. Never contains HTML.
+ *
+ * When premium is enabled we DON'T prepend the unicode glyph, because the
+ * animated emoji is shown separately through `icon_custom_emoji_id`; prepending
+ * would duplicate it. When premium is disabled we prepend the unicode glyph so
+ * the button still has an icon.
+ *
+ * @param {string} key   emoji key (used only for the fallback glyph)
+ * @param {string} text  the label text
+ * @param {{ hasIcon?: boolean }} [opts] hasIcon=true means an icon_custom_emoji_id is attached
+ * @returns {string}
+ */
+const buttonLabel = (key, text, opts = {}) => {
+  const hasIcon = opts.hasIcon !== undefined ? opts.hasIcon : premiumEnabled();
+  if (hasIcon && premiumEnabled()) {
+    // Animated icon rendered via icon_custom_emoji_id — keep label text clean.
+    return text;
+  }
+  const glyph = emojiChar(key);
+  return glyph ? `${glyph} ${text}` : text;
 };
 
 /**
@@ -126,13 +177,23 @@ const emojiHtml = (emojiKey, text = '') => {
   const id = EMOJI[emojiKey];
   const glyph = UNICODE_FALLBACK[emojiKey] || (typeof emojiKey === 'string' && emojiKey.length <= 4 ? emojiKey : '⭐');
 
-  if (!id) {
-    // Unknown key — output the raw unicode so nothing breaks
+  if (!id || !premiumEnabled()) {
+    // Unknown key or premium disabled — output the raw unicode so nothing breaks
     return `${glyph}${text ? ` ${text}` : ''}`;
   }
 
   return `<tg-emoji emoji-id="${id}">${glyph}</tg-emoji>${text ? ` ${text}` : ''}`;
 };
+
+/**
+ * Strip every <tg-emoji> wrapper from a string, leaving only the plain unicode
+ * glyph inside. Used by the resilient send wrapper to retry a message without
+ * premium custom emoji when Telegram rejects an invalid emoji id.
+ * @param {string} html
+ * @returns {string}
+ */
+const stripPremiumEmoji = (html = '') =>
+  String(html).replace(/<tg-emoji[^>]*>(.*?)<\/tg-emoji>/gis, '$1');
 
 /**
  * Return an icon_custom_emoji_id for a button based on its style.
@@ -144,8 +205,12 @@ const buttonEmojiId = (style) => getStyleEmojiId(style);
 module.exports = {
   EMOJI,
   UNICODE_FALLBACK,
+  premiumEnabled,
   getEmojiId,
   getStyleEmojiId,
   emojiHtml,
+  emojiChar,
+  buttonLabel,
   buttonEmojiId,
+  stripPremiumEmoji,
 };

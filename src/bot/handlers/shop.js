@@ -3,7 +3,7 @@ const Category = require('../../models/Category');
 const Game = require('../../models/Game');
 const Product = require('../../models/Product');
 const Key = require('../../models/Key');
-const { buttonEmojiId, emojiHtml } = require('../../utils/customEmoji');
+const { buttonEmojiId, emojiHtml, buttonLabel } = require('../../utils/customEmoji');
 
 // ── Device icon map ──
 const DEVICE_ICONS = {
@@ -64,7 +64,7 @@ const showGames = async (ctx, categoryId) => {
 
   const buttons = games.map(game => {
     const name = lang === 'en' ? (game.name || game.nameAr) : (game.nameAr || game.name);
-    return [{ text: `${emojiHtml('controller')} ${name}`, callback_data: `game_${game._id}`, style: 'primary', icon_custom_emoji_id: buttonEmojiId('primary') }];
+    return [{ text: buttonLabel('controller', name), callback_data: `game_${game._id}`, style: 'primary', icon_custom_emoji_id: buttonEmojiId('primary') }];
   });
   buttons.push([{ text: lang === 'en' ? '🔙 Back' : '🔙 رجوع', callback_data: 'shop', style: 'danger', icon_custom_emoji_id: buttonEmojiId('danger') }]);
 
@@ -92,7 +92,7 @@ const showProducts = async (ctx, gameId) => {
 
   const buttons = products.map(p => {
     const name = lang === 'en' ? (p.name || p.nameAr) : (p.nameAr || p.name);
-    return [{ text: `${emojiHtml('key')} ${name}`, callback_data: `product_${p._id}`, style: 'success', icon_custom_emoji_id: buttonEmojiId('success') }];
+    return [{ text: buttonLabel('key', name), callback_data: `product_${p._id}`, style: 'success', icon_custom_emoji_id: buttonEmojiId('success') }];
   });
   buttons.push([{ text: lang === 'en' ? '🔙 Back' : '🔙 رجوع', callback_data: `cat_${game.category._id}`, style: 'danger', icon_custom_emoji_id: buttonEmojiId('danger') }]);
 
@@ -126,7 +126,9 @@ const showProduct = async (ctx, productId) => {
     });
     const hasStock = stockCount > 0;
     const durName = lang === 'en' ? (dur.name || dur.nameAr) : (dur.nameAr || dur.name);
-    const stockLabel = hasStock ? `${emojiHtml('checkmark')}${stockCount}` : `${emojiHtml('skull')}`;
+    // Plain-text label only — button text never renders HTML. Stock count uses a
+    // plain unicode glyph; the animated style emoji is applied via icon_custom_emoji_id.
+    const stockLabel = hasStock ? `✅${stockCount}` : '❌';
 
     const label = hasStock
       ? `${stockLabel} ${durName} - $${dur.price.toFixed(2)}`
