@@ -10,7 +10,7 @@ const { mainKeyboard } = require('./start');
 const Settings = require('../../models/Settings');
 const orderService = require('../../services/orderService');
 const logger = require('../../utils/logger');
-const { buttonEmojiId } = require('../../utils/customEmoji');
+const { buttonEmojiId, emojiHtml } = require('../../utils/customEmoji');
 
 // ── Helper: get user language ──
 const getLang = (ctx) => ctx.dbUser?.preferredLanguage || 'ar';
@@ -51,7 +51,9 @@ const callbackHandler = async (ctx) => {
     if (data.startsWith('oos_')) {
       const name = data.replace('oos_', '');
       return ctx.answerCbQuery(
-        t(lang, `❌ "${name}" غير متوفر حالياً`, `❌ "${name}" is currently unavailable`),
+        t(lang,
+          `${emojiHtml('skull')} \"${name}\" غير متوفر حالياً`,
+          `${emojiHtml('skull')} \"${name}\" is currently unavailable`),
         { show_alert: true }
       );
     }
@@ -59,7 +61,9 @@ const callbackHandler = async (ctx) => {
     // ── Insufficient balance ──
     if (data === 'insufficient_balance') {
       return ctx.answerCbQuery(
-        t(lang, '💰 رصيدك غير كافٍ. قم بشحن رصيدك أولاً', '💰 Insufficient balance. Please top up first'),
+        t(lang,
+          `${emojiHtml('wallet')} رصيدك غير كافٍ. قم بشحن رصيدك أولاً`,
+          `${emojiHtml('wallet')} Insufficient balance. Please top up first`),
         { show_alert: true }
       );
     }
@@ -111,7 +115,11 @@ const callbackHandler = async (ctx) => {
 
   } catch (err) {
     logger.error('Callback error:', err);
-    await ctx.answerCbQuery(t(lang, '❌ حدث خطأ، يرجى المحاولة مجدداً', '❌ Error occurred, please try again'), { show_alert: true }).catch(() => {});
+    await ctx.answerCbQuery(t(lang,
+      `${emojiHtml('alert')} حدث خطأ، يرجى المحاولة مجدداً`,
+      `${emojiHtml('alert')} Error occurred, please try again`),
+      { show_alert: true }
+    ).catch(() => {});
   }
 };
 
@@ -120,17 +128,13 @@ const callbackHandler = async (ctx) => {
 // ═══════════════════════════════════════
 
 const handleMainMenu = async (ctx, lang) => {
-  const user = ctx.dbUser;
+  const { buildWelcomeMessage } = require('./start');
+  const { caption } = await buildWelcomeMessage(ctx.dbUser, lang);
   const keyboard = await mainKeyboard(lang, ctx.isAdmin);
-  const msg = (
-    `👋 ${t(lang, `أهلاً ${user.firstName}!`, `Welcome ${user.firstName}!`)}\n\n` +
-    `💰 ${t(lang, 'الرصيد', 'Balance')}: $${user.balance.toFixed(2)}\n` +
-    `🛒 ${t(lang, 'اختر من القائمة:', 'Choose from menu:')}`
-  );
-  return ctx.editMessageText(msg, {
+  return ctx.editMessageText(caption, {
     parse_mode: 'HTML',
     ...keyboard
-  }).catch(() => ctx.reply(msg, { parse_mode: 'HTML', ...keyboard }));
+  }).catch(() => ctx.reply(caption, { parse_mode: 'HTML', ...keyboard }));
 };
 
 const handleLanguage = async (ctx, lang) => {
@@ -138,114 +142,50 @@ const handleLanguage = async (ctx, lang) => {
   const newLang = user.preferredLanguage === 'ar' ? 'en' : 'ar';
   user.preferredLanguage = newLang;
   await user.save();
+
+  const backBtn = [{
+    text: newLang === 'ar' ? `${emojiHtml('back')} الرئيسية` : `${emojiHtml('back')} Home`,
+    callback_data: 'main_menu',
+    style: 'primary',
+    icon_custom_emoji_id: buttonEmojiId('primary')
+  }];
+
   await ctx.reply(
     newLang === 'ar'
-      ? '✅ تم تغيير اللغة إلى العربية\n🪄 الكيبورد الذكي محدث'
-      : '✅ Language changed to English\n🪄 Smart keyboard updated',
-    Markup.inlineKeyboard([[Markup.button.callback('🔙 Back / رجوع', 'main_menu')]])
+      ? `${emojiHtml('checkmark')} تم تغيير اللغة إلى العربية`
+      : `${emojiHtml('checkmark')} Language changed to English`,
+    Markup.inlineKeyboard([backBtn])
   ).catch(() => {});
   return ctx.editMessageText(
     newLang === 'ar'
-      ? '✅ تم تغيير اللغة إلى العربية'
-      : '✅ Language changed to English',
-    Markup.inlineKeyboard([[Markup.button.callback('🔙 Back / رجوع', 'main_menu')]])
+      ? `${emojiHtml('checkmark')} تم تغيير اللغة إلى العربية`
+      : `${emojiHtml('checkmark')} Language changed to English`,
+    Markup.inlineKeyboard([backBtn])
   ).catch(console.error);
 };
 
 const handleBinanceDeposit = async (ctx, lang) => {
   const msg = lang === 'en'
-    ? `💳 <b>Binance Deposit</b>\n\nPlease use the web shop to complete the deposit via Binance, or contact support.`
-    : `💳 <b>شحن عبر بينانس</b>\n\nيرجى استخدام المتجر الإلكتروني لإتمام الشحن عبر بينانس أو تواصل مع الدعم.`;
+    ? `${emojiHtml('gem')} <b>Binance Deposit</b>\n\nPlease use the web shop to complete the deposit via Binance, or contact support.`
+    : `${emojiHtml('gem')} <b>شحن عبر بينانس</b>\n\nيرجى استخدام المتجر الإلكتروني لإتمام الشحن عبر بينانس أو تواصل مع الدعم.`;
 
   return ctx.editMessageText(msg, {
     parse_mode: 'HTML',
     ...Markup.inlineKeyboard([
-      [Markup.button.webApp(lang === 'en' ? '📱 Open Shop' : '📱 فتح المتجر', `${process.env.BASE_URL}/customer`)],
-      [Markup.button.callback(lang === 'en' ? '🔙 Back' : '🔙 رجوع', 'addbalance')]
+      [{
+        text: lang === 'en' ? `${emojiHtml('mobile')} Open Shop` : `${emojiHtml('mobile')} فتح المتجر`,
+        web_app: { url: `${process.env.BASE_URL}/customer` },
+        style: 'primary',
+        icon_custom_emoji_id: buttonEmojiId('primary')
+      }],
+      [{
+        text: lang === 'en' ? `${emojiHtml('back')} Back` : `${emojiHtml('back')} رجوع`,
+        callback_data: 'addbalance',
+        style: 'danger',
+        icon_custom_emoji_id: buttonEmojiId('danger')
+      }]
     ])
   }).catch(console.error);
-};
-
-const handleInventoryProduct = async (ctx, productId, lang) => {
-  const Product = require('../../models/Product');
-  const Key = require('../../models/Key');
-  const product = await Product.findById(productId);
-  if (!product) return;
-
-  let msg = `📦 <b>${product.nameAr || product.name}</b>\n\n`;
-  for (const dur of product.durations) {
-    const count = await Key.countDocuments({ product: productId, durationId: dur._id, status: 'available' });
-    const sold = await Key.countDocuments({ product: productId, durationId: dur._id, status: 'sold' });
-    msg += `⏱ ${dur.nameAr || dur.name}: 🟢 ${count} ${lang === 'en' ? 'available' : 'متاح'} | 🔴 ${sold} ${lang === 'en' ? 'sold' : 'مباع'}\n`;
-  }
-
-  return ctx.editMessageText(msg, {
-    parse_mode: 'HTML',
-    ...Markup.inlineKeyboard([
-      [Markup.button.webApp(lang === 'en' ? '➕ Add Keys' : '➕ إضافة مفاتيح', `${process.env.BASE_URL}/admin`)],
-      [Markup.button.callback(lang === 'en' ? '🔙 Back' : '🔙 رجوع', 'admin_inventory')]
-    ])
-  }).catch(console.error);
-};
-
-const handleVerifyPayment = async (ctx, orderId, lang) => {
-  try {
-    const order = await Order.findById(orderId);
-    if (!order) return ctx.answerCbQuery(t(lang, '❌ الطلب غير موجود', '❌ Order not found'), { show_alert: true });
-
-    const result = await orderService.processWalletPayment(order._id);
-
-    const keysText = result.keys?.map(k => `<code>${k.keyValue}</code>`).join('\n') || '';
-    const msg = t(lang,
-      `✅ <b>تم التأكيد والتسليم!</b>\n\n📋 الطلب: <code>${order.orderNumber}</code>\n🔑 المفاتيح:\n${keysText}`,
-      `✅ <b>Confirmed & Delivered!</b>\n\n📋 Order: <code>${order.orderNumber}</code>\n🔑 Keys:\n${keysText}`
-    );
-
-    await ctx.editMessageText(msg, {
-      parse_mode: 'HTML',
-      ...Markup.inlineKeyboard([[Markup.button.callback('✅ تم', 'admin_back')]])
-    }).catch(console.error);
-
-  } catch (err) {
-    logger.error('Verify payment error:', err);
-    await ctx.editMessageText(`❌ ${err.message}`).catch(() => {});
-  }
-};
-
-const handleRejectPayment = async (ctx, orderId, lang) => {
-  try {
-    const order = await Order.findById(orderId);
-    if (!order) return ctx.answerCbQuery(t(lang, '❌ الطلب غير موجود', '❌ Order not found'), { show_alert: true });
-
-    order.status = 'rejected';
-    order.rejectReason = 'Rejected by admin';
-    await order.save();
-
-    // Refund balance if applicable
-    if (order.paidAmount > 0) {
-      const user = await User.findOne({ telegramId: order.user });
-      if (user) {
-        await user.addBalance(order.paidAmount, `استرداد طلب مرفوض: ${order.orderNumber}`);
-        await user.save();
-      }
-    }
-
-    // Notify user
-    await ctx.telegram.sendMessage(order.user,
-      t(lang,
-        `❌ تم رفض إثبات الدفع\n📋 الطلب: ${order.orderNumber}\n💰 تم استرداد المبلغ لرصيدك`,
-        `❌ Payment proof rejected\n📋 Order: ${order.orderNumber}\n💰 Amount refunded to your balance`)
-    ).catch(() => {});
-
-    await ctx.editMessageText(
-      t(lang, `❌ <b>تم رفض الدفع</b>\n📋 ${order.orderNumber}`, `❌ <b>Payment Rejected</b>\n📋 ${order.orderNumber}`),
-      { parse_mode: 'HTML' }
-    ).catch(console.error);
-
-  } catch (err) {
-    logger.error('Reject payment error:', err);
-    await ctx.editMessageText(`❌ ${err.message}`).catch(() => {});
-  }
 };
 
 // ═══════════════════════════════════════
@@ -266,20 +206,40 @@ const showCheckout = async (ctx, productId, durationId, lang) => {
   const durName = lang === 'en' ? (duration.name || duration.nameAr) : (duration.nameAr || duration.name);
 
   const msg = (
-    `💳 <b>${t(lang, 'إتمام الشراء', 'Complete Purchase')}</b>\n\n` +
-    `📦 ${t(lang, 'المنتج', 'Product')}: <b>${prodName}</b>\n` +
-    `⏱ ${t(lang, 'المدة', 'Duration')}: <b>${durName}</b>\n` +
-    `💰 ${t(lang, 'السعر', 'Price')}: <b>$${duration.price.toFixed(2)}</b>\n\n` +
-    `💳 ${t(lang, 'رصيدك', 'Balance')}: <b>$${user.balance.toFixed(2)}</b>\n\n` +
-    t(lang, 'اختر طريقة الدفع:', 'Choose payment method:')
+    `${emojiHtml('creditcard')} <b>${t(lang, 'إتمام الشراء', 'Complete Purchase')}</b>\n\n` +
+    `${emojiHtml('key')} ${t(lang, 'المنتج', 'Product')}: <b>${prodName}</b>\n` +
+    `${emojiHtml('clock')} ${t(lang, 'المدة', 'Duration')}: <b>${durName}</b>\n` +
+    `${emojiHtml('coin')} ${t(lang, 'السعر', 'Price')}: <b>$${duration.price.toFixed(2)}</b>\n\n` +
+    `${emojiHtml('wallet')} ${t(lang, 'رصيدك', 'Balance')}: <b>$${user.balance.toFixed(2)}</b>\n\n` +
+    `${emojiHtml('bolt')} ${t(lang, 'اختر طريقة الدفع:', 'Choose payment method:')}`
   );
 
   const buttons = [
     hasBalance
-      ? [{ text: `✅ ${t(lang, 'الدفع من المحفظة', 'Pay from wallet')} ($${user.balance.toFixed(2)})`, callback_data: `confirm_wallet_${productId}_${durationId}`, style: 'success', icon_custom_emoji_id: buttonEmojiId('success') }]
-      : [{ text: `💳 ${t(lang, 'المحفظة (رصيد غير كافٍ)', 'Wallet (insufficient balance)')}`, callback_data: `insufficient_balance`, style: 'danger', icon_custom_emoji_id: buttonEmojiId('danger') }],
-    [{ text: '💎 ' + t(lang, 'دفع بينانس', 'Binance Pay'), web_app: { url: `${process.env.BASE_URL}/customer` }, style: 'primary', icon_custom_emoji_id: buttonEmojiId('primary') }],
-    [{ text: t(lang, '🔙 رجوع', '🔙 Back'), callback_data: `product_${productId}`, style: 'danger', icon_custom_emoji_id: buttonEmojiId('danger') }]
+      ? [{
+        text: `${emojiHtml('checkmark')} ${t(lang, 'الدفع من المحفظة', 'Pay from wallet')} ($${user.balance.toFixed(2)})`,
+        callback_data: `confirm_wallet_${productId}_${durationId}`,
+        style: 'success',
+        icon_custom_emoji_id: buttonEmojiId('success')
+      }]
+      : [{
+        text: `${emojiHtml('skull')} ${t(lang, 'المحفظة (رصيد غير كافٍ)', 'Wallet (insufficient balance)')}`,
+        callback_data: `insufficient_balance`,
+        style: 'danger',
+        icon_custom_emoji_id: buttonEmojiId('danger')
+      }],
+    [{
+      text: `${emojiHtml('gem')} ${t(lang, 'دفع بينانس', 'Binance Pay')}`,
+      web_app: { url: `${process.env.BASE_URL}/customer` },
+      style: 'primary',
+      icon_custom_emoji_id: buttonEmojiId('primary')
+    }],
+    [{
+      text: `${emojiHtml('back')} ${t(lang, 'رجوع', 'Back')}`,
+      callback_data: `product_${productId}`,
+      style: 'danger',
+      icon_custom_emoji_id: buttonEmojiId('danger')
+    }]
   ];
 
   await ctx.editMessageText(msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) }).catch(console.error);
@@ -298,19 +258,29 @@ const confirmWalletPurchase = async (ctx, productId, durationId, lang) => {
 
     const keysText = result.keys.map(k => `<code>${k.keyValue}</code>`).join('\n');
     const msg = (
-      `✅ <b>${t(lang, 'تم الشراء بنجاح!', 'Purchase Successful!')}</b>\n\n` +
-      `📦 ${result.order.productName}\n` +
-      `⏱ ${result.order.durationName}\n` +
-      `💰 $${result.order.finalPrice.toFixed(2)}\n\n` +
-      `🔑 <b>${t(lang, 'مفتاحك', 'Your Key')}:</b>\n${keysText}\n\n` +
-      `📋 ${t(lang, 'رقم الطلب', 'Order #')}: <code>${result.order.orderNumber}</code>`
+      `${emojiHtml('trophy')} <b>${t(lang, 'تم الشراء بنجاح!', 'Purchase Successful!')}</b>\n\n` +
+      `${emojiHtml('key')} ${result.order.productName}\n` +
+      `${emojiHtml('clock')} ${result.order.durationName}\n` +
+      `${emojiHtml('coin')} $${result.order.finalPrice.toFixed(2)}\n\n` +
+      `${emojiHtml('diamond')} <b>${t(lang, 'مفتاحك', 'Your Key')}:</b>\n${keysText}\n\n` +
+      `${emojiHtml('orders')} ${t(lang, 'رقم الطلب', 'Order #')}: <code>${result.order.orderNumber}</code>`
     );
 
     await ctx.editMessageText(msg, {
       parse_mode: 'HTML',
       ...Markup.inlineKeyboard([
-        [Markup.button.callback(t(lang, '🛍️ تسوق أكثر', '🛍️ Shop More'), 'shop')],
-        [Markup.button.callback(t(lang, '🔙 الرئيسية', '🔙 Home'), 'main_menu')]
+        [{
+          text: `${emojiHtml('shop')} ${t(lang, 'تسوق أكثر', 'Shop More')}`,
+          callback_data: 'shop',
+          style: 'primary',
+          icon_custom_emoji_id: buttonEmojiId('primary')
+        }],
+        [{
+          text: `${emojiHtml('crown')} ${t(lang, 'الرئيسية', 'Home')}`,
+          callback_data: 'main_menu',
+          style: 'success',
+          icon_custom_emoji_id: buttonEmojiId('success')
+        }]
       ])
     }).catch(console.error);
 
@@ -321,15 +291,20 @@ const confirmWalletPurchase = async (ctx, productId, durationId, lang) => {
       const user = ctx.dbUser;
       for (const adminId of adminIds) {
         await ctx.telegram.sendMessage(adminId,
-          `🛒 <b>${t(lang, 'طلب جديد', 'New Order')}!</b>\n` +
-          `👤 ${user.fullName} (@${user.username || 'N/A'})\n` +
-          `📦 ${result.order.productName} - ${result.order.durationName}\n` +
-          `💰 $${result.order.finalPrice.toFixed(2)}\n\n` +
+          `${emojiHtml('shopping')} <b>${t(lang, 'طلب جديد', 'New Order')}!</b>\n` +
+          `${emojiHtml('profile')} ${user.fullName} (@${user.username || 'N/A'})\n` +
+          `${emojiHtml('key')} ${result.order.productName} - ${result.order.durationName}\n` +
+          `${emojiHtml('coin')} $${result.order.finalPrice.toFixed(2)}\n\n` +
           `${t(lang, 'إدارة الطلب من خلال لوحة التحكم فقط.', 'Manage this order from the admin portal only.')}`,
           {
             parse_mode: 'HTML',
             ...Markup.inlineKeyboard([
-              [Markup.button.webApp(`👑 ${t(lang, 'فتح الطلب', 'Open Order')}`, `${process.env.BASE_URL}/admin#orders?search=${encodeURIComponent(result.order.orderNumber)}`)]
+              [{
+                text: `${emojiHtml('admin')} ${t(lang, 'فتح الطلب', 'Open Order')}`,
+                web_app: { url: `${process.env.BASE_URL}/admin#orders?search=${encodeURIComponent(result.order.orderNumber)}` },
+                style: 'primary',
+                icon_custom_emoji_id: buttonEmojiId('primary')
+              }]
             ])
           }
         ).catch(() => {});
@@ -339,10 +314,15 @@ const confirmWalletPurchase = async (ctx, productId, durationId, lang) => {
   } catch (err) {
     logger.error('Purchase error:', err);
     await ctx.editMessageText(
-      `❌ <b>${t(lang, 'فشل الشراء', 'Purchase Failed')}</b>\n\n${err.message}`,
+      `${emojiHtml('skull')} <b>${t(lang, 'فشل الشراء', 'Purchase Failed')}</b>\n\n${err.message}`,
       {
         parse_mode: 'HTML',
-        ...Markup.inlineKeyboard([[Markup.button.callback(t(lang, '🔙 رجوع', '🔙 Back'), 'main_menu')]])
+        ...Markup.inlineKeyboard([[{
+          text: `${emojiHtml('back')} ${t(lang, 'رجوع', 'Back')}`,
+          callback_data: 'main_menu',
+          style: 'danger',
+          icon_custom_emoji_id: buttonEmojiId('danger')
+        }]])
       }
     ).catch(console.error);
   }

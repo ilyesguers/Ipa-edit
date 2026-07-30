@@ -79,5 +79,16 @@
 .gradient-text { background: linear-gradient(135deg, #00ff88, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 
 /* Pulse glow */
-@keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 5px rgba(0,255,136,0.3); } 50% { box-shadow: 0 0 20px rgba(0,255,136,0.6); } }
+@keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 5px rgba(0,255,136,0.3); } 50% { box-shadow: 0 0 20px rgba(0,255,136,0.6), 0 0 30px rgba(168,85,247,0.3); } }
 .pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+
+/* Giant premium animated emojis */
+.giant-emoji { font-size: 3.5rem; line-height: 1; filter: drop-shadow(0 0 12px rgba(0,255,136,0.4)); display: inline-block; animation: float 3s ease-in-out infinite; }
+.big-emoji { font-size: 2rem; line-height: 1; filter: drop-shadow(0 0 8px rgba(168,85,247,0.3)); }
+
+/* Hero gradient banner */
+.hero-gradient {
+  background: radial-gradient(ellipse at top right, rgba(0,255,136,0.15), transparent 50%),
+              radial-gradient(ellipse at bottom left, rgba(168,85,247,0.15), transparent 50%),
+              linear-gradient(135deg, #12121c, #0a0a12);
+}

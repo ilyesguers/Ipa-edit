@@ -270,36 +270,6 @@ const buildBotInlineKeyboard = ({ Markup, lang = 'ar', isAdmin = false, quickLin
   return Markup.inlineKeyboard(rows);
 };
 
-const buildMainReplyKeyboard = (lang = 'ar', isAdmin = false) => {
-  const arRows = [
-    [{ text: '🛍️ المتجر' }, { text: '🗂️ مفاتيحي' }],
-    [{ text: '🧾 طلباتي' }, { text: '👤 حسابي' }],
-    [{ text: '💳 شحن الرصيد' }, { text: '🆘 الدعم' }],
-    [{ text: '🌐 تغيير اللغة' }]
-  ];
-
-  const enRows = [
-    [{ text: '🛍️ Store' }, { text: '🗂️ My Keys' }],
-    [{ text: '🧾 Orders' }, { text: '👤 Profile' }],
-    [{ text: '💳 Balance' }, { text: '🆘 Support' }],
-    [{ text: '🌐 Change Language' }]
-  ];
-
-  const keyboard = lang === 'en' ? enRows : arRows;
-  if (isAdmin) {
-    keyboard.push([{ text: lang === 'en' ? '👑 Admin Portal' : '👑 لوحة التحكم' }]);
-  }
-
-  return {
-    reply_markup: {
-      keyboard,
-      resize_keyboard: true,
-      is_persistent: true,
-      input_field_placeholder: lang === 'en' ? 'Use the smart menu below' : 'استخدم القائمة الذكية بالأسفل'
-    }
-  };
-};
-
 module.exports = {
   THEME_PRESETS,
   DEFAULT_HIGHLIGHTS,
@@ -307,7 +277,6 @@ module.exports = {
   getUiSettings,
   getAdminPortalUrl,
   buildBotInlineKeyboard,
-  buildMainReplyKeyboard,
   normalizeQuickLinks,
   normalizeHighlights
 };
