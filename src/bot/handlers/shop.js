@@ -4,62 +4,117 @@ const Game = require('../../models/Game');
 const Product = require('../../models/Product');
 const Key = require('../../models/Key');
 
+// ── Device icon map ──
+const DEVICE_ICONS = {
+  'android': '📱',
+  'ios': '🍎',
+  'windows': '💻',
+  'mac': '🖥️',
+  'smart-tv': '📺',
+  'firestick': '🔥',
+  'default': '📲'
+};
+
+const getDeviceIcon = (category) => {
+  if (!category?.icon) return DEVICE_ICONS.default;
+  return category.icon;
+};
+
 const shopHandler = async (ctx) => {
+  const user = ctx.dbUser;
+  const lang = user?.preferredLanguage || 'ar';
   const categories = await Category.find({ isActive: true, isHidden: false }).sort('order');
-  if (!categories.length) return ctx.reply('😔 لا توجد أقسام متاحة حالياً');
 
-  const buttons = categories.map(cat =>
-    [Markup.button.callback(`${cat.icon} ${cat.nameAr || cat.name}`, `cat_${cat._id}`)]
-  );
+  if (!categories.length) {
+    return ctx.reply(lang === 'en'
+      ? '😔 No categories available at the moment'
+      : '😔 لا توجد أقسام متاحة حالياً'
+    );
+  }
 
-  buttons.push([Markup.button.callback('🔙 الرئيسية', 'main_menu')]);
+  const buttons = categories.map(cat => {
+    const icon = getDeviceIcon(cat);
+    const name = lang === 'en' ? (cat.name || cat.nameAr) : (cat.nameAr || cat.name);
+    return [Markup.button.callback(`${icon} ${name}`, `cat_${cat._id}`)];
+  });
 
-  const msg = '🛍️ <b>اختر القسم المناسب لجهازك:</b>\n\n';
+  buttons.push([Markup.button.callback(lang === 'en' ? '🔙 Back' : '🔙 الرئيسية', 'main_menu')]);
+
+  const msg = lang === 'en'
+    ? '🛍️ <b>Choose the right section for your device:</b>'
+    : '🛍️ <b>اختر القسم المناسب لجهازك:</b>';
 
   await ctx.editMessageText?.(msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) })
     .catch(() => ctx.reply(msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) }));
 };
 
 const showGames = async (ctx, categoryId) => {
+  const user = ctx.dbUser;
+  const lang = user?.preferredLanguage || 'ar';
   const category = await Category.findById(categoryId);
   const games = await Game.find({ category: categoryId, isActive: true, isHidden: false }).sort('order');
 
-  if (!games.length) return ctx.answerCbQuery('😔 لا توجد ألعاب في هذا القسم حالياً', { show_alert: true });
+  if (!games.length) {
+    return ctx.answerCbQuery(
+      lang === 'en' ? '😔 No games in this section yet' : '😔 لا توجد ألعاب في هذا القسم حالياً',
+      { show_alert: true }
+    );
+  }
 
-  const buttons = games.map(game =>
-    [Markup.button.callback(`🎮 ${game.nameAr || game.name}`, `game_${game._id}`)]
-  );
-  buttons.push([Markup.button.callback(`🔙 رجوع`, 'shop')]);
+  const buttons = games.map(game => {
+    const name = lang === 'en' ? (game.name || game.nameAr) : (game.nameAr || game.name);
+    return [Markup.button.callback(`🎮 ${name}`, `game_${game._id}`)];
+  });
+  buttons.push([Markup.button.callback(lang === 'en' ? '🔙 Back' : '🔙 رجوع', 'shop')]);
 
-  const msg = `${category.icon} <b>${category.nameAr || category.name}</b>\n\n🎮 اختر اللعبة:`;
+  const icon = getDeviceIcon(category);
+  const catName = lang === 'en' ? (category.name || category.nameAr) : (category.nameAr || category.name);
+  const msg = lang === 'en'
+    ? `${icon} <b>${catName}</b>\n\n🎮 Choose a game:`
+    : `${icon} <b>${catName}</b>\n\n🎮 اختر اللعبة:`;
+
   await ctx.editMessageText(msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) }).catch(console.error);
 };
 
 const showProducts = async (ctx, gameId) => {
+  const user = ctx.dbUser;
+  const lang = user?.preferredLanguage || 'ar';
   const game = await Game.findById(gameId).populate('category');
   const products = await Product.find({ game: gameId, isActive: true, isHidden: false }).sort('order');
 
-  if (!products.length) return ctx.answerCbQuery('😔 لا توجد منتجات متاحة', { show_alert: true });
+  if (!products.length) {
+    return ctx.answerCbQuery(
+      lang === 'en' ? '😔 No products available' : '😔 لا توجد منتجات متاحة',
+      { show_alert: true }
+    );
+  }
 
-  const buttons = products.map(p =>
-    [Markup.button.callback(`🔑 ${p.nameAr || p.name}`, `product_${p._id}`)]
-  );
-  buttons.push([Markup.button.callback(`🔙 رجوع`, `cat_${game.category._id}`)]);
+  const buttons = products.map(p => {
+    const name = lang === 'en' ? (p.name || p.nameAr) : (p.nameAr || p.name);
+    return [Markup.button.callback(`🔑 ${name}`, `product_${p._id}`)];
+  });
+  buttons.push([Markup.button.callback(lang === 'en' ? '🔙 Back' : '🔙 رجوع', `cat_${game.category._id}`)]);
 
-  const msg = `🎮 <b>${game.nameAr || game.name}</b>\n\n🔑 اختر المنتج:`;
+  const gameName = lang === 'en' ? (game.name || game.nameAr) : (game.nameAr || game.name);
+  const msg = lang === 'en'
+    ? `🎮 <b>${gameName}</b>\n\n🔑 Choose a product:`
+    : `🎮 <b>${gameName}</b>\n\n🔑 اختر المنتج:`;
+
   await ctx.editMessageText(msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) }).catch(console.error);
 };
 
 const showProduct = async (ctx, productId) => {
+  const user = ctx.dbUser;
+  const lang = user?.preferredLanguage || 'ar';
   const product = await Product.findById(productId).populate('game');
-  if (!product) return ctx.answerCbQuery('المنتج غير موجود', { show_alert: true });
+  if (!product) return ctx.answerCbQuery(lang === 'en' ? 'Product not found' : 'المنتج غير موجود', { show_alert: true });
 
-  // Build features text
+  // Build features text (bilingual)
   const featuresText = product.features.length > 0
     ? product.features.map(f => `${f.icon} ${f.text}`).join('\n')
     : '';
 
-  // Build duration buttons with stock info
+  // Build duration buttons with stock count in each button
   const durationButtons = [];
   for (const dur of product.durations) {
     if (!dur.isActive) continue;
@@ -69,25 +124,47 @@ const showProduct = async (ctx, productId) => {
       status: 'available'
     });
     const hasStock = stockCount > 0;
+    const durName = lang === 'en' ? (dur.name || dur.nameAr) : (dur.nameAr || dur.name);
+    const stockLabel = hasStock ? `🟢${stockCount}` : '🔴';
+
     const label = hasStock
-      ? `✅ ${dur.nameAr || dur.name} - $${dur.price.toFixed(2)}`
-      : `❌ ${dur.nameAr || dur.name} - $${dur.price.toFixed(2)} (نفذ المخزون)`;
-    durationButtons.push([Markup.button.callback(label, hasStock ? `buy_${productId}_${dur._id}` : `oos_${dur.name}`)]);
+      ? `${stockLabel} ${durName} - $${dur.price.toFixed(2)}`
+      : `${stockLabel} ${durName} - $${dur.price.toFixed(2)} (${lang === 'en' ? 'Out of stock' : 'نفذ المخزون'})`;
+
+    durationButtons.push([Markup.button.callback(label, hasStock ? `buy_${productId}_${dur._id}` : `oos_${durName}`)]);
   }
 
-  durationButtons.push([Markup.button.callback(`🔙 رجوع`, `game_${product.game._id}`)]);
+  durationButtons.push([Markup.button.callback(lang === 'en' ? '🔙 Back' : '🔙 رجوع', `game_${product.game._id}`)]);
 
-  let msg = `🔑 <b>${product.nameAr || product.name}</b>\n\n`;
-  if (featuresText) msg += `📋 <b>المميزات:</b>\n${featuresText}\n\n`;
-  msg += `💰 <b>اختر المدة:</b>`;
+  const prodName = lang === 'en' ? (product.name || product.nameAr) : (product.nameAr || product.name);
 
+  let msg = `🔑 <b>${prodName}</b>\n\n`;
+  if (featuresText) {
+    msg += lang === 'en'
+      ? `📋 <b>Features:</b>\n${featuresText}\n\n`
+      : `📋 <b>المميزات:</b>\n${featuresText}\n\n`;
+  }
+  msg += lang === 'en' ? '💰 <b>Choose duration:</b>' : '💰 <b>اختر المدة:</b>';
+
+  // Smart image↔text toggle: try photo first, fallback to text
   if (product.logo) {
-    await ctx.editMessageMedia(
-      { type: 'photo', media: product.logo, caption: msg, parse_mode: 'HTML' },
-      Markup.inlineKeyboard(durationButtons)
-    ).catch(async () => {
-      await ctx.editMessageText(msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(durationButtons) }).catch(console.error);
-    });
+    try {
+      await ctx.editMessageMedia(
+        { type: 'photo', media: product.logo, caption: msg, parse_mode: 'HTML' },
+        Markup.inlineKeyboard(durationButtons)
+      );
+    } catch {
+      // If media edit fails, try text
+      await ctx.editMessageText(msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(durationButtons) }).catch(async () => {
+        // Last resort: send new message
+        await ctx.replyWithPhoto(
+          { url: product.logo },
+          { caption: msg, parse_mode: 'HTML', ...Markup.inlineKeyboard(durationButtons) }
+        ).catch(async () => {
+          await ctx.reply(msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(durationButtons) }).catch(console.error);
+        });
+      });
+    }
   } else {
     await ctx.editMessageText(msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(durationButtons) }).catch(console.error);
   }

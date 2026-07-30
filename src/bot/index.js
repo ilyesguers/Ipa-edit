@@ -22,7 +22,7 @@ const createBot = (io) => {
   // Session middleware
   bot.use(session());
 
-  // User middleware - register/update user on every message
+  // ── User middleware: update ONLY on change ──
   bot.use(async (ctx, next) => {
     if (!ctx.from) return next();
 
@@ -31,7 +31,9 @@ const createBot = (io) => {
       const isAdmin = ADMIN_IDS.includes(telegramId);
 
       let user = await User.findOne({ telegramId });
+
       if (!user) {
+        // ── Create new user ──
         user = await User.create({
           telegramId,
           username: ctx.from.username || null,
@@ -42,13 +44,39 @@ const createBot = (io) => {
         });
         logger.info(`🆕 New user: ${user.fullName} (${telegramId})`);
       } else {
-        // Update user info
-        user.username = ctx.from.username || user.username;
-        user.firstName = ctx.from.first_name || user.firstName;
-        user.lastName = ctx.from.last_name || user.lastName;
-        user.lastSeen = new Date();
-        if (isAdmin && user.role === 'customer') user.role = 'admin';
-        await user.save();
+        // ── Update ONLY if data changed (saves DB writes) ──
+        let needsSave = false;
+        const newUsername = ctx.from.username || null;
+        const newFirstName = ctx.from.first_name || '';
+        const newLastName = ctx.from.last_name || '';
+
+        if (user.username !== newUsername) {
+          user.username = newUsername;
+          needsSave = true;
+        }
+        if (user.firstName !== newFirstName) {
+          user.firstName = newFirstName;
+          needsSave = true;
+        }
+        if (user.lastName !== newLastName) {
+          user.lastName = newLastName;
+          needsSave = true;
+        }
+        // Update lastSeen every 5 minutes max (not every message)
+        const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+        if (!user.lastSeen || user.lastSeen < fiveMinAgo) {
+          user.lastSeen = new Date();
+          needsSave = true;
+        }
+        // Role upgrade
+        if (isAdmin && user.role === 'customer') {
+          user.role = 'admin';
+          needsSave = true;
+        }
+
+        if (needsSave) {
+          await user.save();
+        }
       }
 
       ctx.dbUser = user;
@@ -57,13 +85,17 @@ const createBot = (io) => {
 
       // Check ban
       if (user.isBanned) {
-        return ctx.reply(`🚫 حسابك محظور.\nالسبب: ${user.banReason || 'مخالفة القوانين'}\n\nللتواصل مع الدعم استخدم القناة الرسمية.`);
+        return ctx.reply(
+          `🚫 حسابك محظور. / Your account is banned.\n` +
+          `السبب / Reason: ${user.banReason || 'مخالفة القوانين / Violation'}\n\n` +
+          `للتواصل / Contact: @${process.env.SUPPORT_USERNAME || 'support'}`
+        );
       }
 
       // Check maintenance mode
       const maintenance = await Settings.get('maintenance_mode', false);
       if (maintenance && !ctx.isAdmin) {
-        const maintenanceMsg = await Settings.get('maintenance_message', '🔧 الموقع تحت الصيانة');
+        const maintenanceMsg = await Settings.get('maintenance_message', '🔧 الموقع تحت الصيانة / Site under maintenance');
         return ctx.reply(maintenanceMsg);
       }
 
@@ -74,7 +106,9 @@ const createBot = (io) => {
     return next();
   });
 
-  // Commands
+  // ═══════════════════════════════════════
+  // COMMANDS
+  // ═══════════════════════════════════════
   bot.start(startHandler);
   bot.command('admin', adminHandler);
   bot.command('shop', shopHandler);
@@ -83,22 +117,32 @@ const createBot = (io) => {
   bot.command('history', historyHandler);
   bot.command('balance', balanceHandler);
   bot.command('help', helpHandler);
-  bot.command('broadcast', async (ctx) => {
-    if (!ctx.isAdmin) return ctx.reply('⛔ غير مصرح لك');
-    ctx.reply('📢 استخدم لوحة الإدارة لإرسال الإذاعة');
+
+  // ── /stats alias for admins ──
+  bot.command('stats', async (ctx) => {
+    if (!ctx.isAdmin) return ctx.reply('⛔ غير مصرح لك / Unauthorized');
+    return adminHandler(ctx);
   });
 
-  // Callback queries
+  bot.command('broadcast', async (ctx) => {
+    if (!ctx.isAdmin) return ctx.reply('⛔ غير مصرح لك / Unauthorized');
+    ctx.reply('📢 استخدم لوحة الإدارة لإرسال الإذاعة\n📢 Use admin panel to send broadcast');
+  });
+
+  // ── Callback queries ──
   bot.on('callback_query', callbackHandler);
 
-  // Payment messages
+  // ── Payment messages (text handler) ──
   bot.on('message', paymentHandler);
 
-  // Error handler
+  // ── Error handler ──
   bot.catch((err, ctx) => {
     logger.error(`Bot error for ${ctx.updateType}:`, err);
     if (ctx.reply) {
-      ctx.reply('❌ حدث خطأ غير متوقع، يرجى المحاولة مجدداً').catch(() => {});
+      ctx.reply(
+        '❌ حدث خطأ غير متوقع، يرجى المحاولة مجدداً\n' +
+        '❌ Unexpected error, please try again'
+      ).catch(() => {});
     }
   });
 
