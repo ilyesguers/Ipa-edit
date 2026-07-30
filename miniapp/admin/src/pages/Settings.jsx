@@ -8,6 +8,7 @@ const THEME_PRESETS = [
   { id: 'emerald', icon: '💚', title: 'Emerald', desc: 'أخضر + أزرق', gradient: 'from-emerald-500/20 to-sky-500/10' },
   { id: 'velvet', icon: '🪻', title: 'Velvet', desc: 'بنفسجي + وردي', gradient: 'from-fuchsia-500/20 to-purple-500/10' },
   { id: 'sunset', icon: '🌇', title: 'Sunset', desc: 'برتقالي + أحمر', gradient: 'from-orange-500/20 to-rose-500/10' },
+  { id: 'midnight', icon: '🌙', title: 'Midnight 🌙', desc: 'أخضر + بنفسجي', gradient: 'from-emerald-500/20 to-violet-500/10' },
 ];
 
 const EMPTY_LINK = { id: '', icon: '✨', textAr: '', textEn: '', type: 'callback', value: '', row: 1, visibility: 'all' };

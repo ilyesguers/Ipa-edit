@@ -1,8 +1,9 @@
-const { buildBotInlineKeyboard, buildMainReplyKeyboard, getUiSettings } = require('../../utils/uiConfig');
+const { buildBotInlineKeyboard, getUiSettings } = require('../../utils/uiConfig');
 const Settings = require('../../models/Settings');
 const User = require('../../models/User');
 const logger = require('../../utils/logger');
 const { Markup } = require('telegraf');
+const { createCaptcha, verifyCaptcha } = require('../../utils/captcha');
 
 const buildWelcomeMessage = async (user, lang = 'ar') => {
   const ui = await getUiSettings();
@@ -61,6 +62,28 @@ const startHandler = async (ctx) => {
     const user = ctx.dbUser;
     const lang = user.preferredLanguage || 'ar';
 
+    // ── CAPTCHA for new users ──
+    const isBrandNew = (Date.now() - new Date(user.createdAt).getTime()) < 120000;
+    if (!user.captchaPassed && isBrandNew) {
+      const captcha = createCaptcha(user.telegramId);
+      
+      await ctx.reply(
+        `${captcha.emoji} <b>${lang === 'en' ? '🔒 Verification Required' : '🛡️ تحقق أمني'}</b>\n\n` +
+        `${lang === 'en' 
+          ? 'Please solve this simple math problem to verify you are human:' 
+          : '📝 حل المسألة الحسابية البسيطة للتحقق من أنك إنسان:'}\n\n` +
+        `🧮 <b>${captcha.question}</b> = ?\n\n` +
+        `${lang === 'en' 
+          ? '💡 Just type the number answer (e.g., 42)'
+          : '💡 اكتب الإجابة رقمياً فقط (مثال: 42)'}\n` +
+        `${lang === 'en'
+          ? '⏳ You have 3 attempts'
+          : '⏳ لديك 3 محاولات'}`,
+        { parse_mode: 'HTML' }
+      );
+      return;
+    }
+
     // ── Handle referral with ref_ prefix ──
     if (ctx.startPayload && ctx.startPayload !== '' && !user.referredBy) {
       const payload = ctx.startPayload;
@@ -111,13 +134,7 @@ const startHandler = async (ctx) => {
       });
     });
 
-    await ctx.reply(
-      lang === 'en'
-        ? '🎛️ Smart keyboard activated below. Use it anytime for quick navigation.'
-        : '🎛️ تم تفعيل الكيبورد الذكي بالأسفل لتتنقل بسرعة بين المتجر ومفاتيحك وحسابك.',
-      buildMainReplyKeyboard(lang, ctx.isAdmin)
-    ).catch(() => {});
-
+    // Single inline keyboard only - no duplicate reply keyboard
     const adminIds = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim())).filter(Boolean);
     const isNewUser = (Date.now() - new Date(user.createdAt).getTime()) < 60000;
 

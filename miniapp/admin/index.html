@@ -2,19 +2,52 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>Admin Panel ⚙️</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Admin Portal 🌙</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet" />
   <style>
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    body { margin: 0; background: #050508; color: #fff; font-family: 'Cairo', sans-serif; }
+    body { margin: 0; background: #050508; color: #fff; font-family: 'Cairo', 'Inter', sans-serif; overflow-x: hidden; }
     ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-thumb { background: #00d4ff40; border-radius: 2px; }
+    ::-webkit-scrollbar-track { background: #0a0a12; }
+    ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #00ff88, #a855f7); border-radius: 2px; }
+    
+    /* Smooth scrolling */
+    html { scroll-behavior: smooth; }
+    
+    /* Selection styling */
+    ::selection { background: rgba(0, 255, 136, 0.3); color: #fff; }
+    
+    /* Premium emoji rendering */
+    .emoji { font-size: inherit; line-height: 1; }
+    
+    /* Better focus styles */
+    *:focus-visible { outline: 2px solid rgba(0, 255, 136, 0.5); outline-offset: 2px; border-radius: 8px; }
+    
+    /* Shimmer for loading */
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+    .shimmer { background: linear-gradient(90deg, #12121c 25%, #1a1a2e 50%, #12121c 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+    
+    /* Page transition */
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-up { animation: fadeUp 0.3s ease-out; }
   </style>
 </head>
 <body>
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
+  
+  <!-- Keyboard dismiss helper: tap anywhere to close keyboard -->
+  <script>
+    document.addEventListener('click', function(e) {
+      // If clicking on a non-input element, blur active element to close keyboard
+      if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT') {
+        if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+          document.activeElement.blur();
+        }
+      }
+    });
+  </script>
 </body>
 </html>

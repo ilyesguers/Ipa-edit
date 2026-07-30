@@ -81,9 +81,18 @@ export default function Categories() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h2 className="text-xl font-black text-white">📂 الأقسام والألعاب</h2>
         <div className="flex gap-2">
-          <motion.button whileTap={{ scale: 0.95 }} onClick={() => { setCatForm({ name: '', nameAr: '', icon: '🎮', slug: '' }); setEditingCat(null); setShowCatForm(true); }} className="neon-btn">+ قسم</motion.button>
-          <motion.button whileTap={{ scale: 0.95 }} onClick={() => { setGameForm({ name: '', nameAr: '', icon: null, category: selectedCat?._id || '' }); setEditingGame(null); setShowGameForm(true); }} className="success-btn">+ لعبة</motion.button>
+          <motion.button whileTap={{ scale: 0.95 }} onClick={() => { setCatForm({ name: '', nameAr: '', icon: '🎮', slug: '' }); setEditingCat(null); setShowCatForm(true); }} className="neon-btn">➕ قسم جديد</motion.button>
+          <motion.button whileTap={{ scale: 0.95 }} onClick={() => { setGameForm({ name: '', nameAr: '', icon: null, category: selectedCat?._id || '' }); setEditingGame(null); setShowGameForm(true); }} className="success-btn">➕ لعبة جديدة</motion.button>
         </div>
+      </div>
+
+      {/* Quick Guide */}
+      <div className="rounded-2xl border border-purple/20 bg-gradient-to-br from-purple/10 to-emerald-500/5 p-3 text-xs text-muted space-y-1">
+        <p className="text-white font-bold text-sm mb-1">📋 ترتيب البيع: قسم ← لعبة ← منتج ← مفاتيح</p>
+        <p>1️⃣ أنشئ <span className="text-white font-bold">قسماً</span> (مثال: أندرويد، iOS، كمبيوتر)</p>
+        <p>2️⃣ داخل القسم، أنشئ <span className="text-white font-bold">لعبة</span> (مثال: ببجي، فري فاير)</p>
+        <p>3️⃣ اذهب إلى <span className="text-purple-400 font-bold">المنتجات</span> لإنشاء منتجات داخل اللعبة (مثال: VIP شهر، VIP سنة)</p>
+        <p>4️⃣ اذهب إلى <span className="text-purple-400 font-bold">المخزون</span> لإضافة المفاتيح الفعلية للمنتجات</p>
       </div>
 
       {/* Categories */}

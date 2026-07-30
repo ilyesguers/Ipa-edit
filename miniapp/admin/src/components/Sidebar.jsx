@@ -61,8 +61,8 @@ export default function Sidebar({ activePage, setActivePage, setRouteQuery, user
             {activePage === item.id && (
               <motion.div
                 layoutId="sidebar-bar"
-                className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-full bg-neon"
-                style={{ boxShadow: '0 0 10px #00d4ff' }}
+                className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-full"
+                style={{ background: 'linear-gradient(180deg, #00ff88, #a855f7)', boxShadow: '0 0 10px #00ff88' }}
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               />
             )}

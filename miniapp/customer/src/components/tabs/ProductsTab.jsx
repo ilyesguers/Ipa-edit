@@ -77,14 +77,15 @@ export default function ProductsTab() {
   const highlights = Array.isArray(publicSettings?.ui_home_highlights) ? publicSettings.ui_home_highlights : [];
   const supportUsername = publicSettings?.support_username || 'support';
   const channelUsername = publicSettings?.channel_username || '';
+  const themeKey = publicSettings?.ui_theme_preset || 'aurora';
 
   return (
     <div className="p-4 space-y-4">
-      <div className="rounded-3xl border border-neon/15 overflow-hidden bg-gradient-to-br from-neon/10 via-[#12121c] to-[#0b0b12] p-5 relative">
-        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_right,rgba(0,255,136,0.10),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(0,207,255,0.08),transparent_30%)]" />
+      <div className={`rounded-3xl border overflow-hidden p-5 relative ${themeKey === 'midnight' ? 'border-purple/20 bg-gradient-to-br from-green-500/10 via-purple-500/5 to-[#0b0b12]' : 'border-neon/15 bg-gradient-to-br from-neon/10 via-[#12121c] to-[#0b0b12]'}`}>
+        <div className={`absolute inset-0 pointer-events-none ${themeKey === 'midnight' ? 'bg-[radial-gradient(circle_at_top_right,rgba(0,255,136,0.10),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(168,85,247,0.08),transparent_30%)]' : 'bg-[radial-gradient(circle_at_top_right,rgba(0,255,136,0.10),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(0,207,255,0.08),transparent_30%)]'}`} />
         <div className="relative">
           <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-neon/20 bg-neon/10 text-[10px] text-neon font-bold">
-            🪄 {publicSettings?.ui_welcome_badge_ar || 'واجهة جديدة • بوت أذكى'}
+            🌟 {publicSettings?.ui_welcome_badge_ar || 'واجهة جديدة • بوت أذكى'}
           </span>
           <h2 className="text-white text-xl font-black mt-3">{publicSettings?.ui_welcome_title_ar || publicSettings?.bot_name || 'متجر رقمي منظم وسريع'}</h2>
           <p className="text-muted text-sm mt-2 leading-7">{publicSettings?.ui_welcome_subtitle_ar || publicSettings?.shop_description || 'تسوّق بسرعة، راقب طلباتك، وافتح المتجر أو لوحة التحكم من مكان واحد.'}</p>

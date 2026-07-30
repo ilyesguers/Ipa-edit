@@ -7,7 +7,6 @@ const { balanceHandler } = require('./balance');
 const { helpHandler } = require('./help');
 const { openAdminPortal } = require('./admin');
 const { mainKeyboard } = require('./start');
-const { buildMainReplyKeyboard } = require('../../utils/uiConfig');
 const Settings = require('../../models/Settings');
 const orderService = require('../../services/orderService');
 const logger = require('../../utils/logger');
@@ -140,14 +139,14 @@ const handleLanguage = async (ctx, lang) => {
   await user.save();
   await ctx.reply(
     newLang === 'ar'
-      ? '🎛️ تم تحديث الكيبورد الذكي إلى العربية'
-      : '🎛️ Smart keyboard switched to English',
-    buildMainReplyKeyboard(newLang, ctx.isAdmin)
+      ? '✅ تم تغيير اللغة إلى العربية\n🪄 الكيبورد الذكي محدث'
+      : '✅ Language changed to English\n🪄 Smart keyboard updated',
+    Markup.inlineKeyboard([[Markup.button.callback('🔙 Back / رجوع', 'main_menu')]])
   ).catch(() => {});
   return ctx.editMessageText(
     newLang === 'ar'
-      ? '✅ تم تغيير اللغة إلى العربية\n✅ Language changed to Arabic'
-      : '✅ Language changed to English\n✅ تم تغيير اللغة إلى الإنجليزية',
+      ? '✅ تم تغيير اللغة إلى العربية'
+      : '✅ Language changed to English',
     Markup.inlineKeyboard([[Markup.button.callback('🔙 Back / رجوع', 'main_menu')]])
   ).catch(console.error);
 };

@@ -40,6 +40,16 @@ const THEME_PRESETS = {
     secondary: '#ff3b5c',
     panelEmoji: '☀️',
     welcomeEmoji: '🔥'
+  },
+  midnight: {
+    key: 'midnight',
+    nameAr: 'منتصف الليل 🌙',
+    nameEn: 'Midnight 🌙',
+    badge: '🌙',
+    accent: '#00ff88',
+    secondary: '#a855f7',
+    panelEmoji: '🌙',
+    welcomeEmoji: '🌟'
   }
 };
 
@@ -51,12 +61,12 @@ const DEFAULT_HIGHLIGHTS = [
 
 const DEFAULT_QUICK_LINKS = [
   { id: 'shop', icon: '🛍️', textAr: 'تصفح المنتجات', textEn: 'Browse Products', type: 'callback', value: 'shop', row: 1, visibility: 'all' },
-  { id: 'keys', icon: '🗂️', textAr: 'مفاتيحي', textEn: 'My Keys', type: 'callback', value: 'mykeys', row: 1, visibility: 'all' },
-  { id: 'history', icon: '🧾', textAr: 'طلباتي', textEn: 'My Orders', type: 'callback', value: 'history', row: 2, visibility: 'all' },
+  { id: 'keys', icon: '🔑', textAr: 'مفاتيحي', textEn: 'My Keys', type: 'callback', value: 'mykeys', row: 1, visibility: 'all' },
+  { id: 'history', icon: '📋', textAr: 'طلباتي', textEn: 'My Orders', type: 'callback', value: 'history', row: 2, visibility: 'all' },
   { id: 'profile', icon: '👤', textAr: 'حسابي', textEn: 'Profile', type: 'callback', value: 'profile', row: 2, visibility: 'all' },
-  { id: 'balance', icon: '💳', textAr: 'شحن الرصيد', textEn: 'Top Up Balance', type: 'callback', value: 'addbalance', row: 3, visibility: 'all' },
+  { id: 'balance', icon: '💰', textAr: 'شحن الرصيد', textEn: 'Top Up Balance', type: 'callback', value: 'addbalance', row: 3, visibility: 'all' },
   { id: 'help', icon: '🆘', textAr: 'الدعم والمساعدة', textEn: 'Help & Support', type: 'callback', value: 'help', row: 3, visibility: 'all' },
-  { id: 'customer_app', icon: '📱', textAr: 'فتح المتجر', textEn: 'Open Store', type: 'webapp', value: '/customer', row: 4, visibility: 'all' },
+  { id: 'customer_app', icon: '🛒', textAr: 'فتح المتجر', textEn: 'Open Store', type: 'webapp', value: '/customer', row: 4, visibility: 'all' },
   { id: 'support', icon: '💬', textAr: 'التواصل مع الدعم', textEn: 'Contact Support', type: 'url', value: 'https://t.me/{support}', row: 4, visibility: 'all' },
   { id: 'channel', icon: '📣', textAr: 'القناة الرسمية', textEn: 'Official Channel', type: 'url', value: 'https://t.me/{channel}', row: 5, visibility: 'all' }
 ];

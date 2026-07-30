@@ -40,7 +40,9 @@ const userSchema = new mongoose.Schema({
   referredBy: { type: Number, default: null },
   referralCount: { type: Number, default: 0 },
   preferredLanguage: { type: String, enum: ['ar', 'en'], default: 'ar' },
-  notificationsEnabled: { type: Boolean, default: true }
+  notificationsEnabled: { type: Boolean, default: true },
+  captchaPassed: { type: Boolean, default: false },
+  captchaPassedAt: { type: Date, default: null }
 }, {
   timestamps: true,
   toJSON: { virtuals: true },
