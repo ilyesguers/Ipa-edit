@@ -1,4 +1,5 @@
 const Settings = require('../models/Settings');
+const { buttonEmojiId, emojiHtml } = require('./customEmoji');
 
 const THEME_PRESETS = {
   aurora: {
@@ -237,7 +238,7 @@ const buildBotInlineKeyboard = ({ Markup, lang = 'ar', isAdmin = false, quickLin
         // Build button with optional style (Telegram Bot API 9.4+)
         // Styles: 'primary' (blue), 'success' (green), 'danger' (red)
         const style = ['primary', 'success', 'danger'].includes(item.style) ? item.style : undefined;
-        const buttonExtra = style ? { style } : {};
+        const buttonExtra = style ? { style, icon_custom_emoji_id: buttonEmojiId(style) } : {};
 
         if (item.type === 'url') {
           if (rawValue.includes('{channel}') || rawValue.endsWith('/')) return null;
@@ -260,7 +261,8 @@ const buildBotInlineKeyboard = ({ Markup, lang = 'ar', isAdmin = false, quickLin
       {
         text: `👑 ${lang === 'en' ? adminPortalLabel.en : adminPortalLabel.ar}`,
         web_app: { url: getAdminPortalUrl('dashboard') },
-        style: 'primary'
+        style: 'primary',
+        icon_custom_emoji_id: buttonEmojiId('primary')
       }
     ]);
   }

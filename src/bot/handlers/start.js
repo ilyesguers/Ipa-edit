@@ -4,6 +4,7 @@ const User = require('../../models/User');
 const logger = require('../../utils/logger');
 const { Markup } = require('telegraf');
 const { createCaptcha, verifyCaptcha } = require('../../utils/captcha');
+const { emojiHtml } = require('../../utils/customEmoji');
 
 const buildWelcomeMessage = async (user, lang = 'ar') => {
   const ui = await getUiSettings();
@@ -21,24 +22,24 @@ const buildWelcomeMessage = async (user, lang = 'ar') => {
     .join('\n');
 
   const statsLine = locale === 'en'
-    ? `💳 <b>Balance</b>: $${balance} • 🧾 <b>Orders</b>: ${orders} • 🎁 <b>Referrals</b>: ${referrals}`
-    : `💳 <b>الرصيد</b>: $${balance} • 🧾 <b>الطلبات</b>: ${orders} • 🎁 <b>الإحالات</b>: ${referrals}`;
+    ? `${emojiHtml('wallet')} <b>Balance</b>: $${balance} • ${emojiHtml('shopping')} <b>Orders</b>: ${orders} • ${emojiHtml('star')} <b>Referrals</b>: ${referrals}`
+    : `${emojiHtml('wallet')} <b>الرصيد</b>: $${balance} • ${emojiHtml('shopping')} <b>الطلبات</b>: ${orders} • ${emojiHtml('star')} <b>الإحالات</b>: ${referrals}`;
 
   const footerLine = locale === 'en'
-    ? `🪄 <i>${welcome.footer}</i>`
-    : `🪄 <i>${welcome.footer}</i>`;
+    ? `${emojiHtml('sparkle')} <i>${welcome.footer}</i>`
+    : `${emojiHtml('sparkle')} <i>${welcome.footer}</i>`;
 
   return {
     ui,
     caption:
-      `${ui.theme.welcomeEmoji} <b>${welcome.badge}</b>\n\n` +
-      `👋 <b>${locale === 'en' ? `Welcome ${name}` : `أهلاً ${name}`}</b>\n` +
+      `${emojiHtml('star')} <b>${welcome.badge}</b>\n\n` +
+      `${emojiHtml('profile')} <b>${locale === 'en' ? `Welcome ${name}` : `أهلاً ${name}`}</b>\n` +
       `🏷️ <b>${ui.botName}</b>\n` +
-      `✨ ${welcome.title}\n` +
+      `${emojiHtml('sparkle')} ${welcome.title}\n` +
       `${welcome.subtitle}\n\n` +
       `${highlightLines}\n\n` +
       `${statsLine}\n\n` +
-      `${customMessage ? `📝 ${customMessage}\n\n` : ''}` +
+      `${customMessage ? `${emojiHtml('notification')} ${customMessage}\n\n` : ''}` +
       `${footerLine}`
   };
 };
