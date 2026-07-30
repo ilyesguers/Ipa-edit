@@ -1,8 +1,10 @@
-const { buildBotInlineKeyboard, buildMainReplyKeyboard, getUiSettings } = require('../../utils/uiConfig');
+const { buildBotInlineKeyboard, getUiSettings } = require('../../utils/uiConfig');
 const Settings = require('../../models/Settings');
 const User = require('../../models/User');
 const logger = require('../../utils/logger');
 const { Markup } = require('telegraf');
+const { createCaptcha, verifyCaptcha } = require('../../utils/captcha');
+const { emojiHtml } = require('../../utils/customEmoji');
 
 const buildWelcomeMessage = async (user, lang = 'ar') => {
   const ui = await getUiSettings();
@@ -20,24 +22,24 @@ const buildWelcomeMessage = async (user, lang = 'ar') => {
     .join('\n');
 
   const statsLine = locale === 'en'
-    ? `💳 <b>Balance</b>: $${balance} • 🧾 <b>Orders</b>: ${orders} • 🎁 <b>Referrals</b>: ${referrals}`
-    : `💳 <b>الرصيد</b>: $${balance} • 🧾 <b>الطلبات</b>: ${orders} • 🎁 <b>الإحالات</b>: ${referrals}`;
+    ? `${emojiHtml('wallet')} <b>Balance</b>: $${balance} • ${emojiHtml('shopping')} <b>Orders</b>: ${orders} • ${emojiHtml('star')} <b>Referrals</b>: ${referrals}`
+    : `${emojiHtml('wallet')} <b>الرصيد</b>: $${balance} • ${emojiHtml('shopping')} <b>الطلبات</b>: ${orders} • ${emojiHtml('star')} <b>الإحالات</b>: ${referrals}`;
 
   const footerLine = locale === 'en'
-    ? `🪄 <i>${welcome.footer}</i>`
-    : `🪄 <i>${welcome.footer}</i>`;
+    ? `${emojiHtml('sparkle')} <i>${welcome.footer}</i>`
+    : `${emojiHtml('sparkle')} <i>${welcome.footer}</i>`;
 
   return {
     ui,
     caption:
-      `${ui.theme.welcomeEmoji} <b>${welcome.badge}</b>\n\n` +
-      `👋 <b>${locale === 'en' ? `Welcome ${name}` : `أهلاً ${name}`}</b>\n` +
+      `${emojiHtml('star')} <b>${welcome.badge}</b>\n\n` +
+      `${emojiHtml('profile')} <b>${locale === 'en' ? `Welcome ${name}` : `أهلاً ${name}`}</b>\n` +
       `🏷️ <b>${ui.botName}</b>\n` +
-      `✨ ${welcome.title}\n` +
+      `${emojiHtml('sparkle')} ${welcome.title}\n` +
       `${welcome.subtitle}\n\n` +
       `${highlightLines}\n\n` +
       `${statsLine}\n\n` +
-      `${customMessage ? `📝 ${customMessage}\n\n` : ''}` +
+      `${customMessage ? `${emojiHtml('notification')} ${customMessage}\n\n` : ''}` +
       `${footerLine}`
   };
 };
@@ -60,6 +62,28 @@ const startHandler = async (ctx) => {
   try {
     const user = ctx.dbUser;
     const lang = user.preferredLanguage || 'ar';
+
+    // ── CAPTCHA for new users ──
+    const isBrandNew = (Date.now() - new Date(user.createdAt).getTime()) < 120000;
+    if (!user.captchaPassed && isBrandNew) {
+      const captcha = createCaptcha(user.telegramId);
+      
+      await ctx.reply(
+        `${captcha.emoji} <b>${lang === 'en' ? '🔒 Verification Required' : '🛡️ تحقق أمني'}</b>\n\n` +
+        `${lang === 'en' 
+          ? 'Please solve this simple math problem to verify you are human:' 
+          : '📝 حل المسألة الحسابية البسيطة للتحقق من أنك إنسان:'}\n\n` +
+        `🧮 <b>${captcha.question}</b> = ?\n\n` +
+        `${lang === 'en' 
+          ? '💡 Just type the number answer (e.g., 42)'
+          : '💡 اكتب الإجابة رقمياً فقط (مثال: 42)'}\n` +
+        `${lang === 'en'
+          ? '⏳ You have 3 attempts'
+          : '⏳ لديك 3 محاولات'}`,
+        { parse_mode: 'HTML' }
+      );
+      return;
+    }
 
     // ── Handle referral with ref_ prefix ──
     if (ctx.startPayload && ctx.startPayload !== '' && !user.referredBy) {
@@ -111,13 +135,7 @@ const startHandler = async (ctx) => {
       });
     });
 
-    await ctx.reply(
-      lang === 'en'
-        ? '🎛️ Smart keyboard activated below. Use it anytime for quick navigation.'
-        : '🎛️ تم تفعيل الكيبورد الذكي بالأسفل لتتنقل بسرعة بين المتجر ومفاتيحك وحسابك.',
-      buildMainReplyKeyboard(lang, ctx.isAdmin)
-    ).catch(() => {});
-
+    // Single inline keyboard only - no duplicate reply keyboard
     const adminIds = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim())).filter(Boolean);
     const isNewUser = (Date.now() - new Date(user.createdAt).getTime()) < 60000;
 

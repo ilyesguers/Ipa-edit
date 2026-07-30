@@ -7,10 +7,10 @@ const { balanceHandler } = require('./balance');
 const { helpHandler } = require('./help');
 const { openAdminPortal } = require('./admin');
 const { mainKeyboard } = require('./start');
-const { buildMainReplyKeyboard } = require('../../utils/uiConfig');
 const Settings = require('../../models/Settings');
 const orderService = require('../../services/orderService');
 const logger = require('../../utils/logger');
+const { buttonEmojiId } = require('../../utils/customEmoji');
 
 // ── Helper: get user language ──
 const getLang = (ctx) => ctx.dbUser?.preferredLanguage || 'ar';
@@ -140,14 +140,14 @@ const handleLanguage = async (ctx, lang) => {
   await user.save();
   await ctx.reply(
     newLang === 'ar'
-      ? '🎛️ تم تحديث الكيبورد الذكي إلى العربية'
-      : '🎛️ Smart keyboard switched to English',
-    buildMainReplyKeyboard(newLang, ctx.isAdmin)
+      ? '✅ تم تغيير اللغة إلى العربية\n🪄 الكيبورد الذكي محدث'
+      : '✅ Language changed to English\n🪄 Smart keyboard updated',
+    Markup.inlineKeyboard([[Markup.button.callback('🔙 Back / رجوع', 'main_menu')]])
   ).catch(() => {});
   return ctx.editMessageText(
     newLang === 'ar'
-      ? '✅ تم تغيير اللغة إلى العربية\n✅ Language changed to Arabic'
-      : '✅ Language changed to English\n✅ تم تغيير اللغة إلى الإنجليزية',
+      ? '✅ تم تغيير اللغة إلى العربية'
+      : '✅ Language changed to English',
     Markup.inlineKeyboard([[Markup.button.callback('🔙 Back / رجوع', 'main_menu')]])
   ).catch(console.error);
 };
@@ -276,10 +276,10 @@ const showCheckout = async (ctx, productId, durationId, lang) => {
 
   const buttons = [
     hasBalance
-      ? [Markup.button.callback(`✅ ${t(lang, 'الدفع من المحفظة', 'Pay from wallet')} ($${user.balance.toFixed(2)})`, `confirm_wallet_${productId}_${durationId}`)]
-      : [Markup.button.callback(`💳 ${t(lang, 'المحفظة (رصيد غير كافٍ)', 'Wallet (insufficient balance)')}`, `insufficient_balance`)],
-    [Markup.button.webApp('💎 ' + t(lang, 'دفع بينانس', 'Binance Pay'), `${process.env.BASE_URL}/customer`)],
-    [Markup.button.callback(t(lang, '🔙 رجوع', '🔙 Back'), `product_${productId}`)]
+      ? [{ text: `✅ ${t(lang, 'الدفع من المحفظة', 'Pay from wallet')} ($${user.balance.toFixed(2)})`, callback_data: `confirm_wallet_${productId}_${durationId}`, style: 'success', icon_custom_emoji_id: buttonEmojiId('success') }]
+      : [{ text: `💳 ${t(lang, 'المحفظة (رصيد غير كافٍ)', 'Wallet (insufficient balance)')}`, callback_data: `insufficient_balance`, style: 'danger', icon_custom_emoji_id: buttonEmojiId('danger') }],
+    [{ text: '💎 ' + t(lang, 'دفع بينانس', 'Binance Pay'), web_app: { url: `${process.env.BASE_URL}/customer` }, style: 'primary', icon_custom_emoji_id: buttonEmojiId('primary') }],
+    [{ text: t(lang, '🔙 رجوع', '🔙 Back'), callback_data: `product_${productId}`, style: 'danger', icon_custom_emoji_id: buttonEmojiId('danger') }]
   ];
 
   await ctx.editMessageText(msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) }).catch(console.error);

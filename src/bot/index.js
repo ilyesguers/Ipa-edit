@@ -13,7 +13,7 @@ const { helpHandler } = require('./handlers/help');
 const { openAdminPortal } = require('./handlers/admin');
 const { callbackHandler } = require('./handlers/callbacks');
 const { paymentHandler } = require('./handlers/payment');
-const { buildMainReplyKeyboard } = require('../utils/uiConfig');
+// Single inline keyboard only — reply keyboard removed for cleaner UX
 
 const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim())).filter(Boolean);
 
@@ -36,9 +36,8 @@ const toggleLanguageFromKeyboard = async (ctx) => {
 
   return ctx.reply(
     newLang === 'ar'
-      ? '✅ تم تغيير اللغة إلى العربية\n🎛️ تم تحديث الكيبورد الذكي.'
-      : '✅ Language changed to English\n🎛️ Smart keyboard refreshed.',
-    buildMainReplyKeyboard(newLang, ctx.isAdmin)
+      ? '✅ تم تغيير اللغة إلى العربية\n🪄 الكيبورد الذكي محدث.'
+      : '✅ Language changed to English\n🪄 Smart keyboard updated.'
   );
 };
 
@@ -170,6 +169,51 @@ const createBot = (io) => {
 
   // ── Callback queries ──
   bot.on('callback_query', callbackHandler);
+
+  // ── CAPTCHA answer handler (runs before paymentHandler) ──
+  bot.on('text', async (ctx, next) => {
+    const user = ctx.dbUser;
+    if (!user) return next();
+
+    const { hasActiveCaptcha, verifyCaptcha } = require('../utils/captcha');
+    const lang = user.preferredLanguage || 'ar';
+
+    // Check if user has an active captcha
+    if (!user.captchaPassed && hasActiveCaptcha(user.telegramId)) {
+      const text = ctx.message.text.trim();
+      const answer = parseInt(text);
+
+      if (isNaN(answer)) {
+        return ctx.reply(
+          lang === 'en'
+            ? '🔢 Please enter a number only!'
+            : '🔢 الرجاء إدخال رقم فقط!'
+        );
+      }
+
+      const result = verifyCaptcha(user.telegramId, answer);
+
+      if (result.success) {
+        user.captchaPassed = true;
+        user.captchaPassedAt = new Date();
+        await user.save();
+
+        await ctx.reply(
+          `✅ ${lang === 'en' ? 'Captcha passed! Welcome 🎉' : 'تم اجتياز التحقق! مرحباً بك 🎉'}\n\n` +
+          `${lang === 'en' ? 'Send /start to enter the bot' : 'أرسل /start للدخول إلى البوت'}`
+        );
+      } else {
+        await ctx.reply(result.message);
+        if (result.message.includes('انتهت') || result.message.includes('expired') || 
+            result.message.includes('كثيرة') || result.message.includes('attempts')) {
+          // Allow them to try /start again
+        }
+      }
+      return;
+    }
+
+    return next();
+  });
 
   // ── Payment messages (text handler) ──
   bot.on('message', paymentHandler);

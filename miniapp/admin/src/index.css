@@ -11,6 +11,9 @@
     @apply bg-card border border-border rounded-2xl p-4;
     background: linear-gradient(135deg, #12121c 0%, #0d0d14 100%);
   }
+  .admin-card:hover {
+    border-color: rgba(255,255,255,0.06);
+  }
   .neon-btn {
     @apply px-4 py-2 rounded-xl font-bold text-sm transition-all active:scale-95;
     background: linear-gradient(135deg, #00d4ff20, #00d4ff10);
@@ -22,15 +25,22 @@
     @apply px-4 py-2 rounded-xl font-bold text-sm transition-all active:scale-95;
     background: rgba(255,59,92,0.1); border: 1px solid rgba(255,59,92,0.3); color: #ff3b5c;
   }
+  .danger-btn:hover { background: rgba(255,59,92,0.15); border-color: rgba(255,59,92,0.5); box-shadow: 0 0 15px rgba(255,59,92,0.2); }
   .success-btn {
     @apply px-4 py-2 rounded-xl font-bold text-sm transition-all active:scale-95;
     background: rgba(0,255,136,0.1); border: 1px solid rgba(0,255,136,0.3); color: #00ff88;
   }
+  .success-btn:hover { background: rgba(0,255,136,0.15); border-color: rgba(0,255,136,0.5); box-shadow: 0 0 15px rgba(0,255,136,0.2); }
+  .purple-btn {
+    @apply px-4 py-2 rounded-xl font-bold text-sm transition-all active:scale-95;
+    background: rgba(168,85,247,0.1); border: 1px solid rgba(168,85,247,0.3); color: #a855f7;
+  }
+  .purple-btn:hover { background: rgba(168,85,247,0.15); border-color: rgba(168,85,247,0.5); box-shadow: 0 0 15px rgba(168,85,247,0.2); }
   .input-admin {
     @apply w-full rounded-xl py-3 px-4 text-sm text-white outline-none transition-colors;
     background: #0a0a12; border: 1px solid #1e1e30;
   }
-  .input-admin:focus { border-color: rgba(0,212,255,0.5); box-shadow: 0 0 0 2px rgba(0,212,255,0.1); }
+  .input-admin:focus { border-color: rgba(0,255,136,0.5); box-shadow: 0 0 0 2px rgba(0,255,136,0.1); }
   .stat-card {
     @apply admin-card flex items-start gap-3;
     position: relative; overflow: hidden;
@@ -38,7 +48,7 @@
   .stat-card::before {
     content: ''; position: absolute; top: 0; right: 0;
     width: 80px; height: 80px; border-radius: 50%;
-    background: radial-gradient(circle, rgba(0,212,255,0.08), transparent);
+    background: radial-gradient(circle, rgba(0,255,136,0.08), transparent);
     transform: translate(20px, -20px);
   }
   .sidebar-item {
@@ -46,7 +56,10 @@
     color: #6b7280;
   }
   .sidebar-item:hover { background: rgba(255,255,255,0.04); color: #fff; }
-  .sidebar-item.active { background: rgba(0,212,255,0.08); color: #00d4ff; border: 1px solid rgba(0,212,255,0.15); }
+  .sidebar-item.active { background: linear-gradient(135deg, rgba(0,255,136,0.08), rgba(168,85,247,0.08)); color: #00ff88; border: 1px solid rgba(0,255,136,0.15); }
+  .label-admin {
+    @apply text-xs text-muted font-semibold block;
+  }
 }
 
 .skeleton { background: linear-gradient(90deg, #12121c 25%, #1a1a2e 50%, #12121c 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
@@ -55,4 +68,16 @@
 /* Neon glow effects */
 .neon-glow { box-shadow: 0 0 20px rgba(0,212,255,0.2), inset 0 0 20px rgba(0,212,255,0.02); }
 .green-glow { box-shadow: 0 0 20px rgba(0,255,136,0.2); }
+.purple-glow { box-shadow: 0 0 20px rgba(168,85,247,0.2); }
 .red-glow { box-shadow: 0 0 20px rgba(255,59,92,0.2); }
+
+/* Animate float for elements */
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+.animate-float { animation: float 3s ease-in-out infinite; }
+
+/* Gradient text */
+.gradient-text { background: linear-gradient(135deg, #00ff88, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+/* Pulse glow */
+@keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 5px rgba(0,255,136,0.3); } 50% { box-shadow: 0 0 20px rgba(0,255,136,0.6); } }
+.pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }

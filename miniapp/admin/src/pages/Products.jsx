@@ -94,8 +94,17 @@ export default function Products() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h2 className="text-xl font-black text-white">🔑 المنتجات</h2>
         <motion.button whileTap={{ scale: 0.95 }} onClick={() => { setForm(emptyProduct); setEditing(null); setShowForm(true); }} className="neon-btn">
-          + إنشاء منتج
+          + إنشاء منتج جديد
         </motion.button>
+      </div>
+
+      {/* Quick guide */}
+      <div className="rounded-2xl border border-purple/20 bg-gradient-to-br from-purple/10 to-emerald-500/5 p-3 text-xs text-muted space-y-1">
+        <p className="text-white font-bold text-sm mb-1">📋 كيفية إضافة منتج جديد:</p>
+        <p>1️⃣ اذهب إلى <span className="text-purple-400 font-bold">الأقسام والألعاب</span> أولاً وأنشئ القسم واللعبة</p>
+        <p>2️⃣ ارجع إلى <span className="text-purple-400 font-bold">المنتجات</span> واضغط "إنشاء منتج جديد"</p>
+        <p>3️⃣ اختر اللعبة، أضف اسم المنتج، المميزات، والمدد (كل مدة = مفتاح بفترة صلاحية مختلفة)</p>
+        <p>4️⃣ بعد حفظ المنتج، اذهب إلى <span className="text-purple-400 font-bold">المخزون</span> لإضافة المفاتيح الفعلية</p>
       </div>
 
       <select value={filterGame} onChange={e => setFilterGame(e.target.value)} className="input-admin">

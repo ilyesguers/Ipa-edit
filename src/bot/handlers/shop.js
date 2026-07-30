@@ -3,6 +3,7 @@ const Category = require('../../models/Category');
 const Game = require('../../models/Game');
 const Product = require('../../models/Product');
 const Key = require('../../models/Key');
+const { buttonEmojiId, emojiHtml } = require('../../utils/customEmoji');
 
 // ── Device icon map ──
 const DEVICE_ICONS = {
@@ -35,14 +36,14 @@ const shopHandler = async (ctx) => {
   const buttons = categories.map(cat => {
     const icon = getDeviceIcon(cat);
     const name = lang === 'en' ? (cat.name || cat.nameAr) : (cat.nameAr || cat.name);
-    return [Markup.button.callback(`${icon} ${name}`, `cat_${cat._id}`)];
+    return [{ text: `${icon} ${name}`, callback_data: `cat_${cat._id}`, style: 'primary', icon_custom_emoji_id: buttonEmojiId('primary') }];
   });
 
-  buttons.push([Markup.button.callback(lang === 'en' ? '🔙 Back' : '🔙 الرئيسية', 'main_menu')]);
+  buttons.push([{ text: lang === 'en' ? '🔙 Back' : '🔙 الرئيسية', callback_data: 'main_menu', style: 'danger', icon_custom_emoji_id: buttonEmojiId('danger') }]);
 
   const msg = lang === 'en'
-    ? '🛍️ <b>Choose the right section for your device:</b>'
-    : '🛍️ <b>اختر القسم المناسب لجهازك:</b>';
+    ? `${emojiHtml('star')} <b>Choose the right section for your device:</b>`
+    : `${emojiHtml('star')} <b>اختر القسم المناسب لجهازك:</b>`;
 
   await ctx.editMessageText?.(msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) })
     .catch(() => ctx.reply(msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) }));
@@ -63,9 +64,9 @@ const showGames = async (ctx, categoryId) => {
 
   const buttons = games.map(game => {
     const name = lang === 'en' ? (game.name || game.nameAr) : (game.nameAr || game.name);
-    return [Markup.button.callback(`🎮 ${name}`, `game_${game._id}`)];
+    return [{ text: `🎮 ${name}`, callback_data: `game_${game._id}`, style: 'primary', icon_custom_emoji_id: buttonEmojiId('primary') }];
   });
-  buttons.push([Markup.button.callback(lang === 'en' ? '🔙 Back' : '🔙 رجوع', 'shop')]);
+  buttons.push([{ text: lang === 'en' ? '🔙 Back' : '🔙 رجوع', callback_data: 'shop', style: 'danger', icon_custom_emoji_id: buttonEmojiId('danger') }]);
 
   const icon = getDeviceIcon(category);
   const catName = lang === 'en' ? (category.name || category.nameAr) : (category.nameAr || category.name);
@@ -91,9 +92,9 @@ const showProducts = async (ctx, gameId) => {
 
   const buttons = products.map(p => {
     const name = lang === 'en' ? (p.name || p.nameAr) : (p.nameAr || p.name);
-    return [Markup.button.callback(`🔑 ${name}`, `product_${p._id}`)];
+    return [{ text: `🔑 ${name}`, callback_data: `product_${p._id}`, style: 'success', icon_custom_emoji_id: buttonEmojiId('success') }];
   });
-  buttons.push([Markup.button.callback(lang === 'en' ? '🔙 Back' : '🔙 رجوع', `cat_${game.category._id}`)]);
+  buttons.push([{ text: lang === 'en' ? '🔙 Back' : '🔙 رجوع', callback_data: `cat_${game.category._id}`, style: 'danger', icon_custom_emoji_id: buttonEmojiId('danger') }]);
 
   const gameName = lang === 'en' ? (game.name || game.nameAr) : (game.nameAr || game.name);
   const msg = lang === 'en'
@@ -131,10 +132,10 @@ const showProduct = async (ctx, productId) => {
       ? `${stockLabel} ${durName} - $${dur.price.toFixed(2)}`
       : `${stockLabel} ${durName} - $${dur.price.toFixed(2)} (${lang === 'en' ? 'Out of stock' : 'نفذ المخزون'})`;
 
-    durationButtons.push([Markup.button.callback(label, hasStock ? `buy_${productId}_${dur._id}` : `oos_${durName}`)]);
+    durationButtons.push([{ text: label, callback_data: hasStock ? `buy_${productId}_${dur._id}` : `oos_${durName}`, style: hasStock ? 'success' : 'danger', icon_custom_emoji_id: buttonEmojiId(hasStock ? 'success' : 'danger') }]);
   }
 
-  durationButtons.push([Markup.button.callback(lang === 'en' ? '🔙 Back' : '🔙 رجوع', `game_${product.game._id}`)]);
+  durationButtons.push([{ text: lang === 'en' ? '🔙 Back' : '🔙 رجوع', callback_data: `game_${product.game._id}`, style: 'danger', icon_custom_emoji_id: buttonEmojiId('danger') }]);
 
   const prodName = lang === 'en' ? (product.name || product.nameAr) : (product.nameAr || product.name);
 

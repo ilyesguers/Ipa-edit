@@ -7,6 +7,7 @@ const THEMES = {
   emerald: { ring: 'ring-green/30', badge: 'bg-green/10 text-green border-green/20', glow: '0 0 15px rgba(0,255,136,0.15)' },
   velvet: { ring: 'ring-fuchsia-400/30', badge: 'bg-fuchsia-500/10 text-fuchsia-300 border-fuchsia-400/20', glow: '0 0 15px rgba(217,70,239,0.15)' },
   sunset: { ring: 'ring-orange-400/30', badge: 'bg-orange-500/10 text-orange-300 border-orange-400/20', glow: '0 0 15px rgba(251,146,60,0.15)' },
+  midnight: { ring: 'ring-green-400/30', badge: 'bg-gradient-to-r from-green-500/10 to-purple-500/10 text-green-300 border-green-400/20', glow: '0 0 15px rgba(0,255,136,0.15)' },
 };
 
 export default function Header() {
