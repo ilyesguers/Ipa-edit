@@ -13,7 +13,6 @@ const categorySchema = new mongoose.Schema({
   gamesCount: { type: Number, default: 0 }
 }, { timestamps: true });
 
-categorySchema.index({ slug: 1 });
 categorySchema.index({ order: 1 });
 categorySchema.index({ isActive: 1 });
 

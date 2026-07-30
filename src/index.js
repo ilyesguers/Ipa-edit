@@ -1,4 +1,27 @@
 require('dotenv').config();
+
+// Ensure BASE_URL and WEBHOOK_DOMAIN always have valid https:// scheme and no trailing slash
+const normalizeUrl = (url) => {
+  if (!url) return url;
+  let clean = String(url).trim().replace(/\/+$/, '');
+  if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+    clean = `https://${clean}`;
+  } else if (clean.startsWith('http://') && !clean.includes('localhost') && !clean.includes('127.0.0.1')) {
+    clean = clean.replace('http://', 'https://');
+  }
+  return clean;
+};
+
+if (process.env.BASE_URL) {
+  process.env.BASE_URL = normalizeUrl(process.env.BASE_URL);
+} else if (process.env.WEBHOOK_DOMAIN) {
+  process.env.BASE_URL = normalizeUrl(process.env.WEBHOOK_DOMAIN);
+}
+
+if (process.env.WEBHOOK_DOMAIN) {
+  process.env.WEBHOOK_DOMAIN = normalizeUrl(process.env.WEBHOOK_DOMAIN);
+}
+
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -16,6 +39,7 @@ const { createBot } = require('./bot');
 const apiRoutes = require('./api');
 
 const app = express();
+app.set('trust proxy', 1);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: '*', methods: ['GET', 'POST'] }

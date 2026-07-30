@@ -19,7 +19,7 @@ const balanceTransactionSchema = new mongoose.Schema({
 }, { _id: false });
 
 const userSchema = new mongoose.Schema({
-  telegramId: { type: Number, required: true, unique: true, index: true },
+  telegramId: { type: Number, required: true, unique: true },
   username: { type: String, default: null },
   firstName: { type: String, default: '' },
   lastName: { type: String, default: '' },
