@@ -1,9 +1,16 @@
 const { Markup } = require('telegraf');
 const Order = require('../../models/Order');
+const { buttonEmojiId, emojiHtml } = require('../../utils/customEmoji');
 
 // ── Helper: get user language ──
 const getLang = (ctx) => ctx.dbUser?.preferredLanguage || 'ar';
 const t = (lang, ar, en) => lang === 'en' ? en : ar;
+
+const btn = (text, data, style = null) => ({
+  text,
+  callback_data: data,
+  ...(style ? { style, icon_custom_emoji_id: buttonEmojiId(style) } : {})
+});
 
 const profileHandler = async (ctx) => {
   const user = ctx.dbUser;
@@ -15,8 +22,8 @@ const profileHandler = async (ctx) => {
 
   // ── Role label ──
   const roleLabel = user.role === 'admin' || user.role === 'superadmin'
-    ? t(lang, '👑 مدير', '👑 Admin')
-    : t(lang, '👤 عميل', '👤 Customer');
+    ? t(lang, 'مدير', 'Admin')
+    : t(lang, 'عميل', 'Customer');
 
   // ── Activity stats ──
   const completedOrders = await Order.countDocuments({ user: user.telegramId, status: 'completed' });
@@ -26,18 +33,18 @@ const profileHandler = async (ctx) => {
     ? lastOrder.createdAt.toLocaleDateString(lang === 'en' ? 'en-US' : 'ar-SA')
     : t(lang, 'لا يوجد', 'None');
 
-  // ── Bilingual profile message ──
+  // ── Bilingual profile message with premium emojis ──
   const msg = (
-    `👤 <b>${t(lang, 'ملف المستخدم', 'User Profile')}</b>\n\n` +
+    `${emojiHtml('profile')} <b>${t(lang, 'ملف المستخدم', 'User Profile')}</b>\n\n` +
     `📛 ${t(lang, 'الاسم', 'Name')}: <b>${user.fullName}</b>\n` +
     `🆔 ${t(lang, 'المعرف', 'ID')}: <code>${user.telegramId}</code>\n` +
     `👤 ${t(lang, 'اليوزر', 'Username')}: ${user.username ? `@${user.username}` : t(lang, 'غير محدد', 'Not set')}\n` +
     `📱 ${t(lang, 'الهاتف', 'Phone')}: ${user.phone || t(lang, 'غير محقق', 'Not verified')}\n` +
     `💱 ${t(lang, 'العملة', 'Currency')}: <b>${user.currency}</b>\n` +
-    `🏷️ ${t(lang, 'الدور', 'Role')}: <b>${roleLabel}</b>\n\n` +
+    `🏷️ ${t(lang, 'الدور', 'Role')}: <b>${emojiHtml('admin')} ${roleLabel}</b>\n\n` +
     `━━━━━━━━━━━━━━━━━━\n` +
-    `💰 ${t(lang, 'الرصيد', 'Balance')}: <b>$${user.balance.toFixed(2)}</b>\n` +
-    `🛒 ${t(lang, 'إجمالي الطلبات', 'Total Orders')}: <b>${user.totalOrders}</b>\n` +
+    `${emojiHtml('wallet')} ${t(lang, 'الرصيد', 'Balance')}: <b>$${user.balance.toFixed(2)}</b>\n` +
+    `${emojiHtml('shopping')} ${t(lang, 'إجمالي الطلبات', 'Total Orders')}: <b>${user.totalOrders}</b>\n` +
     `💸 ${t(lang, 'إجمالي الإنفاق', 'Total Spent')}: <b>$${user.totalSpent.toFixed(2)}</b>\n` +
     `📊 ${t(lang, 'طلبات مكتملة', 'Completed')}: <b>${completedOrders}</b> | ⏳ ${t(lang, 'قيد الانتظار', 'Pending')}: <b>${pendingOrders}</b>\n` +
     `📅 ${t(lang, 'تاريخ الانضمام', 'Joined')}: <b>${user.createdAt.toLocaleDateString(lang === 'en' ? 'en-US' : 'ar-SA')}</b>\n` +
@@ -49,9 +56,9 @@ const profileHandler = async (ctx) => {
   );
 
   const buttons = Markup.inlineKeyboard([
-    [Markup.button.callback(t(lang, '📊 نشاطي', '📊 My Activity'), 'my_activity')],
-    [Markup.button.callback(t(lang, '🔑 مفاتيحي', '🔑 My Keys'), 'mykeys')],
-    [Markup.button.callback(t(lang, '🔙 الرئيسية', '🔙 Home'), 'main_menu')]
+    [btn(t(lang, '📊 نشاطي', '📊 My Activity'), 'my_activity', 'primary')],
+    [btn(t(lang, '🔑 مفاتيحي', '🔑 My Keys'), 'mykeys', 'success')],
+    [btn(t(lang, '🔙 الرئيسية', '🔙 Home'), 'main_menu', 'danger')]
   ]);
 
   await ctx.editMessageText?.(msg, { parse_mode: 'HTML', ...buttons })
@@ -66,8 +73,8 @@ const showActivity = async (ctx) => {
   let msg = (
     `📊 <b>${t(lang, 'نشاطي الأخير', 'My Recent Activity')}</b>\n\n` +
     `💸 ${t(lang, 'إجمالي الإنفاق', 'Total Spent')}: <b>$${user.totalSpent.toFixed(2)}</b>\n` +
-    `💰 ${t(lang, 'إجمالي الشحن', 'Total Deposited')}: <b>$${user.totalDeposited.toFixed(2)}</b>\n` +
-    `🛒 ${t(lang, 'عدد الطلبات', 'Total Orders')}: <b>${user.totalOrders}</b>\n` +
+    `${emojiHtml('wallet')} ${t(lang, 'إجمالي الشحن', 'Total Deposited')}: <b>$${user.totalDeposited.toFixed(2)}</b>\n` +
+    `${emojiHtml('shopping')} ${t(lang, 'عدد الطلبات', 'Total Orders')}: <b>${user.totalOrders}</b>\n` +
     `🔗 ${t(lang, 'الإحالات', 'Referrals')}: <b>${user.referralCount || 0}</b>\n\n`
   );
 
@@ -75,7 +82,7 @@ const showActivity = async (ctx) => {
     msg += `📋 <b>${t(lang, 'آخر الطلبات', 'Recent Orders')}:</b>\n`;
     recentOrders.forEach((order, i) => {
       const date = order.createdAt.toLocaleDateString(lang === 'en' ? 'en-US' : 'ar-SA');
-      msg += `${i + 1}. ✅ ${order.productName} (${order.durationName}) - $${order.finalPrice.toFixed(2)} 📅${date}\n`;
+      msg += `${i + 1}. ${emojiHtml('checkmark')} ${order.productName} (${order.durationName}) - $${order.finalPrice.toFixed(2)} 📅${date}\n`;
     });
   } else {
     msg += t(lang, '📭 لا توجد طلبات بعد', '📭 No orders yet');
@@ -83,7 +90,7 @@ const showActivity = async (ctx) => {
 
   await ctx.editMessageText(msg, {
     parse_mode: 'HTML',
-    ...Markup.inlineKeyboard([[Markup.button.callback(t(lang, '🔙 رجوع', '🔙 Back'), 'profile')]])
+    ...Markup.inlineKeyboard([[btn(t(lang, '🔙 رجوع', '🔙 Back'), 'profile', 'danger')]])
   }).catch(console.error);
 };
 
