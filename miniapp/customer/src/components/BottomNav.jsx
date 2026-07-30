@@ -15,7 +15,8 @@ export default function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-xl border-t border-[#1a1a1a]">
-      <div className="flex items-center justify-around px-2 py-1 pb-safe">
+      {/* Safe area padding for iOS */}
+      <div className="flex items-center justify-around px-2 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))]">
         {TABS.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
@@ -25,28 +26,37 @@ export default function BottomNav() {
               whileTap={{ scale: 0.85 }}
               className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all relative"
             >
+              {/* Active pill background with spring animation */}
               {isActive && (
                 <motion.div
-                  layoutId="nav-indicator"
+                  layoutId="nav-pill"
                   className="absolute inset-0 rounded-xl bg-neon/10 border border-neon/20"
-                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                  style={{ boxShadow: '0 0 12px rgba(0,255,136,0.08)' }}
                 />
               )}
+
+              {/* Icon with spring bounce */}
               <motion.span
                 className="text-xl relative z-10"
-                animate={{ scale: isActive ? 1.2 : 1 }}
-                transition={{ type: 'spring', stiffness: 300 }}
+                animate={{ scale: isActive ? 1.2 : 1, y: isActive ? -2 : 0 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 20 }}
               >
                 {tab.icon}
               </motion.span>
-              <span className={`text-[9px] font-semibold relative z-10 transition-colors ${isActive ? 'text-neon' : 'text-muted'}`}>
+
+              {/* Label */}
+              <span className={`text-[9px] font-semibold relative z-10 transition-colors duration-200 ${isActive ? 'text-neon' : 'text-muted'}`}>
                 {tab.label}
               </span>
+
+              {/* Active indicator dot with glow */}
               {isActive && (
                 <motion.div
                   layoutId="nav-dot"
-                  className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-neon"
-                  style={{ boxShadow: '0 0 6px #00ff88' }}
+                  className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-neon"
+                  style={{ boxShadow: '0 0 8px #00ff88' }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 25 }}
                 />
               )}
             </motion.button>

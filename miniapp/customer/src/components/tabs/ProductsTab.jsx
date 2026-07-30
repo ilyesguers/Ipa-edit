@@ -8,11 +8,16 @@ export default function ProductsTab() {
   const { categories, selectedCategory, selectedGame, games, products, fetchCategories, selectCategory, selectGame, selectProduct, breadcrumb } = useStore();
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  const [featuredProducts, setFeaturedProducts] = useState([]);
   const [activeProductType, setActiveProductType] = useState('panel');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchCategories();
+    // Fetch featured products
+    api.get('/shop/featured').then(res => {
+      setFeaturedProducts(res.data.data || []);
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -42,18 +47,12 @@ export default function ProductsTab() {
   if (selectedGame) {
     return (
       <div className="p-4">
-        {/* Breadcrumb */}
         <Breadcrumb />
         <motion.div variants={stagger.container} initial="initial" animate="animate" className="grid gap-3 mt-3">
           {loading ? <SkeletonList /> : products.map((p, i) => (
             <ProductCard key={p._id} product={p} index={i} onSelect={() => selectProduct(p)} />
           ))}
-          {!loading && products.length === 0 && (
-            <div className="text-center py-12 text-muted">
-              <div className="text-5xl mb-4">📦</div>
-              <p>لا توجد منتجات متاحة</p>
-            </div>
-          )}
+          {!loading && products.length === 0 && <EmptyState icon="📦" text="لا توجد منتجات متاحة" subtext="جرب قسم آخر" />}
         </motion.div>
       </div>
     );
@@ -68,6 +67,7 @@ export default function ProductsTab() {
           {loading ? <SkeletonGrid /> : games.map((game, i) => (
             <GameCard key={game._id} game={game} index={i} onSelect={() => handleGame(game)} />
           ))}
+          {!loading && games.length === 0 && <EmptyState icon="🎮" text="لا توجد ألعاب" subtext="قريباً المزيد" />}
         </div>
       </div>
     );
@@ -118,21 +118,65 @@ export default function ProductsTab() {
         )}
       </AnimatePresence>
 
-      {/* Categories */}
       {!search && (
         <>
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-1 h-5 bg-neon rounded-full" style={{ boxShadow: '0 0 8px #00ff88' }} />
-            <h2 className="font-bold text-white">اختر الجهاز</h2>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            {categories.map((cat, i) => (
-              <CategoryCard key={cat._id} category={cat} index={i} onSelect={() => handleCategory(cat)} />
-            ))}
+          {/* Featured Products - Horizontal Scroll */}
+          {featuredProducts.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-1 h-5 bg-gold rounded-full" style={{ boxShadow: '0 0 8px #f0b90b' }} />
+                <h2 className="font-bold text-white text-sm">⭐ المنتجات المميزة</h2>
+              </div>
+              <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 snap-x snap-mandatory scrollbar-hide">
+                {featuredProducts.map((p, i) => (
+                  <div key={p._id} className="w-48 flex-shrink-0 snap-start">
+                    <ProductCard product={p} index={i} onSelect={() => selectProduct(p)} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Categories */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-1 h-5 bg-neon rounded-full" style={{ boxShadow: '0 0 8px #00ff88' }} />
+              <h2 className="font-bold text-white text-sm">اختر الجهاز</h2>
+            </div>
+            {categories.length > 0 ? (
+              <div className="grid grid-cols-3 gap-3">
+                {categories.map((cat, i) => (
+                  <CategoryCard key={cat._id} category={cat} index={i} onSelect={() => handleCategory(cat)} />
+                ))}
+              </div>
+            ) : (
+              <EmptyState icon="📂" text="لا توجد أقسام" subtext="قريباً" />
+            )}
           </div>
         </>
       )}
     </div>
+  );
+}
+
+// ── Empty State Component ──
+function EmptyState({ icon, text, subtext }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="text-center py-16 px-4"
+    >
+      <motion.div
+        animate={{ y: [0, -8, 0] }}
+        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+        className="text-5xl mb-4"
+      >
+        {icon}
+      </motion.div>
+      <p className="text-white font-bold text-base">{text}</p>
+      {subtext && <p className="text-muted text-sm mt-1">{subtext}</p>}
+    </motion.div>
   );
 }
 

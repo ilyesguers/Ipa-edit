@@ -21,6 +21,14 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [maintenance, setMaintenance] = useState(false);
+
+  // Listen for navigation events from quick actions
+  useEffect(() => {
+    const handleNav = (e) => setActivePage(e.detail);
+    window.addEventListener('admin-navigate', handleNav);
+    return () => window.removeEventListener('admin-navigate', handleNav);
+  }, []);
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
@@ -39,7 +47,20 @@ export default function App() {
         setUser({ firstName: 'Admin', role: 'admin', isAdmin: true, balance: 0 });
         setLoading(false);
       });
+
+    // Load maintenance state
+    api.get('/settings').then(r => setMaintenance(r.data.data?.maintenance_mode || false)).catch(() => {});
   }, []);
+
+  const toggleMaintenance = async () => {
+    const next = !maintenance;
+    try {
+      await api.put('/settings/maintenance_mode', { value: next });
+      setMaintenance(next);
+    } catch (err) {
+      console.error('Failed to toggle maintenance:', err);
+    }
+  };
 
   if (loading) return <LoadingScreen />;
 
@@ -62,49 +83,50 @@ export default function App() {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top bar */}
+        {/* Top bar with maintenance toggle in header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-panel sticky top-0 z-20">
           <div className="flex items-center gap-3">
             <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg bg-card border border-border text-neon">☰</button>
             <h1 className="text-white font-black text-base">Admin Dashboard ⚙️</h1>
           </div>
           <div className="flex items-center gap-2">
-            <MaintenanceToggle />
+            {/* Maintenance toggle directly in header */}
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={toggleMaintenance}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all
+                ${maintenance
+                  ? 'bg-warning/10 border-warning/30 text-warning'
+                  : 'bg-card border-border text-muted hover:text-white'}`}
+            >
+              🔧 {maintenance ? 'صيانة: ON' : 'صيانة'}
+            </motion.button>
             <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-3 py-1.5">
-              <span className="w-2 h-2 rounded-full bg-green animate-pulse" />
+              <span className="relative">
+                <span className="w-2 h-2 rounded-full bg-green inline-block" />
+                <span className="absolute inset-0 w-2 h-2 rounded-full bg-green animate-ping opacity-50" />
+              </span>
               <span className="text-xs text-muted font-semibold">{user?.firstName}</span>
             </div>
           </div>
         </div>
 
-        {/* Page content */}
+        {/* Page content with max-w-5xl */}
         <div className="flex-1 overflow-y-auto">
           <AnimatePresence mode="wait">
-            <motion.div key={activePage} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -5 }} transition={{ duration: 0.2 }} className="p-4">
+            <motion.div
+              key={activePage}
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -5 }}
+              transition={{ duration: 0.2 }}
+              className="p-4 max-w-5xl mx-auto"
+            >
               <ActivePage setActivePage={setActivePage} />
             </motion.div>
           </AnimatePresence>
         </div>
       </div>
     </div>
-  );
-}
-
-function MaintenanceToggle() {
-  const [maintenance, setMaintenance] = useState(false);
-  useEffect(() => {
-    api.get('/settings').then(r => setMaintenance(r.data.data?.maintenance_mode || false)).catch(() => {});
-  }, []);
-  const toggle = async () => {
-    const next = !maintenance;
-    await api.put('/settings/maintenance_mode', { value: next });
-    setMaintenance(next);
-  };
-  return (
-    <motion.button whileTap={{ scale: 0.95 }} onClick={toggle}
-      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all
-        ${maintenance ? 'bg-warning/10 border-warning/30 text-warning' : 'bg-card border-border text-muted'}`}>
-      🔧 {maintenance ? 'الصيانة: مفعّل' : 'الصيانة'}
-    </motion.button>
   );
 }

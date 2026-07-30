@@ -3,7 +3,16 @@ import { motion } from 'framer-motion';
 
 export default function ProductCard({ product, index, onSelect, compact = false }) {
   const minPrice = product.durations?.filter(d => d.isActive).reduce((min, d) => d.price < min ? d.price : min, Infinity);
+  const maxPrice = product.durations?.filter(d => d.isActive).reduce((max, d) => d.price > max ? d.price : max, 0);
   const hasStock = product.durations?.some(d => d.isActive && (d.stockCount > 0 || d.inStock));
+  const isFeatured = product.isFeatured || product.featured;
+
+  // Build Telegram share URL
+  const shareText = encodeURIComponent(
+    `🔑 ${product.nameAr || product.name}\n💰 من $${isFinite(minPrice) ? minPrice.toFixed(2) : '—'}\n\n` +
+    `🛒 اطلب الآن من المتجر!`
+  );
+  const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(window.location?.href || '')}&text=${shareText}`;
 
   if (compact) {
     return (
@@ -39,6 +48,11 @@ export default function ProductCard({ product, index, onSelect, compact = false 
         {/* Glow effect */}
         <div className="absolute inset-0 bg-gradient-to-l from-neon-blue/3 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
+        {/* Featured banner strip at top */}
+        {isFeatured && (
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-neon via-neon-blue to-neon rounded-t-2xl" />
+        )}
+
         <div className="flex items-start gap-3">
           {/* Logo */}
           {product.logo ? (
@@ -49,7 +63,15 @@ export default function ProductCard({ product, index, onSelect, compact = false 
 
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
-              <h3 className="font-black text-white text-base leading-tight">{product.nameAr || product.name}</h3>
+              <div className="flex flex-col">
+                {/* Featured badge */}
+                {isFeatured && (
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-gold/10 text-gold border border-gold/20 mb-1 self-start">
+                    ⭐ مميز
+                  </span>
+                )}
+                <h3 className="font-black text-white text-base leading-tight">{product.nameAr || product.name}</h3>
+              </div>
               <div className="flex flex-col items-end gap-1 flex-shrink-0">
                 {/* Stock badge */}
                 <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${hasStock ? 'bg-neon/10 text-neon' : 'bg-red/10 text-red'}`}>
@@ -67,14 +89,17 @@ export default function ProductCard({ product, index, onSelect, compact = false 
 
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
           <div className="flex gap-2">
-            {/* Share button */}
-            <motion.button
+            {/* Telegram share button */}
+            <motion.a
+              href={shareUrl}
+              target="_blank"
+              rel="noopener noreferrer"
               whileTap={{ scale: 0.9 }}
-              onClick={e => { e.stopPropagation(); }}
-              className="w-7 h-7 rounded-lg bg-red/10 border border-red/20 flex items-center justify-center text-sm"
+              onClick={e => e.stopPropagation()}
+              className="w-7 h-7 rounded-lg bg-[#0088cc]/10 border border-[#0088cc]/20 flex items-center justify-center text-sm"
             >
-              🔗
-            </motion.button>
+              📲
+            </motion.a>
           </div>
 
           <div className="flex items-center gap-3">
