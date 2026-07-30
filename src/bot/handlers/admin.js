@@ -1,6 +1,6 @@
 const { Markup } = require('telegraf');
 const { getAdminPortalUrl, getUiSettings } = require('../../utils/uiConfig');
-const { buttonEmojiId, emojiHtml } = require('../../utils/customEmoji');
+const { buttonEmojiId, emojiHtml, buttonLabel } = require('../../utils/customEmoji');
 
 const getLang = (ctx) => ctx.dbUser?.preferredLanguage || 'ar';
 const t = (lang, ar, en) => lang === 'en' ? en : ar;
@@ -20,7 +20,7 @@ const openAdminPortal = async (ctx, page = 'dashboard') => {
 
   const buttons = Markup.inlineKeyboard([
     [{
-      text: `${emojiHtml('admin')} ${lang === 'en' ? ui.adminPortalLabel.en : ui.adminPortalLabel.ar}`,
+      text: buttonLabel('admin', lang === 'en' ? ui.adminPortalLabel.en : ui.adminPortalLabel.ar),
       web_app: { url: getAdminPortalUrl(page) },
       style: 'primary',
       icon_custom_emoji_id: buttonEmojiId('primary')

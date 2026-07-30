@@ -20,6 +20,31 @@ const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id
 const createBot = (io) => {
   const bot = new Telegraf(process.env.BOT_TOKEN);
 
+  // ── 🛡️ Global premium-emoji safety net ──
+  // Wrap the low-level Telegram API call so that ANY outgoing request that gets
+  // rejected because of an invalid premium custom emoji (in message HTML or on a
+  // button) is transparently retried without the premium emoji. This guarantees
+  // the bot NEVER breaks just because an emoji id is invalid or the owner has no
+  // Telegram Premium. See src/utils/safeSend.js for the rationale.
+  const { isPremiumEmojiError, stripKeyboardExtras } = require('../utils/safeSend');
+  const { stripPremiumEmoji } = require('../utils/customEmoji');
+
+  const originalCallApi = bot.telegram.callApi.bind(bot.telegram);
+  bot.telegram.callApi = async function (method, payload = {}, ...rest) {
+    try {
+      return await originalCallApi(method, payload, ...rest);
+    } catch (err) {
+      if (!isPremiumEmojiError(err) || !payload || typeof payload !== 'object') throw err;
+
+      logger.warn(`⚠️ [${method}] premium emoji rejected — retrying without premium emoji.`);
+      const clean = { ...payload };
+      if (typeof clean.text === 'string') clean.text = stripPremiumEmoji(clean.text);
+      if (typeof clean.caption === 'string') clean.caption = stripPremiumEmoji(clean.caption);
+      const scrubbed = stripKeyboardExtras(clean); // removes button style / icon_custom_emoji_id
+      return originalCallApi(method, scrubbed, ...rest);
+    }
+  };
+
   // Session middleware
   bot.use(session());
 

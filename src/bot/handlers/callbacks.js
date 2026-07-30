@@ -10,7 +10,7 @@ const { mainKeyboard } = require('./start');
 const Settings = require('../../models/Settings');
 const orderService = require('../../services/orderService');
 const logger = require('../../utils/logger');
-const { buttonEmojiId, emojiHtml } = require('../../utils/customEmoji');
+const { buttonEmojiId, emojiHtml, buttonLabel } = require('../../utils/customEmoji');
 
 // ── Helper: get user language ──
 const getLang = (ctx) => ctx.dbUser?.preferredLanguage || 'ar';
@@ -144,7 +144,7 @@ const handleLanguage = async (ctx, lang) => {
   await user.save();
 
   const backBtn = [{
-    text: newLang === 'ar' ? `${emojiHtml('back')} الرئيسية` : `${emojiHtml('back')} Home`,
+    text: buttonLabel('back', newLang === 'ar' ? 'الرئيسية' : 'Home'),
     callback_data: 'main_menu',
     style: 'primary',
     icon_custom_emoji_id: buttonEmojiId('primary')
@@ -173,13 +173,13 @@ const handleBinanceDeposit = async (ctx, lang) => {
     parse_mode: 'HTML',
     ...Markup.inlineKeyboard([
       [{
-        text: lang === 'en' ? `${emojiHtml('mobile')} Open Shop` : `${emojiHtml('mobile')} فتح المتجر`,
+        text: buttonLabel('mobile', lang === 'en' ? 'Open Shop' : 'فتح المتجر'),
         web_app: { url: `${process.env.BASE_URL}/customer` },
         style: 'primary',
         icon_custom_emoji_id: buttonEmojiId('primary')
       }],
       [{
-        text: lang === 'en' ? `${emojiHtml('back')} Back` : `${emojiHtml('back')} رجوع`,
+        text: buttonLabel('back', lang === 'en' ? 'Back' : 'رجوع'),
         callback_data: 'addbalance',
         style: 'danger',
         icon_custom_emoji_id: buttonEmojiId('danger')
@@ -217,25 +217,25 @@ const showCheckout = async (ctx, productId, durationId, lang) => {
   const buttons = [
     hasBalance
       ? [{
-        text: `${emojiHtml('checkmark')} ${t(lang, 'الدفع من المحفظة', 'Pay from wallet')} ($${user.balance.toFixed(2)})`,
+        text: buttonLabel('checkmark', `${t(lang, 'الدفع من المحفظة', 'Pay from wallet')} ($${user.balance.toFixed(2)})`),
         callback_data: `confirm_wallet_${productId}_${durationId}`,
         style: 'success',
         icon_custom_emoji_id: buttonEmojiId('success')
       }]
       : [{
-        text: `${emojiHtml('skull')} ${t(lang, 'المحفظة (رصيد غير كافٍ)', 'Wallet (insufficient balance)')}`,
+        text: buttonLabel('skull', t(lang, 'المحفظة (رصيد غير كافٍ)', 'Wallet (insufficient balance)')),
         callback_data: `insufficient_balance`,
         style: 'danger',
         icon_custom_emoji_id: buttonEmojiId('danger')
       }],
     [{
-      text: `${emojiHtml('gem')} ${t(lang, 'دفع بينانس', 'Binance Pay')}`,
+      text: buttonLabel('gem', t(lang, 'دفع بينانس', 'Binance Pay')),
       web_app: { url: `${process.env.BASE_URL}/customer` },
       style: 'primary',
       icon_custom_emoji_id: buttonEmojiId('primary')
     }],
     [{
-      text: `${emojiHtml('back')} ${t(lang, 'رجوع', 'Back')}`,
+      text: buttonLabel('back', t(lang, 'رجوع', 'Back')),
       callback_data: `product_${productId}`,
       style: 'danger',
       icon_custom_emoji_id: buttonEmojiId('danger')
@@ -270,13 +270,13 @@ const confirmWalletPurchase = async (ctx, productId, durationId, lang) => {
       parse_mode: 'HTML',
       ...Markup.inlineKeyboard([
         [{
-          text: `${emojiHtml('shop')} ${t(lang, 'تسوق أكثر', 'Shop More')}`,
+          text: buttonLabel('shop', t(lang, 'تسوق أكثر', 'Shop More')),
           callback_data: 'shop',
           style: 'primary',
           icon_custom_emoji_id: buttonEmojiId('primary')
         }],
         [{
-          text: `${emojiHtml('crown')} ${t(lang, 'الرئيسية', 'Home')}`,
+          text: buttonLabel('crown', t(lang, 'الرئيسية', 'Home')),
           callback_data: 'main_menu',
           style: 'success',
           icon_custom_emoji_id: buttonEmojiId('success')
@@ -300,7 +300,7 @@ const confirmWalletPurchase = async (ctx, productId, durationId, lang) => {
             parse_mode: 'HTML',
             ...Markup.inlineKeyboard([
               [{
-                text: `${emojiHtml('admin')} ${t(lang, 'فتح الطلب', 'Open Order')}`,
+                text: buttonLabel('admin', t(lang, 'فتح الطلب', 'Open Order')),
                 web_app: { url: `${process.env.BASE_URL}/admin#orders?search=${encodeURIComponent(result.order.orderNumber)}` },
                 style: 'primary',
                 icon_custom_emoji_id: buttonEmojiId('primary')
@@ -318,7 +318,7 @@ const confirmWalletPurchase = async (ctx, productId, durationId, lang) => {
       {
         parse_mode: 'HTML',
         ...Markup.inlineKeyboard([[{
-          text: `${emojiHtml('back')} ${t(lang, 'رجوع', 'Back')}`,
+          text: buttonLabel('back', t(lang, 'رجوع', 'Back')),
           callback_data: 'main_menu',
           style: 'danger',
           icon_custom_emoji_id: buttonEmojiId('danger')

@@ -44,7 +44,6 @@ const productSchema = new mongoose.Schema({
 
 productSchema.index({ game: 1 });
 productSchema.index({ category: 1 });
-productSchema.index({ slug: 1 });
 productSchema.index({ isActive: 1 });
 productSchema.index({ isFeatured: 1 });
 

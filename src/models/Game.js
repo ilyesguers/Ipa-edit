@@ -17,7 +17,6 @@ const gameSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 gameSchema.index({ category: 1 });
-gameSchema.index({ slug: 1 });
 gameSchema.index({ isActive: 1 });
 
 module.exports = mongoose.model('Game', gameSchema);

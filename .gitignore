@@ -7,3 +7,6 @@ miniapp/customer/node_modules/
 miniapp/admin/dist/
 miniapp/customer/dist/
 .DS_Store
+package-lock.json
+miniapp/admin/package-lock.json
+miniapp/customer/package-lock.json
