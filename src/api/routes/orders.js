@@ -6,6 +6,7 @@ const Coupon = require('../../models/Coupon');
 const orderService = require('../../services/orderService');
 const binanceService = require('../../services/binanceService');
 const Settings = require('../../models/Settings');
+const { getAdminPortalUrl } = require('../../utils/uiConfig');
 
 router.use(authMiddleware);
 
@@ -73,8 +74,15 @@ router.post('/wallet', async (req, res) => {
     if (bot) {
       for (const adminId of adminIds) {
         await bot.telegram.sendMessage(adminId,
-          `🛒 طلب جديد من ${req.user.fullName}\n📦 ${result.order.productName}\n💰 $${result.order.finalPrice.toFixed(2)}`,
-          { parse_mode: 'HTML' }
+          `🛒 طلب جديد من ${req.user.fullName}\n📦 ${result.order.productName}\n💰 $${result.order.finalPrice.toFixed(2)}\n\n👑 افتح الطلب من لوحة التحكم لإدارته بالكامل.`,
+          {
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: [[
+                { text: '👑 فتح الطلب', web_app: { url: getAdminPortalUrl('orders', { search: result.order.orderNumber }) } }
+              ]]
+            }
+          }
         ).catch(() => {});
       }
 
@@ -142,18 +150,17 @@ router.post('/payment-proof', async (req, res) => {
     // Notify admins
     const adminIds = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim())).filter(Boolean);
     const bot = req.app.get('bot');
-    const { Markup } = require('telegraf');
 
     if (bot) {
       for (const adminId of adminIds) {
         await bot.telegram.sendMessage(adminId,
-          `💳 إثبات دفع جديد!\n👤 ${req.user.fullName}\n📦 ${order.productName}\n💰 $${order.finalPrice.toFixed(2)}\n🔗 TxHash: <code>${txHash}</code>`,
+          `💳 إثبات دفع جديد!\n👤 ${req.user.fullName}\n📦 ${order.productName}\n💰 $${order.finalPrice.toFixed(2)}\n🔗 TxHash: <code>${txHash}</code>\n\n👑 تمت إزالة أدوات الإدارة من البوت، افتح لوحة التحكم لمراجعة الطلب.`,
           {
             parse_mode: 'HTML',
             reply_markup: {
               inline_keyboard: [[
-                { text: '✅ تأكيد', callback_data: `verify_payment_${order._id}` },
-                { text: '❌ رفض', callback_data: `reject_payment_${order._id}` }
+                { text: '👑 فتح الطلب', web_app: { url: getAdminPortalUrl('orders', { search: order.orderNumber }) } },
+                { text: '👤 المستخدم', web_app: { url: getAdminPortalUrl('users', { search: req.user.telegramId }) } }
               ]]
             }
           }

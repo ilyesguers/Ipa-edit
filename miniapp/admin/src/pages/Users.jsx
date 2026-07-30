@@ -3,9 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
 
-export default function Users() {
+export default function Users({ routeQuery = {}, setRouteQuery }) {
   const [users, setUsers] = useState([]);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(routeQuery.search || '');
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(false);
   const [balanceModal, setBalanceModal] = useState(null); // {type: 'add'|'deduct'}
@@ -26,7 +26,16 @@ export default function Users() {
     setLoading(false);
   };
 
-  useEffect(() => { const t = setTimeout(() => { setPage(1); fetchUsers(search, 1); }, 400); return () => clearTimeout(t); }, [search]);
+  useEffect(() => { setSearch(routeQuery.search || ''); }, [routeQuery.search]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setPage(1);
+      fetchUsers(search, 1);
+      setRouteQuery?.(search ? { search } : {});
+    }, 400);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const loadUser = async (u) => {
     const r = await api.get(`/admin/users/${u.telegramId}`);

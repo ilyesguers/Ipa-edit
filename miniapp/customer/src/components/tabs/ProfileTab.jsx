@@ -76,6 +76,12 @@ export default function ProfileTab() {
         ))}
       </div>
 
+      {user?.role === 'admin' && (
+        <a href="/admin#dashboard" target="_blank" rel="noreferrer" className="block text-center bg-neon/10 border border-neon/30 rounded-2xl p-4 text-neon font-black">
+          👑 فتح لوحة التحكم
+        </a>
+      )}
+
       {/* Balance History */}
       {balanceHistory.length > 0 && (
         <div>

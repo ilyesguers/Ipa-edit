@@ -1,9 +1,8 @@
 const { Markup } = require('telegraf');
 const Order = require('../../models/Order');
-const User = require('../../models/User');
 const Settings = require('../../models/Settings');
-const orderService = require('../../services/orderService');
 const logger = require('../../utils/logger');
+const { getAdminPortalUrl } = require('../../utils/uiConfig');
 
 // ── Helper: get user language ──
 const getLang = (ctx) => ctx.dbUser?.preferredLanguage || 'ar';
@@ -84,16 +83,14 @@ const paymentHandler = async (ctx, next) => {
 
       await ctx.reply(msg, { parse_mode: 'HTML' });
 
-      // ── Notify admins with inline verify/reject buttons ──
+      // ── Notify admins with portal buttons only ──
       const adminIds = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim())).filter(Boolean);
       const notifyOnPayment = await Settings.get('admin_notification_on_payment', true);
 
       if (notifyOnPayment) {
-        const verifyButtons = Markup.inlineKeyboard([
-          [
-            Markup.button.callback('✅ ' + t(lang, 'تأكيد وتسليم', 'Confirm & Deliver'), `verify_payment_${pendingOrder._id}`),
-            Markup.button.callback('❌ ' + t(lang, 'رفض', 'Reject'), `reject_payment_${pendingOrder._id}`)
-          ]
+        const portalButtons = Markup.inlineKeyboard([
+          [Markup.button.webApp('👑 ' + t(lang, 'فتح الطلب في لوحة التحكم', 'Open order in admin portal'), getAdminPortalUrl('orders', { search: pendingOrder.orderNumber }))],
+          [Markup.button.webApp('👤 ' + t(lang, 'ملف المستخدم', 'User profile'), getAdminPortalUrl('users', { search: user.telegramId }))]
         ]);
 
         for (const adminId of adminIds) {
@@ -104,8 +101,9 @@ const paymentHandler = async (ctx, next) => {
             `📦 ${t(lang, 'الطلب', 'Order')}: ${pendingOrder.productName} - ${pendingOrder.durationName}\n` +
             `💰 ${t(lang, 'المبلغ', 'Amount')}: $${pendingOrder.finalPrice.toFixed(2)}\n` +
             `🔗 ${t(lang, 'النوع', 'Type')}: ${typeLabels[txResult.type]}\n` +
-            `🔗 TxHash: <code>${txResult.value}</code>`,
-            { parse_mode: 'HTML', ...verifyButtons }
+            `🔗 TxHash: <code>${txResult.value}</code>\n\n` +
+            `${t(lang, 'كل إجراءات الإدارة أصبحت داخل لوحة التحكم.', 'All admin actions are now handled inside the admin portal.')}`,
+            { parse_mode: 'HTML', ...portalButtons }
           ).catch(() => {});
         }
       }

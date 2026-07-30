@@ -24,7 +24,7 @@ const TAB_COMPONENTS = {
 };
 
 export default function App() {
-  const { login, isLoading, isAuthenticated, activeTab, showDurationSheet, showCheckout, showBinanceSheet, currentOrder } = useStore();
+  const { login, fetchPublicSettings, isLoading, isAuthenticated, activeTab, showDurationSheet, showCheckout, showBinanceSheet, currentOrder } = useStore();
   const [showSuccess, setShowSuccess] = useState(false);
   const [successData, setSuccessData] = useState(null);
 
@@ -32,9 +32,10 @@ export default function App() {
     const tg = window.Telegram?.WebApp;
     const initData = tg?.initData || '';
 
+    fetchPublicSettings().catch(() => {});
+
     // Auto-login
     login(initData).catch(() => {
-      // For dev: create mock user
       useStore.setState({
         user: { firstName: 'مستخدم', username: 'user', balance: 0, role: 'customer', totalOrders: 0 },
         isAuthenticated: true,

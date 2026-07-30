@@ -7,7 +7,7 @@ const TABS = [
   { id: 'keys', icon: '🔑', label: 'مفاتيحي' },
   { id: 'history', icon: '📋', label: 'تاريخ' },
   { id: 'profile', icon: '👤', label: 'حسابي' },
-  { id: 'support', icon: '👩‍💼', label: 'سارة' },
+  { id: 'support', icon: '🆘', label: 'الدعم' },
 ];
 
 export default function BottomNav() {

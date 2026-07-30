@@ -1,4 +1,4 @@
-const { Telegraf, Markup, session } = require('telegraf');
+const { Telegraf, session } = require('telegraf');
 const logger = require('../utils/logger');
 const User = require('../models/User');
 const Settings = require('../models/Settings');
@@ -10,11 +10,37 @@ const { keysHandler } = require('./handlers/keys');
 const { historyHandler } = require('./handlers/history');
 const { balanceHandler } = require('./handlers/balance');
 const { helpHandler } = require('./handlers/help');
-const { adminHandler } = require('./handlers/admin');
+const { openAdminPortal } = require('./handlers/admin');
 const { callbackHandler } = require('./handlers/callbacks');
 const { paymentHandler } = require('./handlers/payment');
+const { buildMainReplyKeyboard } = require('../utils/uiConfig');
 
 const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim())).filter(Boolean);
+
+const MENU_PATTERNS = {
+  shop: /^(🛍️|🏪).*(المتجر|تصفح|Store|Shop)/i,
+  keys: /^(🗂️|🔑).*(مفاتيحي|Keys)/i,
+  history: /^(🧾|📋).*(طلباتي|السجل|Orders|History)/i,
+  profile: /^(👤|🪪).*(حسابي|Profile|Account)/i,
+  balance: /^(💳|💰).*(الرصيد|شحن|Balance|Wallet)/i,
+  help: /^(🆘|❓|💬).*(الدعم|المساعدة|Help|Support)/i,
+  language: /^🌐.*(اللغة|Language)/i,
+  admin: /^(👑|🛡️).*(لوحة|الإدارة|Admin|Portal)/i,
+};
+
+const toggleLanguageFromKeyboard = async (ctx) => {
+  const user = ctx.dbUser;
+  const newLang = user.preferredLanguage === 'ar' ? 'en' : 'ar';
+  user.preferredLanguage = newLang;
+  await user.save();
+
+  return ctx.reply(
+    newLang === 'ar'
+      ? '✅ تم تغيير اللغة إلى العربية\n🎛️ تم تحديث الكيبورد الذكي.'
+      : '✅ Language changed to English\n🎛️ Smart keyboard refreshed.',
+    buildMainReplyKeyboard(newLang, ctx.isAdmin)
+  );
+};
 
 const createBot = (io) => {
   const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -110,7 +136,7 @@ const createBot = (io) => {
   // COMMANDS
   // ═══════════════════════════════════════
   bot.start(startHandler);
-  bot.command('admin', adminHandler);
+  bot.command('admin', (ctx) => openAdminPortal(ctx, 'dashboard'));
   bot.command('shop', shopHandler);
   bot.command('profile', profileHandler);
   bot.command('keys', keysHandler);
@@ -121,12 +147,25 @@ const createBot = (io) => {
   // ── /stats alias for admins ──
   bot.command('stats', async (ctx) => {
     if (!ctx.isAdmin) return ctx.reply('⛔ غير مصرح لك / Unauthorized');
-    return adminHandler(ctx);
+    return openAdminPortal(ctx, 'dashboard');
   });
 
   bot.command('broadcast', async (ctx) => {
     if (!ctx.isAdmin) return ctx.reply('⛔ غير مصرح لك / Unauthorized');
-    ctx.reply('📢 استخدم لوحة الإدارة لإرسال الإذاعة\n📢 Use admin panel to send broadcast');
+    return openAdminPortal(ctx, 'broadcast');
+  });
+
+  // ── Smart reply-keyboard actions ──
+  bot.hears(MENU_PATTERNS.shop, shopHandler);
+  bot.hears(MENU_PATTERNS.keys, keysHandler);
+  bot.hears(MENU_PATTERNS.history, historyHandler);
+  bot.hears(MENU_PATTERNS.profile, profileHandler);
+  bot.hears(MENU_PATTERNS.balance, balanceHandler);
+  bot.hears(MENU_PATTERNS.help, helpHandler);
+  bot.hears(MENU_PATTERNS.language, toggleLanguageFromKeyboard);
+  bot.hears(MENU_PATTERNS.admin, async (ctx) => {
+    if (!ctx.isAdmin) return ctx.reply('⛔ غير مصرح لك / Unauthorized');
+    return openAdminPortal(ctx, 'dashboard');
   });
 
   // ── Callback queries ──

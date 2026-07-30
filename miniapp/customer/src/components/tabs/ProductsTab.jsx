@@ -5,7 +5,7 @@ import ProductCard from '../ProductCard';
 import api from '../../utils/api';
 
 export default function ProductsTab() {
-  const { categories, selectedCategory, selectedGame, games, products, fetchCategories, selectCategory, selectGame, selectProduct, breadcrumb } = useStore();
+  const { categories, selectedCategory, selectedGame, games, products, fetchCategories, selectCategory, selectGame, selectProduct, breadcrumb, publicSettings, user } = useStore();
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [featuredProducts, setFeaturedProducts] = useState([]);
@@ -74,8 +74,51 @@ export default function ProductsTab() {
   }
 
   // ── MAIN VIEW ──
+  const highlights = Array.isArray(publicSettings?.ui_home_highlights) ? publicSettings.ui_home_highlights : [];
+  const supportUsername = publicSettings?.support_username || 'support';
+  const channelUsername = publicSettings?.channel_username || '';
+
   return (
     <div className="p-4 space-y-4">
+      <div className="rounded-3xl border border-neon/15 overflow-hidden bg-gradient-to-br from-neon/10 via-[#12121c] to-[#0b0b12] p-5 relative">
+        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_right,rgba(0,255,136,0.10),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(0,207,255,0.08),transparent_30%)]" />
+        <div className="relative">
+          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-neon/20 bg-neon/10 text-[10px] text-neon font-bold">
+            🪄 {publicSettings?.ui_welcome_badge_ar || 'واجهة جديدة • بوت أذكى'}
+          </span>
+          <h2 className="text-white text-xl font-black mt-3">{publicSettings?.ui_welcome_title_ar || publicSettings?.bot_name || 'متجر رقمي منظم وسريع'}</h2>
+          <p className="text-muted text-sm mt-2 leading-7">{publicSettings?.ui_welcome_subtitle_ar || publicSettings?.shop_description || 'تسوّق بسرعة، راقب طلباتك، وافتح المتجر أو لوحة التحكم من مكان واحد.'}</p>
+
+          <div className="flex flex-wrap gap-2 mt-4">
+            {highlights.slice(0, 3).map((item, i) => (
+              <span key={item.id || i} className="text-[11px] rounded-full border border-border bg-black/30 px-3 py-1 text-white">
+                {item.icon} {item.textAr}
+              </span>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 mt-4">
+            <a href={`https://t.me/${supportUsername}`} target="_blank" rel="noreferrer" className="rounded-2xl border border-border bg-black/30 px-4 py-3 text-sm font-bold text-white text-center">
+              💬 الدعم
+            </a>
+            {channelUsername ? (
+              <a href={`https://t.me/${channelUsername}`} target="_blank" rel="noreferrer" className="rounded-2xl border border-border bg-black/30 px-4 py-3 text-sm font-bold text-white text-center">
+                📣 القناة
+              </a>
+            ) : (
+              <button onClick={() => useStore.getState().setActiveTab('support')} className="rounded-2xl border border-border bg-black/30 px-4 py-3 text-sm font-bold text-white text-center">
+                🆘 المساعدة
+              </button>
+            )}
+            {user?.role === 'admin' && (
+              <a href="/admin#dashboard" target="_blank" rel="noreferrer" className="col-span-2 rounded-2xl border border-neon/20 bg-neon/10 px-4 py-3 text-sm font-black text-neon text-center">
+                👑 فتح لوحة التحكم
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Type Tabs */}
       <div className="flex gap-2 bg-card rounded-xl p-1">
         {[

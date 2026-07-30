@@ -12,6 +12,9 @@ const useStore = create((set, get) => ({
   activeTab: 'products',
   breadcrumb: [],
 
+  // Public settings / branding
+  publicSettings: {},
+
   // Shop state
   categories: [],
   selectedCategory: null,
@@ -38,6 +41,17 @@ const useStore = create((set, get) => ({
     set({ token });
   },
   setActiveTab: (tab) => set({ activeTab: tab }),
+
+  fetchPublicSettings: async () => {
+    try {
+      const res = await api.get('/settings/public');
+      set({ publicSettings: res.data.data || {} });
+      return res.data.data || {};
+    } catch (err) {
+      set({ publicSettings: {} });
+      return {};
+    }
+  },
 
   // Auth
   login: async (initData) => {

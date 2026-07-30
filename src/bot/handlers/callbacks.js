@@ -5,14 +5,10 @@ const { keysHandler } = require('./keys');
 const { historyHandler } = require('./history');
 const { balanceHandler } = require('./balance');
 const { helpHandler } = require('./help');
-const {
-  adminHandler, adminInventoryHandler, adminUsersHandler,
-  adminOrdersHandler, adminBroadcastHandler, adminSettingsHandler
-} = require('./admin');
+const { openAdminPortal } = require('./admin');
 const { mainKeyboard } = require('./start');
+const { buildMainReplyKeyboard } = require('../../utils/uiConfig');
 const Settings = require('../../models/Settings');
-const User = require('../../models/User');
-const Order = require('../../models/Order');
 const orderService = require('../../services/orderService');
 const logger = require('../../utils/logger');
 
@@ -85,59 +81,32 @@ const callbackHandler = async (ctx) => {
     }
 
     // ═══════════════════════════════════════
-    // ADMIN ROUTES
+    // ADMIN ROUTES → MOVED TO WEB PORTAL
     // ═══════════════════════════════════════
-    if (!ctx.isAdmin) {
-      // Check admin routes
-      const isAdminRoute = data.startsWith('admin_') || data === 'toggle_maintenance' ||
-        data.startsWith('inv_') || data.startsWith('verify_') || data.startsWith('reject_');
-      if (isAdminRoute) {
+    const isLegacyAdminRoute = data.startsWith('admin_') || data === 'toggle_maintenance' ||
+      data.startsWith('inv_') || data.startsWith('verify_') || data.startsWith('reject_') || data.startsWith('broadcast_');
+
+    if (isLegacyAdminRoute) {
+      if (!ctx.isAdmin) {
         return ctx.answerCbQuery(t(lang, '⛔ غير مصرح', '⛔ Unauthorized'), { show_alert: true });
       }
-    }
 
-    // Admin: Maintenance toggle
-    if (data === 'toggle_maintenance') {
-      if (!ctx.isAdmin) return;
-      const current = await Settings.get('maintenance_mode', false);
-      await Settings.set('maintenance_mode', !current, ctx.from.id);
-      await ctx.answerCbQuery(
-        t(lang, `✅ وضع الصيانة ${!current ? 'مفعّل' : 'معطّل'}`, `✅ Maintenance ${!current ? 'enabled' : 'disabled'}`),
-        { show_alert: true }
-      );
-      return adminHandler(ctx);
-    }
-
-    // Admin: Inventory
-    if (data === 'admin_inventory') return adminInventoryHandler(ctx);
-    if (data.startsWith('inv_product_')) return handleInventoryProduct(ctx, data.replace('inv_product_', ''), lang);
-
-    // Admin: Users
-    if (data === 'admin_users') return adminUsersHandler(ctx);
-
-    // Admin: Orders
-    if (data === 'admin_orders') return adminOrdersHandler(ctx);
-
-    // Admin: Broadcast
-    if (data === 'admin_broadcast') return adminBroadcastHandler(ctx);
-
-    // Admin: Settings
-    if (data === 'admin_settings') return adminSettingsHandler(ctx);
-
-    // Admin: Back
-    if (data === 'admin_back') return adminHandler(ctx);
-
-    // ── Admin: Verify/Reject payment (inline from payment notification) ──
-    if (data.startsWith('verify_payment_')) {
-      return handleVerifyPayment(ctx, data.replace('verify_payment_', ''), lang);
-    }
-    if (data.startsWith('reject_payment_')) {
-      return handleRejectPayment(ctx, data.replace('reject_payment_', ''), lang);
-    }
-
-    // ── Broadcast targets ──
-    if (data.startsWith('broadcast_')) {
-      return ctx.answerCbQuery(t(lang, '📢 استخدم لوحة الإدارة لإرسال الإذاعة', '📢 Use admin panel to send broadcast'), { show_alert: true });
+      if (data === 'admin_orders' || data.startsWith('verify_') || data.startsWith('reject_')) {
+        return openAdminPortal(ctx, 'orders');
+      }
+      if (data === 'admin_users') {
+        return openAdminPortal(ctx, 'users');
+      }
+      if (data === 'admin_inventory' || data.startsWith('inv_')) {
+        return openAdminPortal(ctx, 'inventory');
+      }
+      if (data === 'admin_broadcast' || data.startsWith('broadcast_')) {
+        return openAdminPortal(ctx, 'broadcast');
+      }
+      if (data === 'admin_settings' || data === 'toggle_maintenance') {
+        return openAdminPortal(ctx, 'settings');
+      }
+      return openAdminPortal(ctx, 'dashboard');
     }
 
   } catch (err) {
@@ -152,6 +121,7 @@ const callbackHandler = async (ctx) => {
 
 const handleMainMenu = async (ctx, lang) => {
   const user = ctx.dbUser;
+  const keyboard = await mainKeyboard(lang, ctx.isAdmin);
   const msg = (
     `👋 ${t(lang, `أهلاً ${user.firstName}!`, `Welcome ${user.firstName}!`)}\n\n` +
     `💰 ${t(lang, 'الرصيد', 'Balance')}: $${user.balance.toFixed(2)}\n` +
@@ -159,8 +129,8 @@ const handleMainMenu = async (ctx, lang) => {
   );
   return ctx.editMessageText(msg, {
     parse_mode: 'HTML',
-    ...mainKeyboard(lang)
-  }).catch(() => ctx.reply(msg, { parse_mode: 'HTML', ...mainKeyboard(lang) }));
+    ...keyboard
+  }).catch(() => ctx.reply(msg, { parse_mode: 'HTML', ...keyboard }));
 };
 
 const handleLanguage = async (ctx, lang) => {
@@ -168,6 +138,12 @@ const handleLanguage = async (ctx, lang) => {
   const newLang = user.preferredLanguage === 'ar' ? 'en' : 'ar';
   user.preferredLanguage = newLang;
   await user.save();
+  await ctx.reply(
+    newLang === 'ar'
+      ? '🎛️ تم تحديث الكيبورد الذكي إلى العربية'
+      : '🎛️ Smart keyboard switched to English',
+    buildMainReplyKeyboard(newLang, ctx.isAdmin)
+  ).catch(() => {});
   return ctx.editMessageText(
     newLang === 'ar'
       ? '✅ تم تغيير اللغة إلى العربية\n✅ Language changed to Arabic'
@@ -348,8 +324,14 @@ const confirmWalletPurchase = async (ctx, productId, durationId, lang) => {
           `🛒 <b>${t(lang, 'طلب جديد', 'New Order')}!</b>\n` +
           `👤 ${user.fullName} (@${user.username || 'N/A'})\n` +
           `📦 ${result.order.productName} - ${result.order.durationName}\n` +
-          `💰 $${result.order.finalPrice.toFixed(2)}`,
-          { parse_mode: 'HTML' }
+          `💰 $${result.order.finalPrice.toFixed(2)}\n\n` +
+          `${t(lang, 'إدارة الطلب من خلال لوحة التحكم فقط.', 'Manage this order from the admin portal only.')}`,
+          {
+            parse_mode: 'HTML',
+            ...Markup.inlineKeyboard([
+              [Markup.button.webApp(`👑 ${t(lang, 'فتح الطلب', 'Open Order')}`, `${process.env.BASE_URL}/admin#orders?search=${encodeURIComponent(result.order.orderNumber)}`)]
+            ])
+          }
         ).catch(() => {});
       }
     }
