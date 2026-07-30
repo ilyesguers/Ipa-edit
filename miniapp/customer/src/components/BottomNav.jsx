@@ -1,64 +1,47 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import useStore from '../store/useStore';
+import { t } from '../i18n';
+import PremiumIcon from './PremiumIcon';
 
 const TABS = [
-  { id: 'products', icon: '🛍️', label: 'المنتجات' },
-  { id: 'keys', icon: '🔑', label: 'مفاتيحي' },
-  { id: 'history', icon: '📋', label: 'تاريخ' },
-  { id: 'profile', icon: '👤', label: 'حسابي' },
-  { id: 'support', icon: '🆘', label: 'الدعم' },
+  { id: 'products', icon: 'gamepad', key: 'navProducts' },
+  { id: 'keys', icon: 'key', key: 'navKeys' },
+  { id: 'history', icon: 'shopping', key: 'navHistory' },
+  { id: 'profile', icon: 'profile', key: 'navProfile' },
+  { id: 'support', icon: 'support', key: 'navSupport' },
 ];
 
 export default function BottomNav() {
-  const { activeTab, setActiveTab, reset } = useStore();
+  const { activeTab, setActiveTab, reset, locale } = useStore();
+
+  const navigate = (tab) => {
+    setActiveTab(tab);
+    // A single navigation action also closes any old shop path/sheet.
+    if (tab !== 'products') reset();
+  };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-xl border-t border-[#1a1a1a]">
-      {/* Safe area padding for iOS */}
-      <div className="flex items-center justify-around px-2 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))]">
+    <nav className="mobile-nav fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-xl border-t border-[#1a1a1a]" aria-label={t(locale, 'navProducts')}>
+      <div className="mobile-nav-inner flex items-center justify-around px-2 pt-1 pb-[max(0.35rem,env(safe-area-inset-bottom))]">
         {TABS.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
             <motion.button
               key={tab.id}
-              onClick={() => { setActiveTab(tab.id); if (tab.id !== 'products') reset(); }}
-              whileTap={{ scale: 0.85 }}
-              className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all relative"
+              type="button"
+              aria-label={t(locale, tab.key)}
+              aria-current={isActive ? 'page' : undefined}
+              onClick={() => navigate(tab.id)}
+              whileTap={{ scale: 0.88 }}
+              className={`mobile-nav-item flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all relative ${isActive ? 'text-neon' : 'text-muted'}`}
             >
-              {/* Active pill background with spring animation */}
-              {isActive && (
-                <motion.div
-                  layoutId="nav-pill"
-                  className="absolute inset-0 rounded-xl bg-neon/10 border border-neon/20"
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                  style={{ boxShadow: '0 0 12px rgba(0,255,136,0.08)' }}
-                />
-              )}
-
-              {/* Icon with spring bounce */}
-              <motion.span
-                className="text-xl relative z-10"
-                animate={{ scale: isActive ? 1.2 : 1, y: isActive ? -2 : 0 }}
-                transition={{ type: 'spring', stiffness: 500, damping: 20 }}
-              >
-                {tab.icon}
+              {isActive && <motion.div layoutId="nav-pill" className="absolute inset-0 rounded-xl bg-neon/10 border border-neon/20" />}
+              <motion.span className="relative z-10 text-xl" animate={{ scale: isActive ? 1.16 : 1, y: isActive ? -2 : 0 }}>
+                <PremiumIcon name={tab.icon} />
               </motion.span>
-
-              {/* Label */}
-              <span className={`text-[9px] font-semibold relative z-10 transition-colors duration-200 ${isActive ? 'text-neon' : 'text-muted'}`}>
-                {tab.label}
-              </span>
-
-              {/* Active indicator dot with glow */}
-              {isActive && (
-                <motion.div
-                  layoutId="nav-dot"
-                  className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-neon"
-                  style={{ boxShadow: '0 0 8px #00ff88' }}
-                  transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-                />
-              )}
+              <span className="text-[9px] font-bold relative z-10">{t(locale, tab.key)}</span>
+              {isActive && <motion.div layoutId="nav-dot" className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-neon" style={{ boxShadow: '0 0 8px #00ff88' }} />}
             </motion.button>
           );
         })}

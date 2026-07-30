@@ -22,10 +22,14 @@ const logger = require('./logger');
 // Error signatures that mean "the premium emoji / button style was rejected".
 const PREMIUM_EMOJI_ERROR = /(custom.?emoji|emoji.?invalid|button.?style|icon_custom_emoji_id|ENTITY_BOUNDS_INVALID)/i;
 
-const isPremiumEmojiError = (err) => {
+const isPremiumEmojiError = (err, payload = null) => {
   const msg = (err && (err.description || err.message)) || '';
   const code = err && (err.error_code || err.code);
-  return (code === 400 || /400/.test(String(msg))) && PREMIUM_EMOJI_ERROR.test(msg);
+  const hasPremiumFields = payload && JSON.stringify(payload).match(/icon_custom_emoji_id|\"style\"|<tg-emoji/i);
+  // Some Bot API versions report unsupported button fields as the generic
+  // BUTTON_TYPE_INVALID. If the failed payload contains our progressive
+  // premium fields, it is safe to retry without them.
+  return (code === 400 || /400/.test(String(msg))) && (PREMIUM_EMOJI_ERROR.test(msg) || Boolean(hasPremiumFields));
 };
 
 /**

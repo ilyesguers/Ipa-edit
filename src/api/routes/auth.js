@@ -25,6 +25,7 @@ router.post('/telegram', async (req, res) => {
         firstName: telegramUser.first_name || '',
         lastName: telegramUser.last_name || '',
         languageCode: telegramUser.language_code || 'ar',
+        preferredLanguage: String(telegramUser.language_code || '').toLowerCase().startsWith('en') ? 'en' : 'ar',
         role: isAdmin ? 'admin' : 'customer'
       });
     } else {

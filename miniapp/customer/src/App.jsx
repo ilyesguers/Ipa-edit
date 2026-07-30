@@ -24,7 +24,7 @@ const TAB_COMPONENTS = {
 };
 
 export default function App() {
-  const { login, fetchPublicSettings, isLoading, isAuthenticated, activeTab, showDurationSheet, showCheckout, showBinanceSheet, currentOrder } = useStore();
+  const { login, fetchPublicSettings, isLoading, isAuthenticated, activeTab, locale, showDurationSheet, showCheckout, showBinanceSheet, currentOrder } = useStore();
   const [showSuccess, setShowSuccess] = useState(false);
   const [successData, setSuccessData] = useState(null);
 
@@ -45,6 +45,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    document.documentElement.lang = locale;
+    document.documentElement.dir = locale === 'ar' ? 'rtl' : 'ltr';
+    document.body.dir = locale === 'ar' ? 'rtl' : 'ltr';
+  }, [locale]);
+
+  useEffect(() => {
     if (currentOrder && !showBinanceSheet) {
       setSuccessData(currentOrder);
       setShowSuccess(true);
@@ -56,7 +62,7 @@ export default function App() {
   const ActiveTab = TAB_COMPONENTS[activeTab] || ProductsTab;
 
   return (
-    <div className="flex flex-col min-h-screen bg-bg text-white overflow-hidden">
+    <div dir={locale === 'ar' ? 'rtl' : 'ltr'} className="app-shell flex flex-col min-h-screen bg-bg text-white overflow-hidden">
       <Toaster
         position="top-center"
         toastOptions={{
@@ -68,7 +74,7 @@ export default function App() {
 
       <Header />
 
-      <main className="flex-1 pb-20 overflow-y-auto">
+      <main className="app-content flex-1 overflow-y-auto">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}

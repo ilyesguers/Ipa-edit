@@ -1,6 +1,7 @@
 const { Markup } = require('telegraf');
 const { getAdminPortalUrl, getUiSettings } = require('../../utils/uiConfig');
 const { buttonEmojiId, emojiHtml, buttonLabel } = require('../../utils/customEmoji');
+const { editOrReplyMenu } = require('../../utils/menuMessage');
 
 const getLang = (ctx) => ctx.dbUser?.preferredLanguage || 'ar';
 const t = (lang, ar, en) => lang === 'en' ? en : ar;
@@ -15,7 +16,7 @@ const openAdminPortal = async (ctx, page = 'dashboard') => {
   const ui = await getUiSettings();
   const msg =
     `${emojiHtml('admin')} <b>${t(lang, 'لوحة التحكم الإدارية', 'Admin Control Portal')}</b>\n\n` +
-    `${ui.theme.panelEmoji} ${t(lang, 'تم نقل جميع أدوات الإدارة إلى موقع التحكم لتكون الواجهة أوضح وأرتب.', 'All admin actions were moved to the control website for a cleaner workflow.')}\n\n` +
+    `${emojiHtml('settings')} ${t(lang, 'تم نقل جميع أدوات الإدارة إلى موقع التحكم لتكون الواجهة أوضح وأرتب.', 'All admin actions were moved to the control website for a cleaner workflow.')}\n\n` +
     `${emojiHtml('shopping')} ${t(lang, 'إدارة الطلبات والمخزون والمستخدمين والإعدادات من مكان واحد.', 'Manage orders, stock, users, and settings from one place.')}`;
 
   const buttons = Markup.inlineKeyboard([
@@ -26,14 +27,14 @@ const openAdminPortal = async (ctx, page = 'dashboard') => {
       icon_custom_emoji_id: buttonEmojiId('primary')
     }],
     [{
-      text: t(lang, '📱 فتح المتجر', '📱 Open Store'),
+      text: buttonLabel('mobile', t(lang, 'فتح المتجر', 'Open Store')),
       web_app: { url: `${process.env.BASE_URL}/customer` },
       style: 'success',
-      icon_custom_emoji_id: buttonEmojiId('success')
+      icon_custom_emoji_id: buttonEmojiId('mobile')
     }]
   ]);
 
-  return ctx.reply(msg, { parse_mode: 'HTML', ...buttons });
+  return editOrReplyMenu(ctx, msg, { parse_mode: 'HTML', ...buttons });
 };
 
 module.exports = { openAdminPortal };

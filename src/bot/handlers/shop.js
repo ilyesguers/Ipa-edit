@@ -3,22 +3,24 @@ const Category = require('../../models/Category');
 const Game = require('../../models/Game');
 const Product = require('../../models/Product');
 const Key = require('../../models/Key');
-const { buttonEmojiId, emojiHtml, buttonLabel } = require('../../utils/customEmoji');
+const { buttonEmojiId, emojiHtml, emojiChar, buttonLabel } = require('../../utils/customEmoji');
+const { editOrReplyMenu } = require('../../utils/menuMessage');
 
-// ── Device icon map ──
-const DEVICE_ICONS = {
-  'android': '📱',
-  'ios': '🍎',
-  'windows': '💻',
-  'mac': '🖥️',
-  'smart-tv': '📺',
-  'firestick': '🔥',
-  'default': '📲'
+const gameButton = (emojiKey, text, callbackData, style = 'primary') => {
+  const emojiId = buttonEmojiId(emojiKey) || buttonEmojiId(style);
+  return {
+    text: buttonLabel(emojiKey, text, { emojiId, hasIcon: Boolean(emojiId) }),
+    callback_data: callbackData,
+    style,
+    ...(emojiId ? { icon_custom_emoji_id: emojiId } : {})
+  };
 };
 
+// Device icons are rendered through the same premium game icon family as the
+// rest of the bot. Never put a second, unrelated unicode icon in a button.
 const getDeviceIcon = (category) => {
-  if (!category?.icon) return DEVICE_ICONS.default;
-  return category.icon;
+  const key = category?.slug === 'android' || category?.slug === 'iphone' ? 'mobile' : 'gamepad';
+  return emojiHtml(key);
 };
 
 const shopHandler = async (ctx) => {
@@ -28,25 +30,24 @@ const shopHandler = async (ctx) => {
 
   if (!categories.length) {
     return ctx.reply(lang === 'en'
-      ? `${emojiHtml('skull')} No categories available at the moment`
-      : `${emojiHtml('skull')} لا توجد أقسام متاحة حالياً`
+      ? `${emojiChar('skull')} No categories available at the moment`
+      : `${emojiChar('skull')} لا توجد أقسام متاحة حالياً`
     );
   }
 
   const buttons = categories.map(cat => {
     const icon = getDeviceIcon(cat);
     const name = lang === 'en' ? (cat.name || cat.nameAr) : (cat.nameAr || cat.name);
-    return [{ text: `${icon} ${name}`, callback_data: `cat_${cat._id}`, style: 'primary', icon_custom_emoji_id: buttonEmojiId('primary') }];
+    return [gameButton('gamepad', name, `cat_${cat._id}`, 'primary')];
   });
 
-  buttons.push([{ text: lang === 'en' ? '🔙 Home' : '🔙 الرئيسية', callback_data: 'main_menu', style: 'danger', icon_custom_emoji_id: buttonEmojiId('danger') }]);
+  buttons.push([gameButton('back', lang === 'en' ? 'Home' : 'الرئيسية', 'main_menu', 'danger')]);
 
   const msg = lang === 'en'
     ? `${emojiHtml('shop')} <b>Choose the right section for your device:</b>`
     : `${emojiHtml('shop')} <b>اختر القسم المناسب لجهازك:</b>`;
 
-  await ctx.editMessageText?.(msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) })
-    .catch(() => ctx.reply(msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) }));
+  await editOrReplyMenu(ctx, msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) });
 };
 
 const showGames = async (ctx, categoryId) => {
@@ -57,16 +58,16 @@ const showGames = async (ctx, categoryId) => {
 
   if (!games.length) {
     return ctx.answerCbQuery(
-      lang === 'en' ? `${emojiHtml('ghost')} No games in this section yet` : `${emojiHtml('ghost')} لا توجد ألعاب في هذا القسم حالياً`,
+      lang === 'en' ? `${emojiChar('ghost')} No games in this section yet` : `${emojiChar('ghost')} لا توجد ألعاب في هذا القسم حالياً`,
       { show_alert: true }
     );
   }
 
   const buttons = games.map(game => {
     const name = lang === 'en' ? (game.name || game.nameAr) : (game.nameAr || game.name);
-    return [{ text: buttonLabel('controller', name), callback_data: `game_${game._id}`, style: 'primary', icon_custom_emoji_id: buttonEmojiId('primary') }];
+    return [gameButton('controller', name, `game_${game._id}`, 'primary')];
   });
-  buttons.push([{ text: lang === 'en' ? '🔙 Back' : '🔙 رجوع', callback_data: 'shop', style: 'danger', icon_custom_emoji_id: buttonEmojiId('danger') }]);
+  buttons.push([gameButton('back', lang === 'en' ? 'Back' : 'رجوع', 'shop', 'danger')]);
 
   const icon = getDeviceIcon(category);
   const catName = lang === 'en' ? (category.name || category.nameAr) : (category.nameAr || category.name);
@@ -74,7 +75,7 @@ const showGames = async (ctx, categoryId) => {
     ? `${icon} <b>${catName}</b>\n\n${emojiHtml('joystick')} Choose a game:`
     : `${icon} <b>${catName}</b>\n\n${emojiHtml('joystick')} اختر اللعبة:`;
 
-  await ctx.editMessageText(msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) }).catch(console.error);
+  await editOrReplyMenu(ctx, msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) });
 };
 
 const showProducts = async (ctx, gameId) => {
@@ -85,23 +86,23 @@ const showProducts = async (ctx, gameId) => {
 
   if (!products.length) {
     return ctx.answerCbQuery(
-      lang === 'en' ? `${emojiHtml('ghost')} No products available` : `${emojiHtml('ghost')} لا توجد منتجات متاحة`,
+      lang === 'en' ? `${emojiChar('ghost')} No products available` : `${emojiChar('ghost')} لا توجد منتجات متاحة`,
       { show_alert: true }
     );
   }
 
   const buttons = products.map(p => {
     const name = lang === 'en' ? (p.name || p.nameAr) : (p.nameAr || p.name);
-    return [{ text: buttonLabel('key', name), callback_data: `product_${p._id}`, style: 'success', icon_custom_emoji_id: buttonEmojiId('success') }];
+    return [gameButton('key', name, `product_${p._id}`, 'success')];
   });
-  buttons.push([{ text: lang === 'en' ? '🔙 Back' : '🔙 رجوع', callback_data: `cat_${game.category._id}`, style: 'danger', icon_custom_emoji_id: buttonEmojiId('danger') }]);
+  buttons.push([gameButton('back', lang === 'en' ? 'Back' : 'رجوع', `cat_${game.category._id}`, 'danger')]);
 
   const gameName = lang === 'en' ? (game.name || game.nameAr) : (game.nameAr || game.name);
   const msg = lang === 'en'
     ? `${emojiHtml('controller')} <b>${gameName}</b>\n\n${emojiHtml('key')} Choose a product:`
     : `${emojiHtml('controller')} <b>${gameName}</b>\n\n${emojiHtml('key')} اختر المنتج:`;
 
-  await ctx.editMessageText(msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) }).catch(console.error);
+  await editOrReplyMenu(ctx, msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) });
 };
 
 const showProduct = async (ctx, productId) => {
@@ -112,7 +113,7 @@ const showProduct = async (ctx, productId) => {
 
   // Build features text (bilingual)
   const featuresText = product.features.length > 0
-    ? product.features.map(f => `${f.icon} ${f.text}`).join('\n')
+    ? product.features.map(f => f.text).join('\n')
     : '';
 
   // Build duration buttons with stock count in each button
@@ -128,16 +129,21 @@ const showProduct = async (ctx, productId) => {
     const durName = lang === 'en' ? (dur.name || dur.nameAr) : (dur.nameAr || dur.name);
     // Plain-text label only — button text never renders HTML. Stock count uses a
     // plain unicode glyph; the animated style emoji is applied via icon_custom_emoji_id.
-    const stockLabel = hasStock ? `✅${stockCount}` : '❌';
+    const stockLabel = hasStock ? `${stockCount}` : '';
 
     const label = hasStock
       ? `${stockLabel} ${durName} - $${dur.price.toFixed(2)}`
-      : `${stockLabel} ${durName} - $${dur.price.toFixed(2)} (${lang === 'en' ? 'Out of stock' : 'نفذ المخزون'})`;
+      : `${durName} - $${dur.price.toFixed(2)} (${lang === 'en' ? 'Out of stock' : 'نفد المخزون'})`;
 
-    durationButtons.push([{ text: label, callback_data: hasStock ? `buy_${productId}_${dur._id}` : `oos_${durName}`, style: hasStock ? 'success' : 'danger', icon_custom_emoji_id: buttonEmojiId(hasStock ? 'success' : 'danger') }]);
+    durationButtons.push([gameButton(
+      hasStock ? 'trophy' : 'skull',
+      label,
+      hasStock ? `buy_${productId}_${dur._id}` : `oos_${durName}`,
+      hasStock ? 'success' : 'danger'
+    )]);
   }
 
-  durationButtons.push([{ text: lang === 'en' ? '🔙 Back' : '🔙 رجوع', callback_data: `game_${product.game._id}`, style: 'danger', icon_custom_emoji_id: buttonEmojiId('danger') }]);
+  durationButtons.push([gameButton('back', lang === 'en' ? 'Back' : 'رجوع', `game_${product.game._id}`, 'danger')]);
 
   const prodName = lang === 'en' ? (product.name || product.nameAr) : (product.nameAr || product.name);
 
@@ -157,19 +163,11 @@ const showProduct = async (ctx, productId) => {
         Markup.inlineKeyboard(durationButtons)
       );
     } catch {
-      // If media edit fails, try text
-      await ctx.editMessageText(msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(durationButtons) }).catch(async () => {
-        // Last resort: send new message
-        await ctx.replyWithPhoto(
-          { url: product.logo },
-          { caption: msg, parse_mode: 'HTML', ...Markup.inlineKeyboard(durationButtons) }
-        ).catch(async () => {
-          await ctx.reply(msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(durationButtons) }).catch(console.error);
-        });
-      });
+      // A text menu is still better than creating another keyboard message.
+      await editOrReplyMenu(ctx, msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(durationButtons) });
     }
   } else {
-    await ctx.editMessageText(msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(durationButtons) }).catch(console.error);
+    await editOrReplyMenu(ctx, msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(durationButtons) });
   }
 };
 

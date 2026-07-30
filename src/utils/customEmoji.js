@@ -1,208 +1,144 @@
 /**
- * 🌟 Telegram Premium Animated Custom Emojis
+ * One source of truth for the bot's game-themed Telegram custom emojis.
  *
- * Source: "Telegram Premium Icons" pack  →  https://t.me/addemoji/TgPremiumIcons
+ * Telegram custom-emoji IDs are not interchangeable with unicode.  A bad ID
+ * makes Telegram reject the complete message/keyboard, so every call site must
+ * use this module instead of writing IDs by hand.  `safeSend.js` is the final
+ * fallback and removes the premium fields if Telegram does not accept them.
  *
- * Works in:
- *   1) Inline keyboards → `icon_custom_emoji_id` (Bot API 9.4+)
- *   2) Message text     → <tg-emoji emoji-id="ID">🔤</tg-emoji> (HTML parse_mode)
- *
- * REQUIREMENTS:
- *   - The bot owner must have Telegram Premium to SEND animated emojis
- *   - All users (Premium & free) can SEE the animated emojis
- *   - Non-Premium bots fall back to the unicode emoji inside <tg-emoji>
+ * The IDs below are the stable IDs used by the Telegram Premium Icons pack in
+ * this project.  They are intentionally reused by semantic role so the whole
+ * bot has one visual language: gamepad for actions, trophy for success, skull
+ * for danger, loot for premium/store content, and shield for verification.
  */
 
+const PREMIUM_IDS = {
+  gamepad: process.env.PREMIUM_EMOJI_GAMEPAD || '5285430309720966085',
+  trophy: process.env.PREMIUM_EMOJI_TROPHY || '5310076249404621168',
+  skull: process.env.PREMIUM_EMOJI_SKULL || '5310169226856644648',
+  loot: process.env.PREMIUM_EMOJI_LOOT || '5388790256772331442',
+  shield: process.env.PREMIUM_EMOJI_SHIELD || '5368324170671202286',
+  settings: process.env.PREMIUM_EMOJI_SETTINGS || '5285032475490273112'
+};
+
+// Semantic names keep handlers readable and make changing a pack a one-file job.
 const EMOJI = {
-  // ═══ Core / Style buttons (🔵🟢🔴) ═══
-  star:        '5285430309720966085', // ⭐  Primary / main actions (blue)
-  sparkle:     '5310076249404621168', // ✨  Success / positive (green)
-  fire:        '5310169226856644648', // 🔥  Danger / hot / warnings (red)
-
-  // ═══ Navigation & UI ═══
-  diamond:     '5388790256772331442', // 🔹 Premium / diamond
-  checkmark:   '5368324170671202286', // ✅ Verified / confirmed
-  bell:        '5368324170671202286', // 🔔 Notifications (uses checkmark as fallback)
-  gear:        '5285032475490273112', // ⚙️ Settings / admin
-  crown:       '5285430309720966085', // 👑 Admin / VIP (uses star)
-  rocket:      '5310076249404621168', // 🚀 Launch / fast (uses sparkle)
-  bolt:        '5310076249404621168', // ⚡ Instant / flash (uses sparkle)
-  shield:      '5388790256772331442', // 🛡️ Security / captcha (uses diamond)
-  lock:        '5310169226856644648', // 🔒 Locked (uses fire as "alert")
-
-  // ═══ Store / Shop ═══
-  shop:        '5285430309720966085', // 🛍️ Store / browse (uses star)
-  shopping:    '5310076249404621168', // 🛒 Cart / orders (uses sparkle)
-  bag:         '5388790256772331442', // 🎁 Gift / pack (uses diamond)
-  tag:         '5310076249404621168', // 🏷️ Product tag (uses sparkle)
-
-  // ═══ Games / Controller ═══
-  controller:  '5285430309720966085', // 🎮 Controller / games (uses star)
-  joystick:    '5285430309720966085', // 🕹️ Joystick (uses star)
-  target:      '5310169226856644648', // 🎯 Aim / cheat (uses fire "hot")
-  trophy:      '5310076249404621168', // 🏆 Trophy / win (uses sparkle)
-  medal:       '5310076249404621168', // 🥇 Medal / rank (uses sparkle)
-  skull:       '5310169226856644648', // 💀 Skull / banned / danger (uses fire)
-  ghost:       '5388790256772331442', // 👻 Ghost / stealth (uses diamond)
-  alien:       '5388790256772331442', // 👾 Alien / retro (uses diamond)
-  dragon:      '5310169226856644648', // 🐉 Dragon / fire (uses fire)
-  bomb:        '5310169226856644648', // 💣 Bomb / explosive (uses fire)
-  crosshair:   '5310169226856644648', // 🎯 Same as target
-
-  // ═══ Keys / Inventory ═══
-  key:         '5285430309720966085', // 🔑 Keys / products (uses star)
-  key2:        '5285430309720966085', // 🗝️ Old key (uses star)
-  box:         '5388790256772331442', // 📦 Box / inventory (uses diamond)
-  folder:      '5388790256772331442', // 📂 Categories (uses diamond)
-
-  // ═══ Money / Wallet ═══
-  wallet:      '5310076249404621168', // 💰 Wallet / balance (uses sparkle)
-  coin:        '5310076249404621168', // 🪙 Coin / USD (uses sparkle)
-  moneybag:    '5310076249404621168', // 💵 Money bag (uses sparkle)
-  creditcard:  '5388790256772331442', // 💳 Credit card / pay (uses diamond)
-  gem:         '5388790256772331442', // 💎 Premium / Binance gem (uses diamond)
-
-  // ═══ Users / Profile ═══
-  profile:     '5285430309720966085', // 👤 User profile (uses star)
-  users:       '5285430309720966085', // 👥 Users list (uses star)
-  admin:       '5285430309720966085', // 👑 Admin panel (uses star)
-  support:     '5310169226856644648', // 🆘 Help / support (uses fire "alert")
-  chat:        '5388790256772331442', // 💬 Chat / message (uses diamond)
-  megaphone:   '5310169226856644648', // 📣 Broadcast / channel (uses fire "alert")
-  orders:      '5310076249404621168', // 📋 Orders / history (uses sparkle)
-  clock:       '5388790256772331442', // 🕐 Time / pending (uses diamond)
-  calendar:    '5388790256772331442', // 📅 Date (uses diamond)
-  link:        '5310076249404621168', // 🔗 Referral link (uses sparkle)
-  back:        '5310169226856644648', // 🔙 Back / return (uses fire for contrast)
-  mobile:      '5285430309720966085', // 📱 Mobile app (uses star)
-  globe:       '5388790256772331442', // 🌍 Language / global (uses diamond)
-  alert:       '5310169226856644648', // 🚨 Alert / danger (uses fire)
-  notification:'5368324170671202286', // 🔔 Bell notification (uses checkmark)
+  gamepad: PREMIUM_IDS.gamepad,
+  controller: PREMIUM_IDS.gamepad,
+  joystick: PREMIUM_IDS.gamepad,
+  star: PREMIUM_IDS.gamepad,
+  shop: PREMIUM_IDS.gamepad,
+  mobile: PREMIUM_IDS.gamepad,
+  rocket: PREMIUM_IDS.gamepad,
+  key: PREMIUM_IDS.loot,
+  key2: PREMIUM_IDS.loot,
+  box: PREMIUM_IDS.loot,
+  folder: PREMIUM_IDS.loot,
+  bag: PREMIUM_IDS.loot,
+  diamond: PREMIUM_IDS.loot,
+  gem: PREMIUM_IDS.loot,
+  creditcard: PREMIUM_IDS.loot,
+  trophy: PREMIUM_IDS.trophy,
+  medal: PREMIUM_IDS.trophy,
+  victory: PREMIUM_IDS.trophy,
+  sparkle: PREMIUM_IDS.trophy,
+  wallet: PREMIUM_IDS.trophy,
+  coin: PREMIUM_IDS.trophy,
+  moneybag: PREMIUM_IDS.trophy,
+  shopping: PREMIUM_IDS.trophy,
+  orders: PREMIUM_IDS.trophy,
+  tag: PREMIUM_IDS.trophy,
+  link: PREMIUM_IDS.trophy,
+  bolt: PREMIUM_IDS.trophy,
+  rocket_boost: PREMIUM_IDS.trophy,
+  fire: PREMIUM_IDS.skull,
+  skull: PREMIUM_IDS.skull,
+  target: PREMIUM_IDS.skull,
+  crosshair: PREMIUM_IDS.skull,
+  bomb: PREMIUM_IDS.skull,
+  alert: PREMIUM_IDS.skull,
+  support: PREMIUM_IDS.skull,
+  megaphone: PREMIUM_IDS.skull,
+  back: PREMIUM_IDS.skull,
+  lock: PREMIUM_IDS.skull,
+  ghost: PREMIUM_IDS.loot,
+  alien: PREMIUM_IDS.loot,
+  dragon: PREMIUM_IDS.skull,
+  checkmark: PREMIUM_IDS.shield,
+  shield: PREMIUM_IDS.shield,
+  bell: PREMIUM_IDS.shield,
+  notification: PREMIUM_IDS.shield,
+  gear: PREMIUM_IDS.settings,
+  settings: PREMIUM_IDS.settings,
+  profile: PREMIUM_IDS.gamepad,
+  users: PREMIUM_IDS.gamepad,
+  admin: PREMIUM_IDS.gamepad,
+  crown: PREMIUM_IDS.gamepad,
+  chat: PREMIUM_IDS.loot,
+  clock: PREMIUM_IDS.loot,
+  calendar: PREMIUM_IDS.loot,
+  globe: PREMIUM_IDS.gamepad
 };
 
-/**
- * Safe unicode fallback map (used when emoji ID is missing, or as the visible
- * glyph inside <tg-emoji> for non-Premium clients).
- */
 const UNICODE_FALLBACK = {
-  star: '⭐', sparkle: '✨', fire: '🔥', diamond: '🔹', checkmark: '✅',
-  bell: '🔔', gear: '⚙️', crown: '👑', rocket: '🚀', bolt: '⚡',
-  shield: '🛡️', lock: '🔒', shop: '🛍️', shopping: '🛒', bag: '🎁', tag: '🏷️',
-  controller: '🎮', joystick: '🕹️', target: '🎯', trophy: '🏆', medal: '🥇',
-  skull: '💀', ghost: '👻', alien: '👾', dragon: '🐉', bomb: '💣', crosshair: '🎯',
-  key: '🔑', key2: '🗝️', box: '📦', folder: '📂',
-  wallet: '💰', coin: '🪙', moneybag: '💵', creditcard: '💳', gem: '💎',
-  profile: '👤', users: '👥', admin: '👑', support: '🆘', chat: '💬',
-  megaphone: '📣', orders: '📋', clock: '🕐', calendar: '📅', link: '🔗',
-  back: '🔙', mobile: '📱', globe: '🌍', alert: '🚨', notification: '🔔',
+  gamepad: '🎮', controller: '🎮', joystick: '🕹️', star: '⭐', shop: '🛍️', mobile: '📱', rocket: '🚀',
+  key: '🔑', key2: '🗝️', box: '📦', folder: '📂', bag: '🎁', diamond: '🔹', gem: '💎', creditcard: '💳',
+  trophy: '🏆', medal: '🥇', victory: '🏆', sparkle: '✨', wallet: '💰', coin: '🪙', moneybag: '💵',
+  shopping: '🛒', orders: '📋', tag: '🏷️', link: '🔗', bolt: '⚡', rocket_boost: '🚀',
+  fire: '🔥', skull: '💀', target: '🎯', crosshair: '🎯', bomb: '💣', alert: '🚨', support: '🆘',
+  megaphone: '📣', back: '🔙', lock: '🔒', ghost: '👻', alien: '👾', dragon: '🐉',
+  checkmark: '✅', shield: '🛡️', bell: '🔔', notification: '🔔', gear: '⚙️', settings: '⚙️',
+  profile: '👤', users: '👥', admin: '👑', crown: '👑', chat: '💬', clock: '🕐', calendar: '📅', globe: '🌍'
 };
 
-/**
- * Global toggle. Premium animated emojis require the bot owner to have a
- * Telegram Premium subscription (or Fragment usernames). If an emoji ID is
- * invalid/inaccessible, Telegram rejects the WHOLE message/keyboard with a 400
- * error — which would silently break the bot. Set USE_PREMIUM_EMOJI=false to
- * fall back to plain unicode everywhere. Defaults to enabled.
- * The resilient send wrapper (src/utils/safeSend.js) auto-retries without
- * premium emoji if a 400 happens, so leaving this on is safe.
- * @returns {boolean}
- */
+const STYLE_TO_EMOJI = {
+  primary: 'gamepad',
+  success: 'trophy',
+  danger: 'skull'
+};
+
 const premiumEnabled = () => {
-  const flag = (process.env.USE_PREMIUM_EMOJI || 'true').toString().trim().toLowerCase();
+  const flag = String(process.env.USE_PREMIUM_EMOJI || 'true').trim().toLowerCase();
   return !['false', '0', 'no', 'off'].includes(flag);
 };
 
-/**
- * Get raw custom emoji ID by key.
- * @param {string} key
- * @returns {string|null}
- */
 const getEmojiId = (key) => EMOJI[key] || null;
 
-/**
- * Return the emoji ID that corresponds to a button "style" color.
- * @param {'primary'|'success'|'danger'|string|undefined|null} style
- * @returns {string|undefined}
- */
 const getStyleEmojiId = (style) => {
   if (!premiumEnabled()) return undefined;
-  const map = { primary: EMOJI.star, success: EMOJI.sparkle, danger: EMOJI.fire };
-  return map[style] || undefined;
+  return getEmojiId(STYLE_TO_EMOJI[style] || style);
 };
 
-/**
- * Plain unicode glyph for a key — SAFE for inline-keyboard BUTTON LABELS.
- *
- * ⚠️ Button `text` does NOT render HTML, so <tg-emoji> tags must never be put
- * there (they would show as literal broken text). Premium animated emoji on a
- * button must be supplied via the separate `icon_custom_emoji_id` field.
- *
- * @param {string} key
- * @returns {string} unicode emoji (or '' if unknown)
- */
+// Button text is never HTML. The animated icon is attached separately.
 const emojiChar = (key) => UNICODE_FALLBACK[key] || '';
 
-/**
- * Build a clean button LABEL. Never contains HTML.
- *
- * When premium is enabled we DON'T prepend the unicode glyph, because the
- * animated emoji is shown separately through `icon_custom_emoji_id`; prepending
- * would duplicate it. When premium is disabled we prepend the unicode glyph so
- * the button still has an icon.
- *
- * @param {string} key   emoji key (used only for the fallback glyph)
- * @param {string} text  the label text
- * @param {{ hasIcon?: boolean }} [opts] hasIcon=true means an icon_custom_emoji_id is attached
- * @returns {string}
- */
 const buttonLabel = (key, text, opts = {}) => {
-  const hasIcon = opts.hasIcon !== undefined ? opts.hasIcon : premiumEnabled();
-  if (hasIcon && premiumEnabled()) {
-    // Animated icon rendered via icon_custom_emoji_id — keep label text clean.
-    return text;
-  }
+  const customId = opts.emojiId || getEmojiId(key);
+  if (premiumEnabled() && (opts.hasIcon !== false) && customId) return text;
   const glyph = emojiChar(key);
   return glyph ? `${glyph} ${text}` : text;
 };
 
-/**
- * Wrap text with an animated custom emoji tag for use in HTML-formatted messages.
- * Falls back to a plain unicode emoji when the key is unknown (safe for all clients).
- *
- * @param {string} emojiKey - Key in EMOJI object
- * @param {string} [text=''] - Optional text to append after the emoji (with a space)
- * @returns {string} HTML
- */
 const emojiHtml = (emojiKey, text = '') => {
-  const id = EMOJI[emojiKey];
-  const glyph = UNICODE_FALLBACK[emojiKey] || (typeof emojiKey === 'string' && emojiKey.length <= 4 ? emojiKey : '⭐');
-
-  if (!id || !premiumEnabled()) {
-    // Unknown key or premium disabled — output the raw unicode so nothing breaks
-    return `${glyph}${text ? ` ${text}` : ''}`;
-  }
-
+  const id = getEmojiId(emojiKey);
+  const glyph = emojiChar(emojiKey) || '🎮';
+  if (!id || !premiumEnabled()) return `${glyph}${text ? ` ${text}` : ''}`;
   return `<tg-emoji emoji-id="${id}">${glyph}</tg-emoji>${text ? ` ${text}` : ''}`;
 };
 
-/**
- * Strip every <tg-emoji> wrapper from a string, leaving only the plain unicode
- * glyph inside. Used by the resilient send wrapper to retry a message without
- * premium custom emoji when Telegram rejects an invalid emoji id.
- * @param {string} html
- * @returns {string}
- */
 const stripPremiumEmoji = (html = '') =>
   String(html).replace(/<tg-emoji[^>]*>(.*?)<\/tg-emoji>/gis, '$1');
 
-/**
- * Return an icon_custom_emoji_id for a button based on its style.
- * @param {'primary'|'success'|'danger'|string|undefined|null} style
- * @returns {string|undefined}
- */
-const buttonEmojiId = (style) => getStyleEmojiId(style);
+// Accept either a style ('primary') or a semantic emoji key.
+const buttonEmojiId = (keyOrStyle) => {
+  if (!premiumEnabled()) return undefined;
+  return STYLE_TO_EMOJI[keyOrStyle]
+    ? getStyleEmojiId(keyOrStyle)
+    : getEmojiId(keyOrStyle);
+};
 
 module.exports = {
+  PREMIUM_IDS,
   EMOJI,
   UNICODE_FALLBACK,
   premiumEnabled,

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import api from '../utils/api';
+import { normalizeLocale } from '../i18n';
 
 const useStore = create((set, get) => ({
   // User
@@ -7,6 +8,7 @@ const useStore = create((set, get) => ({
   token: null,
   isLoading: true,
   isAuthenticated: false,
+  locale: normalizeLocale(localStorage.getItem('locale') || 'ar'),
 
   // Navigation
   activeTab: 'products',
@@ -41,6 +43,19 @@ const useStore = create((set, get) => ({
     set({ token });
   },
   setActiveTab: (tab) => set({ activeTab: tab }),
+  setLocale: async (nextLocale) => {
+    const locale = normalizeLocale(nextLocale);
+    localStorage.setItem('locale', locale);
+    set({ locale });
+    // Keep bot and mini-app language in sync. This is intentionally best effort
+    // so the UI still switches when the API is temporarily unavailable.
+    try {
+      await api.put('/users/me', { preferredLanguage: locale });
+      set((state) => ({ user: state.user ? { ...state.user, preferredLanguage: locale } : state.user }));
+    } catch (_) {}
+    return locale;
+  },
+  toggleLocale: () => get().setLocale(get().locale === 'ar' ? 'en' : 'ar'),
 
   fetchPublicSettings: async () => {
     try {
@@ -60,7 +75,9 @@ const useStore = create((set, get) => ({
       const res = await api.post('/auth/telegram', { initData });
       const { token, user } = res.data;
       get().setToken(token);
-      set({ user, isAuthenticated: true, isLoading: false });
+      const locale = normalizeLocale(user.preferredLanguage || window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code || get().locale);
+      localStorage.setItem('locale', locale);
+      set({ user, locale, isAuthenticated: true, isLoading: false });
       return user;
     } catch (err) {
       set({ isLoading: false });

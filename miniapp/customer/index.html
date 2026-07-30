@@ -25,16 +25,6 @@
 <body>
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
-  
-  <!-- Keyboard dismiss: tap outside inputs to close keyboard -->
-  <script>
-    document.addEventListener('click', function(e) {
-      if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT') {
-        if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
-          document.activeElement.blur();
-        }
-      }
-    });
-  </script>
+
 </body>
 </html>

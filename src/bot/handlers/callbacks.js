@@ -10,7 +10,8 @@ const { mainKeyboard } = require('./start');
 const Settings = require('../../models/Settings');
 const orderService = require('../../services/orderService');
 const logger = require('../../utils/logger');
-const { buttonEmojiId, emojiHtml, buttonLabel } = require('../../utils/customEmoji');
+const { buttonEmojiId, emojiHtml, emojiChar, buttonLabel } = require('../../utils/customEmoji');
+const { editOrReplyMenu } = require('../../utils/menuMessage');
 
 // ── Helper: get user language ──
 const getLang = (ctx) => ctx.dbUser?.preferredLanguage || 'ar';
@@ -52,8 +53,8 @@ const callbackHandler = async (ctx) => {
       const name = data.replace('oos_', '');
       return ctx.answerCbQuery(
         t(lang,
-          `${emojiHtml('skull')} \"${name}\" غير متوفر حالياً`,
-          `${emojiHtml('skull')} \"${name}\" is currently unavailable`),
+          `${emojiChar('skull')} \"${name}\" غير متوفر حالياً`,
+          `${emojiChar('skull')} \"${name}\" is currently unavailable`),
         { show_alert: true }
       );
     }
@@ -62,8 +63,8 @@ const callbackHandler = async (ctx) => {
     if (data === 'insufficient_balance') {
       return ctx.answerCbQuery(
         t(lang,
-          `${emojiHtml('wallet')} رصيدك غير كافٍ. قم بشحن رصيدك أولاً`,
-          `${emojiHtml('wallet')} Insufficient balance. Please top up first`),
+          `${emojiChar('wallet')} رصيدك غير كافٍ. قم بشحن رصيدك أولاً`,
+          `${emojiChar('wallet')} Insufficient balance. Please top up first`),
         { show_alert: true }
       );
     }
@@ -116,8 +117,8 @@ const callbackHandler = async (ctx) => {
   } catch (err) {
     logger.error('Callback error:', err);
     await ctx.answerCbQuery(t(lang,
-      `${emojiHtml('alert')} حدث خطأ، يرجى المحاولة مجدداً`,
-      `${emojiHtml('alert')} Error occurred, please try again`),
+      `${emojiChar('alert')} حدث خطأ، يرجى المحاولة مجدداً`,
+      `${emojiChar('alert')} Error occurred, please try again`),
       { show_alert: true }
     ).catch(() => {});
   }
@@ -131,10 +132,10 @@ const handleMainMenu = async (ctx, lang) => {
   const { buildWelcomeMessage } = require('./start');
   const { caption } = await buildWelcomeMessage(ctx.dbUser, lang);
   const keyboard = await mainKeyboard(lang, ctx.isAdmin);
-  return ctx.editMessageText(caption, {
+  return editOrReplyMenu(ctx, caption, {
     parse_mode: 'HTML',
     ...keyboard
-  }).catch(() => ctx.reply(caption, { parse_mode: 'HTML', ...keyboard }));
+  });
 };
 
 const handleLanguage = async (ctx, lang) => {
@@ -150,18 +151,15 @@ const handleLanguage = async (ctx, lang) => {
     icon_custom_emoji_id: buttonEmojiId('primary')
   }];
 
-  await ctx.reply(
+  return editOrReplyMenu(ctx,
     newLang === 'ar'
       ? `${emojiHtml('checkmark')} تم تغيير اللغة إلى العربية`
       : `${emojiHtml('checkmark')} Language changed to English`,
-    Markup.inlineKeyboard([backBtn])
-  ).catch(() => {});
-  return ctx.editMessageText(
-    newLang === 'ar'
-      ? `${emojiHtml('checkmark')} تم تغيير اللغة إلى العربية`
-      : `${emojiHtml('checkmark')} Language changed to English`,
-    Markup.inlineKeyboard([backBtn])
-  ).catch(console.error);
+    {
+      parse_mode: 'HTML',
+      ...Markup.inlineKeyboard([backBtn])
+    }
+  );
 };
 
 const handleBinanceDeposit = async (ctx, lang) => {
@@ -169,23 +167,23 @@ const handleBinanceDeposit = async (ctx, lang) => {
     ? `${emojiHtml('gem')} <b>Binance Deposit</b>\n\nPlease use the web shop to complete the deposit via Binance, or contact support.`
     : `${emojiHtml('gem')} <b>شحن عبر بينانس</b>\n\nيرجى استخدام المتجر الإلكتروني لإتمام الشحن عبر بينانس أو تواصل مع الدعم.`;
 
-  return ctx.editMessageText(msg, {
+  return editOrReplyMenu(ctx, msg, {
     parse_mode: 'HTML',
     ...Markup.inlineKeyboard([
       [{
         text: buttonLabel('mobile', lang === 'en' ? 'Open Shop' : 'فتح المتجر'),
         web_app: { url: `${process.env.BASE_URL}/customer` },
         style: 'primary',
-        icon_custom_emoji_id: buttonEmojiId('primary')
+        icon_custom_emoji_id: buttonEmojiId('mobile')
       }],
       [{
         text: buttonLabel('back', lang === 'en' ? 'Back' : 'رجوع'),
         callback_data: 'addbalance',
         style: 'danger',
-        icon_custom_emoji_id: buttonEmojiId('danger')
+        icon_custom_emoji_id: buttonEmojiId('back')
       }]
     ])
-  }).catch(console.error);
+  });
 };
 
 // ═══════════════════════════════════════
@@ -242,7 +240,7 @@ const showCheckout = async (ctx, productId, durationId, lang) => {
     }]
   ];
 
-  await ctx.editMessageText(msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) }).catch(console.error);
+  await editOrReplyMenu(ctx, msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) });
 };
 
 const confirmWalletPurchase = async (ctx, productId, durationId, lang) => {
@@ -266,23 +264,23 @@ const confirmWalletPurchase = async (ctx, productId, durationId, lang) => {
       `${emojiHtml('orders')} ${t(lang, 'رقم الطلب', 'Order #')}: <code>${result.order.orderNumber}</code>`
     );
 
-    await ctx.editMessageText(msg, {
+    await editOrReplyMenu(ctx, msg, {
       parse_mode: 'HTML',
       ...Markup.inlineKeyboard([
         [{
           text: buttonLabel('shop', t(lang, 'تسوق أكثر', 'Shop More')),
           callback_data: 'shop',
           style: 'primary',
-          icon_custom_emoji_id: buttonEmojiId('primary')
+          icon_custom_emoji_id: buttonEmojiId('shop')
         }],
         [{
           text: buttonLabel('crown', t(lang, 'الرئيسية', 'Home')),
           callback_data: 'main_menu',
           style: 'success',
-          icon_custom_emoji_id: buttonEmojiId('success')
+          icon_custom_emoji_id: buttonEmojiId('crown')
         }]
       ])
-    }).catch(console.error);
+    });
 
     // Notify admins
     const adminIds = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim())).filter(Boolean);
@@ -313,7 +311,7 @@ const confirmWalletPurchase = async (ctx, productId, durationId, lang) => {
 
   } catch (err) {
     logger.error('Purchase error:', err);
-    await ctx.editMessageText(
+    await editOrReplyMenu(ctx,
       `${emojiHtml('skull')} <b>${t(lang, 'فشل الشراء', 'Purchase Failed')}</b>\n\n${err.message}`,
       {
         parse_mode: 'HTML',
@@ -321,10 +319,10 @@ const confirmWalletPurchase = async (ctx, productId, durationId, lang) => {
           text: buttonLabel('back', t(lang, 'رجوع', 'Back')),
           callback_data: 'main_menu',
           style: 'danger',
-          icon_custom_emoji_id: buttonEmojiId('danger')
+          icon_custom_emoji_id: buttonEmojiId('back')
         }]])
       }
-    ).catch(console.error);
+    );
   }
 };
 

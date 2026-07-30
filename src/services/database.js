@@ -41,7 +41,7 @@ const seedDefaults = async () => {
   const defaults = [
     { key: 'bot_name', value: 'Digital Keys Store', description: 'Bot display name' },
     { key: 'bot_username', value: 'your_bot', description: 'Bot username' },
-    { key: 'welcome_message', value: '👋 أهلاً {name}!\n\n🛒 مرحباً بك في متجر مفاتيح الباندل الرقمية 🔑\n\n🔥 مخزون حي\n⚡ تسليم فوري', description: 'Welcome message' },
+    { key: 'welcome_message', value: 'أهلاً {name}!\n\nمتجر ألعاب رقمي بمخزون حي وتسليم فوري.', description: 'Welcome message' },
     { key: 'maintenance_mode', value: false, description: 'Maintenance mode toggle' },
     { key: 'maintenance_message', value: '🔧 الموقع تحت الصيانة، يرجى المحاولة لاحقاً', description: 'Maintenance message' },
     { key: 'support_username', value: 'support', description: 'Support username' },
@@ -76,24 +76,25 @@ const seedDefaults = async () => {
     {
       key: 'ui_home_highlights',
       value: [
-        { icon: '⚡', textAr: 'تسليم فوري بعد تأكيد الدفع', textEn: 'Instant delivery right after payment confirmation' },
-        { icon: '🛡️', textAr: 'واجهة مرتبة وتجربة احترافية', textEn: 'Organized interface with a premium experience' },
-        { icon: '🎯', textAr: 'إدارة كاملة للمخزون والطلبات', textEn: 'Complete control over stock and orders' }
+        { id: 'instant', emojiKey: 'bolt', textAr: 'تسليم فوري بعد تأكيد الدفع', textEn: 'Instant delivery right after payment confirmation' },
+        { id: 'safe', emojiKey: 'shield', textAr: 'واجهة مرتبة وتجربة احترافية', textEn: 'Organized interface with a premium experience' },
+        { id: 'games', emojiKey: 'target', textAr: 'إدارة كاملة للمخزون والطلبات', textEn: 'Complete control over stock and orders' }
       ],
       description: 'Highlights shown across bot and mini app'
     },
     {
       key: 'bot_quick_links',
       value: [
-        { id: 'shop', icon: '🛍️', textAr: 'تصفح المنتجات', textEn: 'Browse Products', type: 'callback', value: 'shop', row: 1, visibility: 'all' },
-        { id: 'keys', icon: '🗂️', textAr: 'مفاتيحي', textEn: 'My Keys', type: 'callback', value: 'mykeys', row: 1, visibility: 'all' },
-        { id: 'history', icon: '🧾', textAr: 'طلباتي', textEn: 'My Orders', type: 'callback', value: 'history', row: 2, visibility: 'all' },
-        { id: 'profile', icon: '👤', textAr: 'حسابي', textEn: 'Profile', type: 'callback', value: 'profile', row: 2, visibility: 'all' },
-        { id: 'balance', icon: '💳', textAr: 'شحن الرصيد', textEn: 'Top Up Balance', type: 'callback', value: 'addbalance', row: 3, visibility: 'all' },
-        { id: 'help', icon: '🆘', textAr: 'الدعم والمساعدة', textEn: 'Help & Support', type: 'callback', value: 'help', row: 3, visibility: 'all' },
-        { id: 'customer_app', icon: '📱', textAr: 'فتح المتجر', textEn: 'Open Store', type: 'webapp', value: '/customer', row: 4, visibility: 'all' },
-        { id: 'support', icon: '💬', textAr: 'التواصل مع الدعم', textEn: 'Contact Support', type: 'url', value: 'https://t.me/{support}', row: 4, visibility: 'all' },
-        { id: 'channel', icon: '📣', textAr: 'القناة الرسمية', textEn: 'Official Channel', type: 'url', value: 'https://t.me/{channel}', row: 5, visibility: 'all' }
+        { id: 'shop', emojiKey: 'gamepad', textAr: 'تصفح الألعاب', textEn: 'Browse Games', type: 'callback', value: 'shop', row: 1, visibility: 'all', style: 'primary' },
+        { id: 'keys', emojiKey: 'key', textAr: 'مفاتيحي', textEn: 'My Keys', type: 'callback', value: 'mykeys', row: 1, visibility: 'all', style: 'success' },
+        { id: 'history', emojiKey: 'orders', textAr: 'طلباتي', textEn: 'My Orders', type: 'callback', value: 'history', row: 2, visibility: 'all', style: 'success' },
+        { id: 'profile', emojiKey: 'profile', textAr: 'حسابي', textEn: 'Profile', type: 'callback', value: 'profile', row: 2, visibility: 'all', style: 'primary' },
+        { id: 'balance', emojiKey: 'wallet', textAr: 'شحن الرصيد', textEn: 'Top Up Balance', type: 'callback', value: 'addbalance', row: 3, visibility: 'all', style: 'success' },
+        { id: 'help', emojiKey: 'support', textAr: 'الدعم والمساعدة', textEn: 'Help & Support', type: 'callback', value: 'help', row: 3, visibility: 'all', style: 'danger' },
+        { id: 'customer_app', emojiKey: 'mobile', textAr: 'فتح المتجر', textEn: 'Open Store', type: 'webapp', value: '/customer', row: 4, visibility: 'all', style: 'primary' },
+        { id: 'support', emojiKey: 'chat', textAr: 'التواصل مع الدعم', textEn: 'Contact Support', type: 'url', value: 'https://t.me/{support}', row: 4, visibility: 'all', style: 'danger' },
+        { id: 'language', emojiKey: 'globe', textAr: 'English', textEn: 'العربية', type: 'callback', value: 'language', row: 5, visibility: 'all', style: 'primary' },
+        { id: 'channel', emojiKey: 'megaphone', textAr: 'القناة الرسمية', textEn: 'Official Channel', type: 'url', value: 'https://t.me/{channel}', row: 5, visibility: 'all' }
       ],
       description: 'Configurable bot quick links'
     }
