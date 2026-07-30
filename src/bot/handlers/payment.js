@@ -3,6 +3,7 @@ const Order = require('../../models/Order');
 const Settings = require('../../models/Settings');
 const logger = require('../../utils/logger');
 const { getAdminPortalUrl } = require('../../utils/uiConfig');
+const { emojiHtml, buttonEmojiId, buttonLabel } = require('../../utils/customEmoji');
 
 // ── Helper: get user language ──
 const getLang = (ctx) => ctx.dbUser?.preferredLanguage || 'ar';
@@ -74,11 +75,11 @@ const paymentHandler = async (ctx, next) => {
         : txResult.value;
 
       const msg = (
-        `✅ <b>${t(lang, 'تم استلام إثبات الدفع!', 'Payment Proof Received!')}</b>\n\n` +
-        `📋 ${t(lang, 'رقم الطلب', 'Order #')}: <code>${pendingOrder.orderNumber}</code>\n` +
-        `🔗 ${t(lang, 'النوع', 'Type')}: <b>${typeLabels[txResult.type]}</b>\n` +
-        `🔗 ${t(lang, 'المرجع', 'Reference')}: <code>${shortHash}</code>\n\n` +
-        `⏳ ${t(lang, 'سيتم التحقق وتسليم مفتاحك خلال دقائق', 'Verification and key delivery within minutes')}`
+        `${emojiHtml('checkmark')} <b>${t(lang, 'تم استلام إثبات الدفع!', 'Payment Proof Received!')}</b>\n\n` +
+        `${emojiHtml('orders')} ${t(lang, 'رقم الطلب', 'Order #')}: <code>${pendingOrder.orderNumber}</code>\n` +
+        `${emojiHtml('tag')} ${t(lang, 'النوع', 'Type')}: <b>${typeLabels[txResult.type]}</b>\n` +
+        `${emojiHtml('link')} ${t(lang, 'المرجع', 'Reference')}: <code>${shortHash}</code>\n\n` +
+        `${emojiHtml('clock')} ${t(lang, 'سيتم التحقق وتسليم مفتاحك خلال دقائق', 'Verification and key delivery within minutes')}`
       );
 
       await ctx.reply(msg, { parse_mode: 'HTML' });
@@ -88,20 +89,22 @@ const paymentHandler = async (ctx, next) => {
       const notifyOnPayment = await Settings.get('admin_notification_on_payment', true);
 
       if (notifyOnPayment) {
+        const orderIcon = buttonEmojiId('admin');
+        const userIcon = buttonEmojiId('profile');
         const portalButtons = Markup.inlineKeyboard([
-          [Markup.button.webApp('👑 ' + t(lang, 'فتح الطلب في لوحة التحكم', 'Open order in admin portal'), getAdminPortalUrl('orders', { search: pendingOrder.orderNumber }))],
-          [Markup.button.webApp('👤 ' + t(lang, 'ملف المستخدم', 'User profile'), getAdminPortalUrl('users', { search: user.telegramId }))]
+          [{ text: buttonLabel('admin', t(lang, 'فتح الطلب في لوحة التحكم', 'Open order in admin portal'), { emojiId: orderIcon }), web_app: { url: getAdminPortalUrl('orders', { search: pendingOrder.orderNumber }), ...(orderIcon ? { icon_custom_emoji_id: orderIcon } : {}) } }],
+          [{ text: buttonLabel('profile', t(lang, 'ملف المستخدم', 'User profile'), { emojiId: userIcon }), web_app: { url: getAdminPortalUrl('users', { search: user.telegramId }), ...(userIcon ? { icon_custom_emoji_id: userIcon } : {}) } }]
         ]);
 
         for (const adminId of adminIds) {
           await ctx.telegram.sendMessage(adminId,
-            `💳 <b>${t(lang, 'إثبات دفع جديد!', 'New Payment Proof!')}</b>\n\n` +
-            `👤 ${t(lang, 'المستخدم', 'User')}: ${user.fullName} (@${user.username || 'N/A'})\n` +
-            `🆔 ID: ${user.telegramId}\n` +
-            `📦 ${t(lang, 'الطلب', 'Order')}: ${pendingOrder.productName} - ${pendingOrder.durationName}\n` +
-            `💰 ${t(lang, 'المبلغ', 'Amount')}: $${pendingOrder.finalPrice.toFixed(2)}\n` +
-            `🔗 ${t(lang, 'النوع', 'Type')}: ${typeLabels[txResult.type]}\n` +
-            `🔗 TxHash: <code>${txResult.value}</code>\n\n` +
+            `${emojiHtml('creditcard')} <b>${t(lang, 'إثبات دفع جديد!', 'New Payment Proof!')}</b>\n\n` +
+            `${emojiHtml('profile')} ${t(lang, 'المستخدم', 'User')}: ${user.fullName} (@${user.username || 'N/A'})\n` +
+            `${emojiHtml('admin')} ID: ${user.telegramId}\n` +
+            `${emojiHtml('box')} ${t(lang, 'الطلب', 'Order')}: ${pendingOrder.productName} - ${pendingOrder.durationName}\n` +
+            `${emojiHtml('coin')} ${t(lang, 'المبلغ', 'Amount')}: $${pendingOrder.finalPrice.toFixed(2)}\n` +
+            `${emojiHtml('tag')} ${t(lang, 'النوع', 'Type')}: ${typeLabels[txResult.type]}\n` +
+            `${emojiHtml('link')} TxHash: <code>${txResult.value}</code>\n\n` +
             `${t(lang, 'كل إجراءات الإدارة أصبحت داخل لوحة التحكم.', 'All admin actions are now handled inside the admin portal.')}`,
             { parse_mode: 'HTML', ...portalButtons }
           ).catch(() => {});

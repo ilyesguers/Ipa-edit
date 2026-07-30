@@ -29,14 +29,25 @@ router.get('/me', async (req, res) => {
   });
 });
 
-// Update profile
+// Update profile preferences. Only supplied, validated fields are changed so a
+// language toggle never accidentally clears another profile property.
 router.put('/me', async (req, res) => {
   try {
-    const { preferredLanguage, notificationsEnabled } = req.body;
+    const updates = {};
+    if (req.body.preferredLanguage !== undefined) {
+      const language = String(req.body.preferredLanguage).toLowerCase();
+      if (!['ar', 'en'].includes(language)) {
+        return res.status(400).json({ success: false, error: 'Unsupported language' });
+      }
+      updates.preferredLanguage = language;
+    }
+    if (req.body.notificationsEnabled !== undefined) {
+      updates.notificationsEnabled = Boolean(req.body.notificationsEnabled);
+    }
     const user = await User.findOneAndUpdate(
       { telegramId: req.telegramId },
-      { preferredLanguage, notificationsEnabled },
-      { new: true }
+      { $set: updates },
+      { new: true, runValidators: true }
     );
     res.json({ success: true, data: user });
   } catch (err) {

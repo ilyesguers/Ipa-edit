@@ -1,5 +1,5 @@
 const Settings = require('../models/Settings');
-const { buttonEmojiId, emojiHtml } = require('./customEmoji');
+const { buttonEmojiId, buttonLabel } = require('./customEmoji');
 
 const THEME_PRESETS = {
   aurora: {
@@ -54,22 +54,26 @@ const THEME_PRESETS = {
   }
 };
 
+// These are semantic emoji keys, not loose unicode copied into every screen.
+// The bot renderer turns them into working premium icons and has a unicode fallback.
 const DEFAULT_HIGHLIGHTS = [
-  { icon: '⚡', textAr: 'تسليم فوري بعد تأكيد الدفع', textEn: 'Instant delivery right after payment confirmation' },
-  { icon: '🛡️', textAr: 'واجهة مرتبة وتجربة احترافية', textEn: 'Organized interface with a premium experience' },
-  { icon: '🎯', textAr: 'إدارة كاملة للمخزون والطلبات', textEn: 'Complete control over stock and orders' }
+  { id: 'instant', emojiKey: 'bolt', textAr: 'تسليم فوري بعد تأكيد الدفع', textEn: 'Instant delivery right after payment confirmation' },
+  { id: 'safe', emojiKey: 'shield', textAr: 'واجهة مرتبة وتجربة احترافية', textEn: 'Organized interface with a premium experience' },
+  { id: 'games', emojiKey: 'target', textAr: 'إدارة كاملة للمخزون والطلبات', textEn: 'Complete control over stock and orders' }
 ];
 
+// One compact inline keyboard. Do not add another reply keyboard on top of it.
 const DEFAULT_QUICK_LINKS = [
-  { id: 'shop', icon: '🛍️', textAr: 'تصفح المنتجات', textEn: 'Browse Products', type: 'callback', value: 'shop', row: 1, visibility: 'all', style: 'primary' },
-  { id: 'keys', icon: '🔑', textAr: 'مفاتيحي', textEn: 'My Keys', type: 'callback', value: 'mykeys', row: 1, visibility: 'all', style: 'success' },
-  { id: 'history', icon: '📋', textAr: 'طلباتي', textEn: 'My Orders', type: 'callback', value: 'history', row: 2, visibility: 'all' },
-  { id: 'profile', icon: '👤', textAr: 'حسابي', textEn: 'Profile', type: 'callback', value: 'profile', row: 2, visibility: 'all', style: 'success' },
-  { id: 'balance', icon: '💰', textAr: 'شحن الرصيد', textEn: 'Top Up Balance', type: 'callback', value: 'addbalance', row: 3, visibility: 'all', style: 'success' },
-  { id: 'help', icon: '🆘', textAr: 'الدعم والمساعدة', textEn: 'Help & Support', type: 'callback', value: 'help', row: 3, visibility: 'all', style: 'danger' },
-  { id: 'customer_app', icon: '🛒', textAr: 'فتح المتجر', textEn: 'Open Store', type: 'webapp', value: '/customer', row: 4, visibility: 'all', style: 'primary' },
-  { id: 'support', icon: '💬', textAr: 'التواصل مع الدعم', textEn: 'Contact Support', type: 'url', value: 'https://t.me/{support}', row: 4, visibility: 'all', style: 'danger' },
-  { id: 'channel', icon: '📣', textAr: 'القناة الرسمية', textEn: 'Official Channel', type: 'url', value: 'https://t.me/{channel}', row: 5, visibility: 'all' }
+  { id: 'shop', emojiKey: 'gamepad', textAr: 'تصفح الألعاب', textEn: 'Browse Games', type: 'callback', value: 'shop', row: 1, visibility: 'all', style: 'primary' },
+  { id: 'keys', emojiKey: 'key', textAr: 'مفاتيحي', textEn: 'My Keys', type: 'callback', value: 'mykeys', row: 1, visibility: 'all', style: 'success' },
+  { id: 'history', emojiKey: 'orders', textAr: 'طلباتي', textEn: 'My Orders', type: 'callback', value: 'history', row: 2, visibility: 'all', style: 'success' },
+  { id: 'profile', emojiKey: 'profile', textAr: 'حسابي', textEn: 'Profile', type: 'callback', value: 'profile', row: 2, visibility: 'all', style: 'primary' },
+  { id: 'balance', emojiKey: 'wallet', textAr: 'شحن الرصيد', textEn: 'Top Up Balance', type: 'callback', value: 'addbalance', row: 3, visibility: 'all', style: 'success' },
+  { id: 'help', emojiKey: 'support', textAr: 'الدعم والمساعدة', textEn: 'Help & Support', type: 'callback', value: 'help', row: 3, visibility: 'all', style: 'danger' },
+  { id: 'customer_app', emojiKey: 'mobile', textAr: 'فتح المتجر', textEn: 'Open Store', type: 'webapp', value: '/customer', row: 4, visibility: 'all', style: 'primary' },
+  { id: 'support', emojiKey: 'chat', textAr: 'التواصل مع الدعم', textEn: 'Contact Support', type: 'url', value: 'https://t.me/{support}', row: 4, visibility: 'all', style: 'danger' },
+  { id: 'language', emojiKey: 'globe', textAr: 'English', textEn: 'العربية', type: 'callback', value: 'language', row: 5, visibility: 'all', style: 'primary' },
+  { id: 'channel', emojiKey: 'megaphone', textAr: 'القناة الرسمية', textEn: 'Official Channel', type: 'url', value: 'https://t.me/{channel}', row: 5, visibility: 'all' }
 ];
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -87,14 +91,23 @@ const parseJsonSetting = (value, fallback) => {
   return clone(fallback);
 };
 
+const LEGACY_ICON_KEYS = {
+  '🛍️': 'gamepad', '🗂️': 'gamepad', '🔑': 'key', '📋': 'orders', '🧾': 'orders', '👤': 'profile',
+  '💰': 'wallet', '💳': 'wallet', '🆘': 'support', '📱': 'mobile', '🛒': 'shopping', '💬': 'chat',
+  '📣': 'megaphone', '🌍': 'globe'
+};
+
 const normalizeQuickLinks = (value) => {
   const parsed = parseJsonSetting(value, DEFAULT_QUICK_LINKS);
   if (!Array.isArray(parsed) || !parsed.length) return clone(DEFAULT_QUICK_LINKS);
 
-  return parsed
+  const seen = new Set();
+  const normalized = parsed
     .map((item, index) => ({
       id: item.id || `link_${index + 1}`,
-      icon: item.icon || '✨',
+      emojiKey: item.emojiKey || item.iconKey || LEGACY_ICON_KEYS[item.icon] || 'gamepad',
+      // Keep old saved settings readable while the new renderer owns the icon.
+      icon: item.icon || '',
       textAr: item.textAr || item.text || 'زر',
       textEn: item.textEn || item.text || 'Button',
       type: ['callback', 'webapp', 'url'].includes(item.type) ? item.type : 'callback',
@@ -103,7 +116,20 @@ const normalizeQuickLinks = (value) => {
       visibility: ['all', 'admin'].includes(item.visibility) ? item.visibility : 'all',
       style: ['primary', 'success', 'danger'].includes(item.style) ? item.style : null
     }))
+    .filter((item) => {
+      const signature = `${item.type}:${item.value}:${item.textAr}:${item.textEn}`;
+      if (seen.has(signature)) return false;
+      seen.add(signature);
+      return true;
+    })
     .sort((a, b) => a.row - b.row);
+
+  // Older databases predate the language action. Add it during normalization
+  // so translation is available without a manual migration.
+  if (!normalized.some((item) => item.id === 'language')) {
+    normalized.push(clone(DEFAULT_QUICK_LINKS.find((item) => item.id === 'language')));
+  }
+  return normalized.sort((a, b) => a.row - b.row);
 };
 
 const normalizeHighlights = (value) => {
@@ -112,7 +138,9 @@ const normalizeHighlights = (value) => {
 
   return parsed.map((item, index) => ({
     id: item.id || `highlight_${index + 1}`,
-    icon: item.icon || '✨',
+    emojiKey: item.emojiKey || item.iconKey || 'sparkle',
+    // `icon` remains for old admin data but is no longer rendered by the bot.
+    icon: item.icon || '',
     textAr: item.textAr || item.text || 'ميزة',
     textEn: item.textEn || item.text || 'Highlight'
   }));
@@ -232,13 +260,16 @@ const buildBotInlineKeyboard = ({ Markup, lang = 'ar', isAdmin = false, quickLin
   const rows = groupRows(visibleLinks)
     .map((row) => row
       .map((item) => {
-        const text = `${item.icon || '✨'} ${lang === 'en' ? (item.textEn || item.textAr) : (item.textAr || item.textEn)}`;
-        const rawValue = interpolateValue({ value: item.value, baseUrl, supportUsername, channelUsername });
-
-        // Build button with optional style (Telegram Bot API 9.4+)
-        // Styles: 'primary' (blue), 'success' (green), 'danger' (red)
+        const label = lang === 'en' ? (item.textEn || item.textAr) : (item.textAr || item.textEn);
+        const emojiKey = item.emojiKey || 'gamepad';
         const style = ['primary', 'success', 'danger'].includes(item.style) ? item.style : undefined;
-        const buttonExtra = style ? { style, icon_custom_emoji_id: buttonEmojiId(style) } : {};
+        const emojiId = buttonEmojiId(emojiKey) || (style && buttonEmojiId(style));
+        const text = buttonLabel(emojiKey, label, { emojiId, hasIcon: Boolean(emojiId) });
+        const buttonExtra = emojiId ? { icon_custom_emoji_id: emojiId } : {};
+        // Button colors are a progressive enhancement; Telegram clients that do
+        // not understand them still receive the same single inline keyboard.
+        if (style) buttonExtra.style = style;
+        const rawValue = interpolateValue({ value: item.value, baseUrl, supportUsername, channelUsername });
 
         if (item.type === 'url') {
           if (rawValue.includes('{channel}') || rawValue.endsWith('/')) return null;
@@ -256,13 +287,15 @@ const buildBotInlineKeyboard = ({ Markup, lang = 'ar', isAdmin = false, quickLin
       .filter(Boolean))
     .filter((row) => row.length > 0);
 
-  if (isAdmin) {
+  if (isAdmin && !rows.flat().some((button) => button.web_app?.url?.includes('/admin'))) {
+    const emojiKey = 'admin';
+    const emojiId = buttonEmojiId(emojiKey) || buttonEmojiId('primary');
     rows.push([
       {
-        text: `👑 ${lang === 'en' ? adminPortalLabel.en : adminPortalLabel.ar}`,
+        text: buttonLabel(emojiKey, lang === 'en' ? adminPortalLabel.en : adminPortalLabel.ar, { emojiId }),
         web_app: { url: getAdminPortalUrl('dashboard') },
         style: 'primary',
-        icon_custom_emoji_id: buttonEmojiId('primary')
+        ...(emojiId ? { icon_custom_emoji_id: emojiId } : {})
       }
     ]);
   }

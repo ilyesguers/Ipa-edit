@@ -5,6 +5,7 @@ const logger = require('../../utils/logger');
 const { Markup } = require('telegraf');
 const { createCaptcha } = require('../../utils/captcha');
 const { emojiHtml, buttonEmojiId, buttonLabel } = require('../../utils/customEmoji');
+const { removeRememberedMenu, rememberMenu } = require('../../utils/menuMessage');
 
 const buildWelcomeMessage = async (user, lang = 'ar') => {
   const ui = await getUiSettings();
@@ -18,7 +19,7 @@ const buildWelcomeMessage = async (user, lang = 'ar') => {
   const customMessage = (ui.welcomeMessage || '').trim();
 
   const highlightLines = highlights
-    .map((item) => `${item.icon} ${locale === 'en' ? item.textEn : item.textAr}`)
+    .map((item) => `${emojiHtml(item.emojiKey || 'sparkle')} ${locale === 'en' ? item.textEn : item.textAr}`)
     .join('\n');
 
   const statsLine = locale === 'en'
@@ -121,19 +122,26 @@ const startHandler = async (ctx) => {
     const { ui, caption } = await buildWelcomeMessage(user, lang);
     const inlineKeyboard = await mainKeyboard(lang, ctx.isAdmin);
 
-    await ctx.replyWithPhoto(
-      { url: `${process.env.BASE_URL}/public/banner.png` },
-      {
-        caption,
-        parse_mode: 'HTML',
-        ...inlineKeyboard
-      }
-    ).catch(async () => {
-      await ctx.reply(caption, {
+    // `/start` is allowed to reopen the menu, but never to stack a second
+    // keyboard on top of the first one.
+    await removeRememberedMenu(ctx);
+    let menuMessage;
+    try {
+      menuMessage = await ctx.replyWithPhoto(
+        { url: `${process.env.BASE_URL}/public/banner.png` },
+        {
+          caption,
+          parse_mode: 'HTML',
+          ...inlineKeyboard
+        }
+      );
+    } catch (_) {
+      menuMessage = await ctx.reply(caption, {
         parse_mode: 'HTML',
         ...inlineKeyboard
       });
-    });
+    }
+    rememberMenu(ctx, menuMessage);
 
     // Single inline keyboard only - no duplicate reply keyboard
     const adminIds = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim())).filter(Boolean);

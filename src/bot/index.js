@@ -34,7 +34,7 @@ const createBot = (io) => {
     try {
       return await originalCallApi(method, payload, ...rest);
     } catch (err) {
-      if (!isPremiumEmojiError(err) || !payload || typeof payload !== 'object') throw err;
+      if (!isPremiumEmojiError(err, payload) || !payload || typeof payload !== 'object') throw err;
 
       logger.warn(`⚠️ [${method}] premium emoji rejected — retrying without premium emoji.`);
       const clean = { ...payload };
@@ -66,6 +66,7 @@ const createBot = (io) => {
           firstName: ctx.from.first_name || '',
           lastName: ctx.from.last_name || '',
           languageCode: ctx.from.language_code || 'ar',
+          preferredLanguage: String(ctx.from.language_code || '').toLowerCase().startsWith('en') ? 'en' : 'ar',
           role: isAdmin ? 'admin' : 'customer'
         });
         logger.info(`🆕 New user: ${user.fullName} (${telegramId})`);

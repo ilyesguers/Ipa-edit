@@ -37,17 +37,6 @@
 <body>
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
-  
-  <!-- Keyboard dismiss helper: tap anywhere to close keyboard -->
-  <script>
-    document.addEventListener('click', function(e) {
-      // If clicking on a non-input element, blur active element to close keyboard
-      if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT') {
-        if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
-          document.activeElement.blur();
-        }
-      }
-    });
-  </script>
+
 </body>
 </html>

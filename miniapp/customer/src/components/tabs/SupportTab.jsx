@@ -1,68 +1,15 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import useStore from '../../store/useStore';
+import { t } from '../../i18n';
+import PremiumIcon from '../PremiumIcon';
 
-const faqs = [
-  { q: 'كيف أشتري مفتاحاً؟', a: 'اذهب إلى تبويب "المنتجات"، اختر جهازك ثم اللعبة ثم المنتج وأكمل عملية الدفع.' },
-  { q: 'متى أتلقى مفتاحي؟', a: 'يتم التسليم فورياً بعد تأكيد الدفع.' },
-  { q: 'ما هي طرق الدفع المتاحة؟', a: 'محفظة الرصيد الداخلية، أو الدفع عبر بينانس (USDT TRC20).' },
-  { q: 'هل يمكن استرداد الأموال؟', a: 'يتم البت في طلبات الاسترداد حسب سياسة المتجر. تواصل مع الدعم.' },
-  { q: 'المفتاح لم يعمل ماذا أفعل؟', a: 'تواصل مع فريق الدعم فوراً وأرفق صورة للمشكلة.' },
-];
+const FAQ_KEYS = [['faqBuy', 'faqBuyA'], ['faqDelivery', 'faqDeliveryA'], ['faqPayment', 'faqPaymentA'], ['faqRefund', 'faqRefundA'], ['faqInvalid', 'faqInvalidA']];
 
 export default function SupportTab() {
-  const [openFaq, setOpenFaq] = useState(null);
-  const { publicSettings } = useStore();
-
+  const [openFaq, setOpenFaq] = useState(null); const { publicSettings, locale } = useStore();
   const supportUsername = publicSettings?.support_username || 'support';
-  const supportTitle = publicSettings?.bot_name ? `${publicSettings.bot_name} Support` : 'فريق الدعم';
-  const supportSubtitle = publicSettings?.ui_footer_note_ar || 'متاحون لمساعدتك في أي وقت.';
-
-  return (
-    <div className="p-4 space-y-4">
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-gradient-to-br from-[#1a1a1a] to-[#111] rounded-3xl p-5 border border-[#2a2a2a] text-center">
-        <motion.div animate={{ rotate: [0, 5, -5, 0] }} transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }} className="text-5xl mb-3">
-          🧑‍💻
-        </motion.div>
-        <h2 className="text-xl font-black text-white">{supportTitle}</h2>
-        <p className="text-muted text-sm mt-1">{supportSubtitle}</p>
-        <div className="flex gap-2 mt-3 justify-center">
-          <span className="flex items-center gap-1 text-xs text-neon">
-            <span className="w-2 h-2 rounded-full bg-neon animate-pulse" /> متصل الآن
-          </span>
-        </div>
-      </motion.div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <a href={`https://t.me/${supportUsername}`} target="_blank" rel="noreferrer" className="bg-card border border-border rounded-2xl p-4 flex flex-col items-center gap-2 text-center">
-          <span className="text-3xl">💬</span>
-          <p className="text-sm font-bold text-white">تواصل مباشر</p>
-          <p className="text-xs text-muted">@{supportUsername}</p>
-        </a>
-        <button onClick={() => setOpenFaq(openFaq !== null ? null : 0)} className="bg-card border border-border rounded-2xl p-4 flex flex-col items-center gap-2 text-center">
-          <span className="text-3xl">❓</span>
-          <p className="text-sm font-bold text-white">الأسئلة الشائعة</p>
-          <p className="text-xs text-muted">FAQ</p>
-        </button>
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-1 h-5 bg-[#f0b90b] rounded-full" />
-          <h3 className="font-bold text-white text-sm">أسئلة شائعة</h3>
-        </div>
-        {faqs.map((faq, i) => (
-          <motion.div key={i} className="bg-card border border-border rounded-2xl overflow-hidden">
-            <button onClick={() => setOpenFaq(openFaq === i ? null : i)} className="w-full flex items-center justify-between p-4 text-right">
-              <span className="font-semibold text-white text-sm">{faq.q}</span>
-              <motion.span animate={{ rotate: openFaq === i ? 180 : 0 }} className="text-muted text-xs flex-shrink-0">▼</motion.span>
-            </button>
-            <motion.div initial={false} animate={{ height: openFaq === i ? 'auto' : 0, opacity: openFaq === i ? 1 : 0 }} className="overflow-hidden">
-              <p className="px-4 pb-4 text-sm text-muted leading-relaxed">{faq.a}</p>
-            </motion.div>
-          </motion.div>
-        ))}
-      </div>
-    </div>
-  );
+  const supportTitle = publicSettings?.bot_name ? `${publicSettings.bot_name} ${t(locale, 'support')}` : t(locale, 'supportTeam');
+  const supportSubtitle = locale === 'en' ? (publicSettings?.ui_footer_note_en || 'Ready to help whenever you need us.') : (publicSettings?.ui_footer_note_ar || 'متاحون لمساعدتك في أي وقت.');
+  return <div className="p-4 space-y-4"><motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-gradient-to-br from-[#1a1a1a] to-[#111] rounded-3xl p-5 border border-[#2a2a2a] text-center"><motion.div animate={{ rotate: [0, 5, -5, 0] }} transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }} className="text-neon mb-3"><PremiumIcon name="support" size="3.2rem" /></motion.div><h2 className="text-xl font-black text-white">{supportTitle}</h2><p className="text-muted text-sm mt-1">{supportSubtitle}</p><span className="inline-flex items-center gap-1 mt-3 text-xs text-neon"><span className="w-2 h-2 rounded-full bg-neon animate-pulse" /> {t(locale, 'availableNow')}</span></motion.div><div className="grid grid-cols-2 gap-3"><a href={`https://t.me/${supportUsername}`} target="_blank" rel="noreferrer" className="bg-card border border-border rounded-2xl p-4 flex flex-col items-center gap-2 text-center"><PremiumIcon name="chat" size="1.8rem" className="text-neon" /><p className="text-sm font-bold text-white">{t(locale, 'directContact')}</p><p className="text-xs text-muted">@{supportUsername}</p></a><button type="button" onClick={() => setOpenFaq(openFaq === null ? 0 : null)} className="bg-card border border-border rounded-2xl p-4 flex flex-col items-center gap-2 text-center"><PremiumIcon name="help" size="1.8rem" className="text-purple-300" /><p className="text-sm font-bold text-white">{t(locale, 'faq')}</p><p className="text-xs text-muted">FAQ</p></button></div><div className="space-y-2"><div className="section-heading"><PremiumIcon name="help" /><h3>{t(locale, 'faqTitle')}</h3></div>{FAQ_KEYS.map(([question, answer], index) => <motion.div key={question} className="bg-card border border-border rounded-2xl overflow-hidden"><button type="button" onClick={() => setOpenFaq(openFaq === index ? null : index)} className="w-full flex items-center justify-between p-4 text-right"><span className="font-semibold text-white text-sm">{t(locale, question)}</span><motion.span animate={{ rotate: openFaq === index ? 180 : 0 }} className="text-muted"><PremiumIcon name="down" /></motion.span></button><motion.div initial={false} animate={{ height: openFaq === index ? 'auto' : 0, opacity: openFaq === index ? 1 : 0 }} className="overflow-hidden"><p className="px-4 pb-4 text-sm text-muted leading-relaxed">{t(locale, answer)}</p></motion.div></motion.div>)}</div></div>;
 }
