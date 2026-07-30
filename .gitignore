@@ -1,0 +1,9 @@
+node_modules/
+.env
+*.log
+uploads/
+miniapp/admin/node_modules/
+miniapp/customer/node_modules/
+miniapp/admin/dist/
+miniapp/customer/dist/
+.DS_Store
