@@ -60,14 +60,14 @@ const DEFAULT_HIGHLIGHTS = [
 ];
 
 const DEFAULT_QUICK_LINKS = [
-  { id: 'shop', icon: '🛍️', textAr: 'تصفح المنتجات', textEn: 'Browse Products', type: 'callback', value: 'shop', row: 1, visibility: 'all' },
-  { id: 'keys', icon: '🔑', textAr: 'مفاتيحي', textEn: 'My Keys', type: 'callback', value: 'mykeys', row: 1, visibility: 'all' },
+  { id: 'shop', icon: '🛍️', textAr: 'تصفح المنتجات', textEn: 'Browse Products', type: 'callback', value: 'shop', row: 1, visibility: 'all', style: 'primary' },
+  { id: 'keys', icon: '🔑', textAr: 'مفاتيحي', textEn: 'My Keys', type: 'callback', value: 'mykeys', row: 1, visibility: 'all', style: 'success' },
   { id: 'history', icon: '📋', textAr: 'طلباتي', textEn: 'My Orders', type: 'callback', value: 'history', row: 2, visibility: 'all' },
-  { id: 'profile', icon: '👤', textAr: 'حسابي', textEn: 'Profile', type: 'callback', value: 'profile', row: 2, visibility: 'all' },
-  { id: 'balance', icon: '💰', textAr: 'شحن الرصيد', textEn: 'Top Up Balance', type: 'callback', value: 'addbalance', row: 3, visibility: 'all' },
-  { id: 'help', icon: '🆘', textAr: 'الدعم والمساعدة', textEn: 'Help & Support', type: 'callback', value: 'help', row: 3, visibility: 'all' },
-  { id: 'customer_app', icon: '🛒', textAr: 'فتح المتجر', textEn: 'Open Store', type: 'webapp', value: '/customer', row: 4, visibility: 'all' },
-  { id: 'support', icon: '💬', textAr: 'التواصل مع الدعم', textEn: 'Contact Support', type: 'url', value: 'https://t.me/{support}', row: 4, visibility: 'all' },
+  { id: 'profile', icon: '👤', textAr: 'حسابي', textEn: 'Profile', type: 'callback', value: 'profile', row: 2, visibility: 'all', style: 'success' },
+  { id: 'balance', icon: '💰', textAr: 'شحن الرصيد', textEn: 'Top Up Balance', type: 'callback', value: 'addbalance', row: 3, visibility: 'all', style: 'success' },
+  { id: 'help', icon: '🆘', textAr: 'الدعم والمساعدة', textEn: 'Help & Support', type: 'callback', value: 'help', row: 3, visibility: 'all', style: 'danger' },
+  { id: 'customer_app', icon: '🛒', textAr: 'فتح المتجر', textEn: 'Open Store', type: 'webapp', value: '/customer', row: 4, visibility: 'all', style: 'primary' },
+  { id: 'support', icon: '💬', textAr: 'التواصل مع الدعم', textEn: 'Contact Support', type: 'url', value: 'https://t.me/{support}', row: 4, visibility: 'all', style: 'danger' },
   { id: 'channel', icon: '📣', textAr: 'القناة الرسمية', textEn: 'Official Channel', type: 'url', value: 'https://t.me/{channel}', row: 5, visibility: 'all' }
 ];
 
@@ -99,7 +99,8 @@ const normalizeQuickLinks = (value) => {
       type: ['callback', 'webapp', 'url'].includes(item.type) ? item.type : 'callback',
       value: item.value || 'shop',
       row: Number(item.row) > 0 ? Number(item.row) : 1,
-      visibility: ['all', 'admin'].includes(item.visibility) ? item.visibility : 'all'
+      visibility: ['all', 'admin'].includes(item.visibility) ? item.visibility : 'all',
+      style: ['primary', 'success', 'danger'].includes(item.style) ? item.style : null
     }))
     .sort((a, b) => a.row - b.row);
 };
@@ -233,28 +234,34 @@ const buildBotInlineKeyboard = ({ Markup, lang = 'ar', isAdmin = false, quickLin
         const text = `${item.icon || '✨'} ${lang === 'en' ? (item.textEn || item.textAr) : (item.textAr || item.textEn)}`;
         const rawValue = interpolateValue({ value: item.value, baseUrl, supportUsername, channelUsername });
 
+        // Build button with optional style (Telegram Bot API 9.4+)
+        // Styles: 'primary' (blue), 'success' (green), 'danger' (red)
+        const style = ['primary', 'success', 'danger'].includes(item.style) ? item.style : undefined;
+        const buttonExtra = style ? { style } : {};
+
         if (item.type === 'url') {
           if (rawValue.includes('{channel}') || rawValue.endsWith('/')) return null;
-          return Markup.button.url(text, withProtocol(rawValue));
+          return { text, url: withProtocol(rawValue), ...buttonExtra };
         }
 
         if (item.type === 'webapp') {
           const target = buildAbsoluteUrl(baseUrl, rawValue);
           if (!target) return null;
-          return Markup.button.webApp(text, target);
+          return { text, web_app: { url: target }, ...buttonExtra };
         }
 
-        return Markup.button.callback(text, rawValue || 'main_menu');
+        return { text, callback_data: rawValue || 'main_menu', ...buttonExtra };
       })
       .filter(Boolean))
     .filter((row) => row.length > 0);
 
   if (isAdmin) {
     rows.push([
-      Markup.button.webApp(
-        `👑 ${lang === 'en' ? adminPortalLabel.en : adminPortalLabel.ar}`,
-        getAdminPortalUrl('dashboard')
-      )
+      {
+        text: `👑 ${lang === 'en' ? adminPortalLabel.en : adminPortalLabel.ar}`,
+        web_app: { url: getAdminPortalUrl('dashboard') },
+        style: 'primary'
+      }
     ]);
   }
 

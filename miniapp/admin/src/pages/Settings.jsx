@@ -11,7 +11,7 @@ const THEME_PRESETS = [
   { id: 'midnight', icon: '🌙', title: 'Midnight 🌙', desc: 'أخضر + بنفسجي', gradient: 'from-emerald-500/20 to-violet-500/10' },
 ];
 
-const EMPTY_LINK = { id: '', icon: '✨', textAr: '', textEn: '', type: 'callback', value: '', row: 1, visibility: 'all' };
+const EMPTY_LINK = { id: '', icon: '✨', textAr: '', textEn: '', type: 'callback', value: '', row: 1, visibility: 'all', style: '' };
 const EMPTY_HIGHLIGHT = { id: '', icon: '⚡', textAr: '', textEn: '' };
 
 const TABS = [
@@ -248,7 +248,7 @@ export default function Settings() {
             </button>
           </div>
 
-          <div className="grid gap-2 xl:grid-cols-[90px_1fr_1fr_120px_1fr_90px_120px_auto]">
+          <div className="grid gap-2 xl:grid-cols-[90px_1fr_1fr_120px_1fr_90px_120px_90px_auto]">
             <input value={quickLinkDraft.icon} onChange={(e) => setQuickLinkDraft((s) => ({ ...s, icon: e.target.value }))} className="input-admin" placeholder="✨" />
             <input value={quickLinkDraft.textAr} onChange={(e) => setQuickLinkDraft((s) => ({ ...s, textAr: e.target.value }))} className="input-admin" placeholder="النص العربي" />
             <input value={quickLinkDraft.textEn} onChange={(e) => setQuickLinkDraft((s) => ({ ...s, textEn: e.target.value }))} className="input-admin" placeholder="English label" />
@@ -262,6 +262,12 @@ export default function Settings() {
             <select value={quickLinkDraft.visibility} onChange={(e) => setQuickLinkDraft((s) => ({ ...s, visibility: e.target.value }))} className="input-admin">
               <option value="all">للجميع</option>
               <option value="admin">للإدارة فقط</option>
+            </select>
+            <select value={quickLinkDraft.style || ''} onChange={(e) => setQuickLinkDraft((s) => ({ ...s, style: e.target.value }))} className="input-admin">
+              <option value="">عادي</option>
+              <option value="primary">🔵 أزرق</option>
+              <option value="success">🟢 أخضر</option>
+              <option value="danger">🔴 أحمر</option>
             </select>
             <button onClick={addQuickLink} className="success-btn text-xs px-4">إضافة</button>
           </div>
@@ -279,7 +285,7 @@ export default function Settings() {
                   </div>
                   <button onClick={() => removeQuickLink(item.id)} className="danger-btn text-xs px-3 py-1.5">حذف</button>
                 </div>
-                <div className="grid gap-2 xl:grid-cols-[90px_1fr_1fr_120px_1fr_90px_120px]">
+                <div className="grid gap-2 xl:grid-cols-[90px_1fr_1fr_120px_1fr_90px_120px_90px]">
                   <input value={item.icon || ''} onChange={(e) => patchQuickLink(item.id, 'icon', e.target.value)} className="input-admin" />
                   <input value={item.textAr || ''} onChange={(e) => patchQuickLink(item.id, 'textAr', e.target.value)} className="input-admin" />
                   <input value={item.textEn || ''} onChange={(e) => patchQuickLink(item.id, 'textEn', e.target.value)} className="input-admin" />
@@ -294,6 +300,12 @@ export default function Settings() {
                     <option value="all">للجميع</option>
                     <option value="admin">للإدارة فقط</option>
                   </select>
+                  <select value={item.style || ''} onChange={(e) => patchQuickLink(item.id, 'style', e.target.value)} className="input-admin">
+                    <option value="">عادي</option>
+                    <option value="primary">🔵 أزرق</option>
+                    <option value="success">🟢 أخضر</option>
+                    <option value="danger">🔴 أحمر</option>
+                  </select>
                 </div>
               </div>
             ))}
@@ -306,6 +318,9 @@ export default function Settings() {
               <li>• استخدم <span className="text-neon">callback</span> للقيم الداخلية مثل: <code>shop</code> أو <code>profile</code>.</li>
               <li>• استخدم <span className="text-neon">webapp</span> لصفحات مثل <code>/customer</code> أو <code>/admin#orders</code>.</li>
               <li>• استخدم <span className="text-neon">url</span> للروابط الخارجية، ويمكنك الاستفادة من <code>{'{support}'}</code> و <code>{'{channel}'}</code>.</li>
+              <li>• <span className="text-green-400 font-bold">🟢 أخضر</span> للأفعال الإيجابية (شراء، رصيد، مفاتيحي)</li>
+              <li>• <span className="text-sky-400 font-bold">🔵 أزرق</span> للتنقل الرئيسي (المتجر، الأقسام، فتح المتجر)</li>
+              <li>• <span className="text-red-400 font-bold">🔴 أحمر</span> للأفعال التحذيرية (حذف، رجوع، دعم)</li>
             </ul>
           </div>
         </motion.div>
