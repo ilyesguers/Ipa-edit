@@ -30,25 +30,53 @@ const createBot = (io) => {
 
   const bot = new Telegraf(process.env.BOT_TOKEN);
 
-  // Global premium-emoji safety net
+  // Global premium-emoji safety net.
+  //
+  // IMPORTANT: Telegraf builds a FRESH `Telegram` instance for every update
+  // and hands it to the Context as `ctx.telegram` (see telegraf/lib/telegraf.js
+  // `handleUpdate`: `const tg = new Telegram(this.token, this.telegram.options, ...)`).
+  // That instance is NOT `bot.telegram`. So patching only `bot.telegram`
+  // (the launch instance) never intercepts `ctx.reply` / `ctx.telegram.*`
+  // calls made from handlers — which is exactly where every user-facing send
+  // happens. The result: any message containing premium custom emoji
+  // (`<tg-emoji>` text, or `icon_custom_emoji_id`/`style` on buttons) is
+  // rejected by Telegram with `400 CUSTOM_EMOJI_INVALID`, the handler throws,
+  // and the user sees the generic "💥 Small glitch" error — the bot looks dead.
+  //
+  // Fix: patch the SHARED Telegram prototype ONCE so every instance —
+  // including the per-update one — inherits the automatic premium-emoji
+  // fallback (retry the same request with all premium-only fields stripped).
   const { isPremiumEmojiError, stripKeyboardExtras } = require('../utils/safeSend');
   const { stripPremiumEmoji, emojiHtml, buttonEmojiId, buttonLabel } = require('../utils/customEmoji');
 
-  const originalCallApi = bot.telegram.callApi.bind(bot.telegram);
-  bot.telegram.callApi = async function (method, payload = {}, ...rest) {
-    try {
-      return await originalCallApi(method, payload, ...rest);
-    } catch (err) {
-      if (!isPremiumEmojiError(err, payload) || !payload || typeof payload !== 'object') throw err;
+  const TelegramProto = Object.getPrototypeOf(bot.telegram);
+  if (!Object.getOwnPropertyDescriptor(TelegramProto, '__premiumEmojiSafe')?.value) {
+    const originalCallApi = TelegramProto.callApi; // unbound; re-bound per call below
+    TelegramProto.callApi = async function (method, payload = {}, ...rest) {
+      try {
+        return await originalCallApi.call(this, method, payload, ...rest);
+      } catch (err) {
+        if (!payload || typeof payload !== 'object' || !isPremiumEmojiError(err, payload)) throw err;
 
-      logger.warn(`⚠️ [${method}] premium emoji rejected — retrying without premium emoji.`);
-      const clean = { ...payload };
-      if (typeof clean.text === 'string') clean.text = stripPremiumEmoji(clean.text);
-      if (typeof clean.caption === 'string') clean.caption = stripPremiumEmoji(clean.caption);
-      const scrubbed = stripKeyboardExtras(clean);
-      return originalCallApi(method, scrubbed, ...rest);
-    }
-  };
+        logger.warn(`⚠️ [${method}] premium emoji rejected — retrying without premium emoji.`);
+        let scrubbed;
+        try {
+          const clean = { ...payload };
+          if (typeof clean.text === 'string') clean.text = stripPremiumEmoji(clean.text);
+          if (typeof clean.caption === 'string') clean.caption = stripPremiumEmoji(clean.caption);
+          scrubbed = stripKeyboardExtras(clean);
+        } catch (cleanErr) {
+          logger.error('Failed to strip premium emoji for retry, rethrowing original error:', cleanErr);
+          throw err;
+        }
+        return originalCallApi.call(this, method, scrubbed, ...rest);
+      }
+    };
+    Object.defineProperty(TelegramProto, '__premiumEmojiSafe', {
+      value: true, enumerable: false, configurable: true, writable: true
+    });
+    logger.info('🛡️ Premium-emoji safety net installed on Telegram prototype (covers ctx.telegram)');
+  }
 
   bot.use(session({ defaultSession: () => ({ menuMessageId: null }) }));
 

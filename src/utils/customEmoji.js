@@ -109,7 +109,6 @@ const EMOJI = {
   globe: PREMIUM_IDS.target,
   help: PREMIUM_IDS.fire,
   gift: PREMIUM_IDS.gem,
-  coin: PREMIUM_IDS.coin,
 };
 
 const UNICODE_FALLBACK = {
