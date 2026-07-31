@@ -10,6 +10,7 @@ const Settings = require('../../models/Settings');
 const logger = require('../../utils/logger');
 const { buttonEmojiId, emojiHtml, emojiChar, buttonLabel } = require('../../utils/customEmoji');
 const { editOrReplyMenu } = require('../../utils/menuMessage');
+const { sendGamerError } = require('../../utils/gamerErrors');
 
 const getLang = (ctx) => ctx.dbUser?.preferredLanguage || 'ar';
 const t = (lang, ar, en) => lang === 'en' ? en : ar;
@@ -41,14 +42,14 @@ const callbackHandler = async (ctx) => {
     if (data.startsWith('oos_')) {
       const name = data.replace('oos_', '');
       return ctx.answerCbQuery(
-        t(lang, `💀 "${name}" خلص حالياً - شوف غيره في المتجر 🚀`, `💀 "${name}" out - check store 🚀`),
+        `${emojiHtml('skull')} ${t(lang, `"${name}" خلص حالياً - شوف غيره في المتجر`, `"${name}" out - check store`)}`,
         { show_alert: true }
       );
     }
 
     if (data === 'insufficient_balance') {
       return ctx.answerCbQuery(
-        t(lang, `💸 رصيدك ما يكفي يا أسطورة 😅 اشحن من المتجر`, `💸 Not enough balance legend 😅 Top up in store`),
+        `${emojiHtml('wallet')} ${t(lang, `رصيدك ما يكفي يا أسطورة اشحن من المتجر`, `Not enough balance legend Top up in store`)}`,
         { show_alert: true }
       );
     }
@@ -56,36 +57,36 @@ const callbackHandler = async (ctx) => {
     // Admin routes -> web portal
     const isLegacyAdminRoute = data.startsWith('admin_') || data === 'toggle_maintenance' || data.startsWith('inv_') || data.startsWith('verify_') || data.startsWith('reject_') || data.startsWith('broadcast_');
     if (isLegacyAdminRoute) {
-      if (!ctx.isAdmin) return ctx.answerCbQuery(t(lang, '⛔ ما لك صلاحية 👑', '⛔ No permission 👑'), { show_alert: true });
+      if (!ctx.isAdmin) return ctx.answerCbQuery(`${emojiHtml('skull')} ${t(lang, 'ما لك صلاحية', 'No permission')}`, { show_alert: true });
       return openAdminPortal(ctx, data.includes('orders') ? 'orders' : data.includes('users') ? 'users' : data.includes('inventory') ? 'inventory' : data.includes('broadcast') ? 'broadcast' : data.includes('settings') ? 'settings' : 'dashboard');
     }
 
   } catch (err) {
     logger.error('Callback error:', err);
-    await ctx.answerCbQuery(t(lang, `🔥 صار لاق بسيط، جرب مرة ثانية`, `🔥 Small lag, try again`), { show_alert: true }).catch(() => {});
+    await ctx.answerCbQuery(`${emojiHtml('explosion')} ${t(lang, `صار لاق بسيط، جرب مرة ثانية`, `Small lag, try again`)}`, { show_alert: true }).catch(() => {});
   }
 };
 
 const redirectToWebApp = async (ctx, lang) => {
   const msg = lang === 'en'
-    ? `${emojiHtml('rocket')} <b>NEW UPDATE! 🔥 Everything moved to web store for faster experience!</b>\n\n` +
-      `${emojiHtml('fire')} Hit PLAY NOW below - All games, keys & top-ups inside! 🚀\n\n` +
-      `${emojiHtml('crown')} Faster, smoother, more LEGENDARY! 👑`
-    : `${emojiHtml('rocket')} <b>تحديث جديد! 🔥 كل شي انتقل للمتجر الإلكتروني لسرعة أفضل!</b>\n\n` +
-      `${emojiHtml('fire')} اضغط PLAY NOW تحت - كل الألعاب والمفاتيح والشحنات داخل! 🚀\n\n` +
-      `${emojiHtml('crown')} أسرع، أسلس، وأسطورية أكثر! 👑`;
+    ? `${emojiHtml('rocket')} <b>NEW UPDATE! Everything moved to web store for faster experience!</b>\n\n` +
+      `${emojiHtml('fire')} Hit PLAY NOW below - All games, keys & top-ups inside!\n\n` +
+      `${emojiHtml('crown')} Faster, smoother, more LEGENDARY!`
+    : `${emojiHtml('rocket')} <b>تحديث جديد! كل شي انتقل للمتجر الإلكتروني لسرعة أفضل!</b>\n\n` +
+      `${emojiHtml('fire')} اضغط PLAY NOW تحت - كل الألعاب والمفاتيح والشحنات داخل!\n\n` +
+      `${emojiHtml('crown')} أسرع، أسلس، وأسطورية أكثر!`;
 
   return editOrReplyMenu(ctx, msg, {
     parse_mode: 'HTML',
     ...Markup.inlineKeyboard([
       [{
-        text: buttonLabel('rocket', lang === 'en' ? '🚀 PLAY NOW - OPEN STORE' : '🚀 PLAY NOW - افتح المتجر'),
+        text: buttonLabel('rocket', lang === 'en' ? 'PLAY NOW - OPEN STORE' : 'PLAY NOW - افتح المتجر'),
         web_app: { url: `${process.env.BASE_URL}/customer` },
         style: 'primary',
         icon_custom_emoji_id: buttonEmojiId('rocket')
       }],
       [{
-        text: buttonLabel('ghost', lang === 'en' ? '⬅️ Home' : '⬅️ الرئيسية'),
+        text: buttonLabel('ghost', lang === 'en' ? 'Home' : 'الرئيسية'),
         callback_data: 'main_menu',
         style: 'primary',
         icon_custom_emoji_id: buttonEmojiId('ghost')
@@ -95,6 +96,10 @@ const redirectToWebApp = async (ctx, lang) => {
 };
 
 const handleMainMenu = async (ctx, lang) => {
+  if (!ctx.dbUser) {
+    await ctx.answerCbQuery(`${emojiHtml('skull')} ${t(lang, 'جرب /start أولاً', 'Try /start first')}`, { show_alert: true });
+    return sendGamerError(ctx, 'userNotFound');
+  }
   const { buildWelcomeMessage } = require('./start');
   const { caption } = await buildWelcomeMessage(ctx.dbUser, lang);
   const keyboard = await mainKeyboard(lang, ctx.isAdmin);
@@ -103,12 +108,16 @@ const handleMainMenu = async (ctx, lang) => {
 
 const handleLanguage = async (ctx, lang) => {
   const user = ctx.dbUser;
+  if (!user) {
+    await ctx.answerCbQuery(`${emojiHtml('skull')} ${t(lang, 'جرب /start أولاً', 'Try /start first')}`, { show_alert: true });
+    return sendGamerError(ctx, 'userNotFound');
+  }
   const newLang = user.preferredLanguage === 'ar' ? 'en' : 'ar';
   user.preferredLanguage = newLang;
   await user.save();
 
   const backBtn = [{
-    text: buttonLabel('rocket', newLang === 'ar' ? '🚀 الرئيسية - PLAY NOW' : '🚀 Home - PLAY NOW'),
+    text: buttonLabel('rocket', newLang === 'ar' ? 'الرئيسية - PLAY NOW' : 'Home - PLAY NOW'),
     callback_data: 'main_menu',
     style: 'primary',
     icon_custom_emoji_id: buttonEmojiId('rocket')
@@ -116,8 +125,8 @@ const handleLanguage = async (ctx, lang) => {
 
   return editOrReplyMenu(ctx,
     newLang === 'ar'
-      ? `${emojiHtml('fire')} تم تغيير اللغة إلى العربية 🔥 أهلاً يا أسطورة! 👑`
-      : `${emojiHtml('fire')} Language changed to English 🔥 Welcome legend! 👑`,
+      ? `${emojiHtml('fire')} تم تغيير اللغة إلى العربية أهلاً يا أسطورة!`
+      : `${emojiHtml('fire')} Language changed to English Welcome legend!`,
     { parse_mode: 'HTML', ...Markup.inlineKeyboard([backBtn]) }
   );
 };

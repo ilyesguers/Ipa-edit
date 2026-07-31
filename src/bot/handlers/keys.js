@@ -3,9 +3,14 @@ const Order = require('../../models/Order');
 const { buttonEmojiId, buttonLabel, emojiHtml } = require('../../utils/customEmoji');
 const { editOrReplyMenu } = require('../../utils/menuMessage');
 
+const { sendGamerError } = require('../../utils/gamerErrors');
+
 const keysHandler = async (ctx) => {
   const user = ctx.dbUser;
-  const lang = user?.preferredLanguage || 'ar';
+  if (!user) {
+    return sendGamerError(ctx, 'userNotFound');
+  }
+  const lang = user.preferredLanguage || 'ar';
   const orders = await Order.find({ user: user.telegramId, status: 'completed' }).sort({ createdAt: -1 }).limit(5);
 
   if (!orders.length) {

@@ -3,9 +3,14 @@ const Order = require('../../models/Order');
 const { buttonEmojiId, buttonLabel, emojiHtml } = require('../../utils/customEmoji');
 const { editOrReplyMenu } = require('../../utils/menuMessage');
 
+const { sendGamerError } = require('../../utils/gamerErrors');
+
 const historyHandler = async (ctx, page = 1) => {
   const user = ctx.dbUser;
-  const lang = user?.preferredLanguage || 'ar';
+  if (!user) {
+    return sendGamerError(ctx, 'userNotFound');
+  }
+  const lang = user.preferredLanguage || 'ar';
   const limit = 5;
   const skip = (page - 1) * limit;
   const [orders, total] = await Promise.all([

@@ -10,7 +10,7 @@ const openAdminPortal = async (ctx, page = 'dashboard') => {
   const lang = getLang(ctx);
 
   if (!ctx.isAdmin) {
-    return ctx.reply(t(lang, '⛔ غير مصرح لك بالوصول للوحة التحكم', '⛔ You are not allowed to access the admin portal'));
+    return ctx.reply(`${emojiHtml('skull')} ${t(lang, 'غير مصرح لك بالوصول للوحة التحكم', 'You are not allowed to access the admin portal')}`);
   }
 
   const ui = await getUiSettings();

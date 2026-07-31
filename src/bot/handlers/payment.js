@@ -38,11 +38,20 @@ const detectTxHash = (text) => {
   return null;
 };
 
+const { sendGamerError } = require('../../utils/gamerErrors');
+
 const paymentHandler = async (ctx, next) => {
   if (!ctx.message || !ctx.message.text) return next?.();
 
   const text = ctx.message.text;
   const user = ctx.dbUser;
+  
+  // Check if user is loaded
+  if (!user) {
+    logger.warn('Payment handler called without user data');
+    return next?.();
+  }
+  
   const lang = getLang(ctx);
 
   // ── Detect TxHash or payment reference ──
