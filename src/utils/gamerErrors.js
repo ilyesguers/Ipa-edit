@@ -86,6 +86,70 @@ const detectLang = (ctx) => {
 };
 
 /**
+ * Check if an error is caused by the database (MongoDB).
+ * Handles every common Mongoose/Mongo error signature so users get the
+ * dedicated "dbError" message instead of the misleading generic "Small glitch".
+ */
+const isDbError = (err) => {
+  if (!err) return false;
+  const msg = String(err.message || err.description || '');
+  const name = err.name || '';
+  return (
+    msg.includes('MongoDB') ||
+    msg.includes('MongoNetworkError') ||
+    msg.includes('MongoNotConnectedError') ||
+    msg.includes('ECONNREFUSED') ||
+    msg.includes('buffering timed out') ||
+    msg.includes('server selection timed out') ||
+    msg.includes('timed out after') ||
+    name === 'MongoNetworkError' ||
+    name === 'MongoNotConnectedError' ||
+    name === 'MongoServerSelectionError' ||
+    name === 'MongooseServerSelectionError' ||
+    name === 'MongooseError'
+  );
+};
+
+const escHtml = (value) =>
+  String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+// Throttle: at most one alert per error signature per minute, so a total
+// outage (every message failing) doesn't spam the admins.
+const lastAlertAt = new Map();
+
+/**
+ * Send the REAL error to the configured admins (ADMIN_IDS) so the owner can
+ * see exactly why users are getting error messages, without digging through logs.
+ */
+const notifyAdminsOfError = (ctx, err, errorType = 'generic') => {
+  const adminIds = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim())).filter(Boolean);
+  if (!adminIds.length || !ctx?.telegram) return;
+
+  const key = `${errorType}:${String((err && err.message) || err || '').slice(0, 80)}`;
+  const now = Date.now();
+  if (lastAlertAt.has(key) && now - lastAlertAt.get(key) < 60000) return;
+  lastAlertAt.set(key, now);
+
+  const userTag = ctx.from
+    ? (ctx.from.username ? `@${ctx.from.username}` : `${ctx.from.first_name || ''} (${ctx.from.id})`)
+    : 'unknown';
+  const where = ctx.updateType || (ctx.callbackQuery ? 'callback_query' : 'message');
+  const detail = String((err && (err.message || err.description)) || err || 'Unknown error').slice(0, 400);
+
+  const text =
+    `${emojiHtml('skull')} <b>Bot Error Detected</b>\n\n` +
+    `${emojiHtml('target')} Type: <code>${escHtml(errorType)}</code>\n` +
+    `${emojiHtml('ghost')} User: <code>${escHtml(userTag)}</code>\n` +
+    `${emojiHtml('bolt')} Where: <code>${escHtml(where)}</code>\n\n` +
+    `${emojiHtml('fire')} <b>Real error:</b>\n<code>${escHtml(detail)}</code>\n\n` +
+    `${emojiHtml('rocket')} Check logs for the full stack.`;
+
+  for (const adminId of adminIds) {
+    ctx.telegram.sendMessage(adminId, text, { parse_mode: 'HTML' }).catch(() => {});
+  }
+};
+
+/**
  * Send error message with gaming theme
  */
 const sendGamerError = async (ctx, errorType = 'generic', extra = {}) => {
@@ -138,6 +202,8 @@ module.exports = {
   getGamerError,
   detectLang,
   sendGamerError,
+  isDbError,
+  notifyAdminsOfError,
   requireUser,
   withUser
 };

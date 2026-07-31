@@ -187,7 +187,10 @@ const startHandler = async (ctx) => {
 
   } catch (err) {
     logger.error('Start handler error:', err);
-    await sendGamerError(ctx, 'generic');
+    const { isDbError, notifyAdminsOfError } = require('../../utils/gamerErrors');
+    const errorType = isDbError(err) ? 'dbError' : 'generic';
+    notifyAdminsOfError(ctx, err, errorType);
+    await sendGamerError(ctx, errorType);
   }
 };
 

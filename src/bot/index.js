@@ -109,17 +109,13 @@ const createBot = (io) => {
     } catch (err) {
       logger.error('🔴 User middleware error:', err);
       // Check if it's a database connection issue
-      const isDbError = err.message?.includes('MongoDB') || 
-                        err.message?.includes('ECONNREFUSED') ||
-                        err.message?.includes('timeout') ||
-                        err.name === 'MongoNetworkError' ||
-                        err.name === 'MongooseServerSelectionError';
+      const { isDbError, sendGamerError, notifyAdminsOfError } = require('../utils/gamerErrors');
+      const errorType = isDbError(err) ? 'dbError' : 'generic';
       
-      const lang = String(ctx.from.language_code || '').toLowerCase().startsWith('en') ? 'en' : 'ar';
-      const errorType = isDbError ? 'dbError' : 'generic';
+      // Tell the owner the real reason behind the error message
+      notifyAdminsOfError(ctx, err, errorType);
       
       // Try to send a helpful error message
-      const { sendGamerError } = require('../utils/gamerErrors');
       try {
         return await sendGamerError(ctx, errorType);
       } catch (sendErr) {
@@ -212,13 +208,15 @@ const createBot = (io) => {
     logger.error(`🎮 Bot error [${ctx.updateType}]:`, err);
     
     // Try to send a gaming-themed error message
-    const { sendGamerError } = require('../utils/gamerErrors');
+    const { sendGamerError, isDbError, notifyAdminsOfError } = require('../utils/gamerErrors');
     const lang = ctx.dbUser?.preferredLanguage || 
                  (ctx.from?.language_code?.toLowerCase().startsWith('en') ? 'en' : 'ar');
     
     // Determine error type based on the error
-    const errorType = err.message?.includes('MongoDB') || 
-                      err.message?.includes('ECONNREFUSED') ? 'dbError' : 'generic';
+    const errorType = isDbError(err) ? 'dbError' : 'generic';
+    
+    // Tell the owner the real reason behind the error message
+    notifyAdminsOfError(ctx, err, errorType);
     
     if (ctx.reply) {
       sendGamerError(ctx, errorType).catch(() => {
