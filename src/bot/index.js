@@ -32,7 +32,7 @@ const createBot = (io) => {
 
   // Global premium-emoji safety net
   const { isPremiumEmojiError, stripKeyboardExtras } = require('../utils/safeSend');
-  const { stripPremiumEmoji } = require('../utils/customEmoji');
+  const { stripPremiumEmoji, emojiHtml, buttonEmojiId, buttonLabel } = require('../utils/customEmoji');
 
   const originalCallApi = bot.telegram.callApi.bind(bot.telegram);
   bot.telegram.callApi = async function (method, payload = {}, ...rest) {
@@ -93,7 +93,7 @@ const createBot = (io) => {
 
       if (user.isBanned) {
         return ctx.reply(
-          `🚫 حسابك محظور يا برو / Your account is banned bro\n` +
+          `${emojiHtml('skull')} حسابك محظور يا برو / Your account is banned bro\n` +
           `السبب / Reason: ${user.banReason || 'مخالفة'}\n\n` +
           `تواصل / Contact: @${process.env.SUPPORT_USERNAME || 'support'}`
         );
@@ -101,7 +101,7 @@ const createBot = (io) => {
 
       const maintenance = await Settings.get('maintenance_mode', false);
       if (maintenance && !ctx.isAdmin) {
-        const maintenanceMsg = await Settings.get('maintenance_message', '🔧 المتجر تحت الصيانة السريعة - بنرجع بسرعة الصاروخ 🚀 / Quick maintenance - coming back rocket fast 🚀');
+        const maintenanceMsg = await Settings.get('maintenance_message', `${emojiHtml('gear')} المتجر تحت الصيانة السريعة - بنرجع بسرعة الصاروخ / Quick maintenance - coming back rocket fast`);
         return ctx.reply(maintenanceMsg);
       }
 
@@ -134,17 +134,16 @@ const createBot = (io) => {
   bot.command('admin', (ctx) => openAdminPortal(ctx, 'dashboard'));
   bot.command('shop', async (ctx) => {
     // Redirect to webapp instead of old inline shop
-    const { emojiHtml, buttonEmojiId, buttonLabel } = require('../utils/customEmoji');
     const { Markup } = require('telegraf');
     const lang = ctx.dbUser?.preferredLanguage || 'ar';
     return ctx.reply(
-      `${emojiHtml('rocket')} <b>${lang === 'en' ? 'Open the Store for fastest shopping 🚀' : 'افتح المتجر للتسوق السريع 🚀'}</b>\n\n` +
+      `${emojiHtml('rocket')} <b>${lang === 'en' ? 'Open the Store for fastest shopping' : 'افتح المتجر للتسوق السريع'}</b>\n\n` +
       `${emojiHtml('fire')} ${lang === 'en' ? 'All products inside the web app now!' : 'كل المنتجات صارت داخل المتجر الإلكتروني!'}`,
       {
         parse_mode: 'HTML',
         ...Markup.inlineKeyboard([[
           {
-            text: buttonLabel('rocket', lang === 'en' ? '🚀 PLAY NOW' : '🚀 افتح المتجر'),
+            text: buttonLabel('rocket', lang === 'en' ? 'PLAY NOW' : 'افتح المتجر'),
             web_app: { url: `${process.env.BASE_URL}/customer` },
             style: 'primary',
             icon_custom_emoji_id: buttonEmojiId('rocket')
@@ -158,15 +157,15 @@ const createBot = (io) => {
   bot.command('history', historyHandler);
   bot.command('balance', balanceHandler);
   bot.command('help', helpHandler);
-  bot.command('store', (ctx) => ctx.telegram.sendMessage(ctx.chat.id, `🚀 https://${ctx.me} - Open: ${process.env.BASE_URL}/customer`));
+  bot.command('store', (ctx) => ctx.telegram.sendMessage(ctx.chat.id, `https://${ctx.me} - Open: ${process.env.BASE_URL}/customer`));
 
   bot.command('stats', async (ctx) => {
-    if (!ctx.isAdmin) return ctx.reply('⛔ غير مصرح / Unauthorized 🔒');
+    if (!ctx.isAdmin) return ctx.reply(`${emojiHtml('skull')} غير مصرح / Unauthorized`);
     return openAdminPortal(ctx, 'dashboard');
   });
 
   bot.command('broadcast', async (ctx) => {
-    if (!ctx.isAdmin) return ctx.reply('⛔ غير مصرح / Unauthorized 🔒');
+    if (!ctx.isAdmin) return ctx.reply(`${emojiHtml('skull')} غير مصرح / Unauthorized`);
     return openAdminPortal(ctx, 'broadcast');
   });
 
@@ -184,7 +183,7 @@ const createBot = (io) => {
       const answer = parseInt(text);
 
       if (isNaN(answer)) {
-        return ctx.reply(lang === 'en' ? '🔢 Numbers only bro!' : '🔢 بس أرقام يا برو!');
+        return ctx.reply(`${emojiHtml('target')} ${lang === 'en' ? 'Numbers only bro!' : 'بس أرقام يا برو!'}`);
       }
 
       const result = verifyCaptcha(user.telegramId, answer);
@@ -195,8 +194,8 @@ const createBot = (io) => {
         await user.save();
 
         await ctx.reply(
-          `✅ ${lang === 'en' ? 'EZ! Verified - Welcome to legend zone 🎮🔥' : 'تم! مرحباً بك في منطقة الأساطير 🎮🔥'}\n\n` +
-          `${lang === 'en' ? 'Send /start to PLAY NOW 🚀' : 'ارسل /start عشان تبدأ اللعب 🚀'}`
+          `${emojiHtml('trophy')} ${lang === 'en' ? 'EZ! Verified - Welcome to legend zone' : 'تم! مرحباً بك في منطقة الأساطير'}\n\n` +
+          `${emojiHtml('rocket')} ${lang === 'en' ? 'Send /start to PLAY NOW' : 'ارسل /start عشان تبدأ اللعب'}`
         );
       } else {
         await ctx.reply(result.message);
@@ -224,9 +223,8 @@ const createBot = (io) => {
     if (ctx.reply) {
       sendGamerError(ctx, errorType).catch(() => {
         // Fallback if even that fails
-        ctx.reply(lang === 'en' 
-          ? '💥 LAG! Try /start to respawn 🔄' 
-          : '💥 لك lag! جرب /start عشان تعيد التشغيل 🔄'
+        ctx.reply(
+          `${emojiHtml('explosion')} ${lang === 'en' ? 'LAG! Try /start to respawn' : 'لك lag! جرب /start عشان تعيد التشغيل'}`
         ).catch(() => {});
       });
     }

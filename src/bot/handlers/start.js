@@ -27,7 +27,7 @@ const buildWelcomeMessage = async (user, lang = 'ar') => {
       ui,
       caption:
         `${emojiHtml('fire')} <b>${welcome.badge}</b>\n\n` +
-        `${emojiHtml('crown')} <b>Yo ${name} 👑 Welcome to the LEGEND ZONE</b>\n` +
+        `${emojiHtml('crown')} <b>Yo ${name} Welcome to the LEGEND ZONE</b>\n\n` +
         `${emojiHtml('rocket')} <b>${ui.botName}</b> - ${welcome.title}\n` +
         `${welcome.subtitle}\n\n` +
         `${highlightLines}\n\n` +
@@ -42,7 +42,7 @@ const buildWelcomeMessage = async (user, lang = 'ar') => {
     ui,
     caption:
       `${emojiHtml('fire')} <b>${welcome.badge}</b>\n\n` +
-      `${emojiHtml('crown')} <b>هلا والله ${name} 👑</b>\n` +
+      `${emojiHtml('crown')} <b>هلا والله ${name}</b>\n\n` +
       `${emojiHtml('rocket')} <b>${ui.botName}</b>\n` +
       `${welcome.title}\n` +
       `${welcome.subtitle}\n\n` +
@@ -50,7 +50,7 @@ const buildWelcomeMessage = async (user, lang = 'ar') => {
       `${emojiHtml('wallet')} <b>رصيدك:</b> $${balance} • ${emojiHtml('trophy')} <b>طلباتك:</b> ${orders}\n\n` +
       `${customMessage ? `${emojiHtml('explosion')} ${customMessage}\n\n` : ''}` +
       `${emojiHtml('target')} <i>اضغط PLAY NOW وابدأ اللعب فوراً! ${welcome.footer}</i>\n` +
-      `${emojiHtml('fire')} <b>أسرع متجر للجيمرز - تسليم فوري مره نار 🔥</b>`
+      `${emojiHtml('fire')} <b>أسرع متجر للجيمرز - تسليم فوري مره نار</b>`
   };
 };
 
@@ -83,14 +83,14 @@ const startHandler = async (ctx) => {
       const captcha = createCaptcha(user.telegramId);
 
       await ctx.reply(
-        `${emojiHtml('shield')} <b>${lang === 'en' ? 'Anti-Bot Check 🛡️' : 'تحقق سريع - انت انسان؟ 🛡️'}</b>\n\n` +
+        `${emojiHtml('shield')} <b>${lang === 'en' ? 'Anti-Bot Check' : 'تحقق سريع - انت انسان؟'}</b>\n\n` +
         `${lang === 'en'
           ? `${emojiHtml('target')} Solve this quick math to enter the LEGEND ZONE:`
           : `${emojiHtml('target')} حل هذي المسألة السريعة عشان تدخل منطقة الأساطير:`}\n\n` +
         `${emojiHtml('explosion')} <b>${captcha.question}</b> = ?\n\n` +
         `${lang === 'en'
           ? `${emojiHtml('rocket')} Just type the number (e.g., 42)`
-          : `${emojiHtml('rocket')} بس اكتب الرقم (مثال: 42)`}\n` +
+          : `${emojiHtml('rocket')} بس اكتب الرقم (مثال: 42)`}\n\n` +
         `${lang === 'en'
           ? `${emojiHtml('fire')} You have 3 tries - EZ!`
           : `${emojiHtml('fire')} عندك 3 محاولات - سهلة!`}`,
@@ -123,11 +123,11 @@ const startHandler = async (ctx) => {
           await referrer.save();
 
           await ctx.telegram.sendMessage(refId,
-            `${emojiHtml('crown')} ${lang === 'en' ? 'New teammate joined! 🔥' : 'واحد جديد انضم عن طريقك! 🔥'}\n` +
+            `${emojiHtml('crown')} ${lang === 'en' ? 'New teammate joined!' : 'واحد جديد انضم عن طريقك!'}\n` +
             `${emojiHtml('gem')} +$${bonus} ${lang === 'en' ? 'Added - Keep grinding!' : 'انضافت لرصيدك - استمر!'}`
           ).catch(() => {});
 
-          logger.info(`🔗 Referral: ${user.telegramId} referred by ${refId}`);
+          logger.info(`Referral: ${user.telegramId} referred by ${refId}`);
         }
       }
     }
@@ -164,7 +164,7 @@ const startHandler = async (ctx) => {
         for (const adminId of adminIds) {
           await ctx.telegram.sendMessage(
             adminId,
-            `${emojiHtml('fire')} <b>${lang === 'en' ? 'New Gamer Joined 🔥' : 'جيمر جديد دخل 🔥'}</b>\n\n` +
+            `${emojiHtml('fire')} <b>${lang === 'en' ? 'New Gamer Joined' : 'جيمر جديد دخل'}</b>\n\n` +
             `${emojiHtml('crown')} ${user.fullName}\n` +
             `${emojiHtml('target')} ID: <code>${user.telegramId}</code>\n` +
             `${user.username ? `${emojiHtml('fire')} @${user.username}\n` : ''}` +
@@ -174,7 +174,7 @@ const startHandler = async (ctx) => {
               parse_mode: 'HTML',
               ...Markup.inlineKeyboard([
                 [{
-                  text: buttonLabel('crown', lang === 'en' ? 'View User 👑' : 'شوف اليوزر 👑'),
+                  text: buttonLabel('crown', lang === 'en' ? 'View User' : 'شوف اليوزر'),
                   web_app: { url: `${process.env.BASE_URL}/admin#users?search=${user.telegramId}` },
                   style: 'primary',
                   icon_custom_emoji_id: buttonEmojiId('crown')
@@ -187,10 +187,7 @@ const startHandler = async (ctx) => {
 
   } catch (err) {
     logger.error('Start handler error:', err);
-    await ctx.reply(
-      `${emojiHtml('rocket')} أهلاً يا أسطورة! حدث خلل بسيط، ارسل /start 🚀\n` +
-      `${emojiHtml('fire')} Yo legend! Small bug, send /start again 🔥`
-    );
+    await sendGamerError(ctx, 'generic');
   }
 };
 
