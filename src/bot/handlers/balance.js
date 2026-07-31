@@ -5,7 +5,10 @@ const { editOrReplyMenu } = require('../../utils/menuMessage');
 
 const balanceHandler = async (ctx) => {
   const user = ctx.dbUser;
-  const lang = user?.preferredLanguage || 'ar';
+  if (!user) {
+    return ctx.reply('⚠️ User data not loaded. Try /start again.');
+  }
+  const lang = user.preferredLanguage || 'ar';
   const wallet = await Settings.get('usdt_wallet_trc20', '');
   const minDeposit = await Settings.get('min_deposit', 1);
 

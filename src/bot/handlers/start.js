@@ -70,6 +70,13 @@ const mainKeyboard = async (lang = 'ar', isAdmin = false) => {
 const startHandler = async (ctx) => {
   try {
     const user = ctx.dbUser;
+    if (!user) {
+      logger.error('Start handler: ctx.dbUser is undefined');
+      return ctx.reply(
+        `${emojiHtml('rocket')} أهلاً! حدث خلل بسيط، جرب مرة ثانية أو تواصل مع الدعم 🚀\n` +
+        `Hi! Small bug, try again or contact support 🚀`
+      );
+    }
     const lang = user.preferredLanguage || 'ar';
 
     // CAPTCHA for new users

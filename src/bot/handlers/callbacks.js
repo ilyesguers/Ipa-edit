@@ -95,6 +95,9 @@ const redirectToWebApp = async (ctx, lang) => {
 };
 
 const handleMainMenu = async (ctx, lang) => {
+  if (!ctx.dbUser) {
+    return ctx.answerCbQuery(t(lang, '⚠️ جرب /start أولاً', '⚠️ Try /start first'), { show_alert: true });
+  }
   const { buildWelcomeMessage } = require('./start');
   const { caption } = await buildWelcomeMessage(ctx.dbUser, lang);
   const keyboard = await mainKeyboard(lang, ctx.isAdmin);
@@ -103,6 +106,9 @@ const handleMainMenu = async (ctx, lang) => {
 
 const handleLanguage = async (ctx, lang) => {
   const user = ctx.dbUser;
+  if (!user) {
+    return ctx.answerCbQuery(t(lang, '⚠️ جرب /start أولاً', '⚠️ Try /start first'), { show_alert: true });
+  }
   const newLang = user.preferredLanguage === 'ar' ? 'en' : 'ar';
   user.preferredLanguage = newLang;
   await user.save();

@@ -105,11 +105,17 @@ const createBot = (io) => {
         return ctx.reply(maintenanceMsg);
       }
 
+      return next();
     } catch (err) {
       logger.error('User middleware error:', err);
+      // Send helpful error message and don't continue to handlers
+      const lang = String(ctx.from.language_code || '').toLowerCase().startsWith('en') ? 'en' : 'ar';
+      return ctx.reply(
+        lang === 'en'
+          ? `⚠️ Connection issue detected. Please try again in a few seconds.\nIf problem persists, contact support. 🔧`
+          : `⚠️ تم اكتشاف مشكلة في الاتصال. حاول مرة ثانية بعد شوي.\nإذا استمرت المشكلة، تواصل مع الدعم. 🔧`
+      ).catch(() => {});
     }
-
-    return next();
   });
 
   // Commands - all focus on webapp now

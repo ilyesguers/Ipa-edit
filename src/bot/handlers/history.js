@@ -5,7 +5,10 @@ const { editOrReplyMenu } = require('../../utils/menuMessage');
 
 const historyHandler = async (ctx, page = 1) => {
   const user = ctx.dbUser;
-  const lang = user?.preferredLanguage || 'ar';
+  if (!user) {
+    return ctx.reply('⚠️ User data not loaded. Try /start again.');
+  }
+  const lang = user.preferredLanguage || 'ar';
   const limit = 5;
   const skip = (page - 1) * limit;
   const [orders, total] = await Promise.all([

@@ -5,7 +5,10 @@ const { editOrReplyMenu } = require('../../utils/menuMessage');
 
 const keysHandler = async (ctx) => {
   const user = ctx.dbUser;
-  const lang = user?.preferredLanguage || 'ar';
+  if (!user) {
+    return ctx.reply('⚠️ User data not loaded. Try /start again.');
+  }
+  const lang = user.preferredLanguage || 'ar';
   const orders = await Order.find({ user: user.telegramId, status: 'completed' }).sort({ createdAt: -1 }).limit(5);
 
   if (!orders.length) {
