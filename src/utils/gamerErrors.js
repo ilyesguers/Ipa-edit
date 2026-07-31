@@ -31,7 +31,7 @@ const getGamerError = (errorType, lang = 'ar') => {
           `${emojiHtml('target')} Server under pressure - try again in a bit\n\n` +
           `${emojiHtml('explosion')} If it continues, contact support`
     },
-    
+  
     // Command errors
     commandError: {
       ar: `${emojiHtml('skull')} <b>الأمر ما اشتغل!</b>\n\n` +
