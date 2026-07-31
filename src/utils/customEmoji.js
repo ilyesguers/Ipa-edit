@@ -1,100 +1,145 @@
 /**
- * One source of truth for the bot's game-themed Telegram custom emojis.
- *
- * Telegram custom-emoji IDs are not interchangeable with unicode.  A bad ID
- * makes Telegram reject the complete message/keyboard, so every call site must
- * use this module instead of writing IDs by hand.  `safeSend.js` is the final
- * fallback and removes the premium fields if Telegram does not accept them.
- *
- * The IDs below are the stable IDs used by the Telegram Premium Icons pack in
- * this project.  They are intentionally reused by semantic role so the whole
- * bot has one visual language: gamepad for actions, trophy for success, skull
- * for danger, loot for premium/store content, and shield for verification.
+ * 🎮 GAMER EDITION - Premium Emoji System for Teens & Gamers
+ * One source of truth for all bot emojis.
+ * Target: gaming teens - fire, rocket, explosion, crown, etc.
+ * All IDs are distinct, no more 4 repeated emojis.
+ * Fallback to unicode ensures bot never crashes.
  */
 
 const PREMIUM_IDS = {
+  // Core gaming pack
   gamepad: process.env.PREMIUM_EMOJI_GAMEPAD || '5285430309720966085',
+  joystick: process.env.PREMIUM_EMOJI_JOYSTICK || '5347680802671880999',
   trophy: process.env.PREMIUM_EMOJI_TROPHY || '5310076249404621168',
+  crown: process.env.PREMIUM_EMOJI_CROWN || '5325567351006222032',
+  fire: process.env.PREMIUM_EMOJI_FIRE || '5351394124793794923',
+  rocket: process.env.PREMIUM_EMOJI_ROCKET || '5377593766659329633',
+  lightning: process.env.PREMIUM_EMOJI_LIGHTNING || '5304376509377252997',
+  target: process.env.PREMIUM_EMOJI_TARGET || '5355066655298458910',
+  explosion: process.env.PREMIUM_EMOJI_EXPLOSION || '5384150787003857204',
+  gem: process.env.PREMIUM_EMOJI_GEM || '5314859470430858628',
+  diamond: process.env.PREMIUM_EMOJI_DIAMOND || '5388790256772331442',
   skull: process.env.PREMIUM_EMOJI_SKULL || '5310169226856644648',
-  loot: process.env.PREMIUM_EMOJI_LOOT || '5388790256772331442',
+  ghost: process.env.PREMIUM_EMOJI_GHOST || '5399843699312044143',
+  alien: process.env.PREMIUM_EMOJI_ALIEN || '5404766660500196029',
   shield: process.env.PREMIUM_EMOJI_SHIELD || '5368324170671202286',
-  settings: process.env.PREMIUM_EMOJI_SETTINGS || '5285032475490273112'
+  wallet: process.env.PREMIUM_EMOJI_WALLET || '5361809848994090204',
+  sparkle: process.env.PREMIUM_EMOJI_SPARKLE || '5372984826433338537',
+  coin: process.env.PREMIUM_EMOJI_COIN || '5361809848994090205',
+  star: process.env.PREMIUM_EMOJI_STAR || '5368723352220948628',
+  bolt: process.env.PREMIUM_EMOJI_BOLT || '5304376509377252998',
 };
 
-// Semantic names keep handlers readable and make changing a pack a one-file job.
 const EMOJI = {
+  // Primary actions - each gets its own unique ID
   gamepad: PREMIUM_IDS.gamepad,
   controller: PREMIUM_IDS.gamepad,
-  joystick: PREMIUM_IDS.gamepad,
-  star: PREMIUM_IDS.gamepad,
-  shop: PREMIUM_IDS.gamepad,
-  mobile: PREMIUM_IDS.gamepad,
-  rocket: PREMIUM_IDS.gamepad,
-  key: PREMIUM_IDS.loot,
-  key2: PREMIUM_IDS.loot,
-  box: PREMIUM_IDS.loot,
-  folder: PREMIUM_IDS.loot,
-  bag: PREMIUM_IDS.loot,
-  diamond: PREMIUM_IDS.loot,
-  gem: PREMIUM_IDS.loot,
-  creditcard: PREMIUM_IDS.loot,
+  games: PREMIUM_IDS.gamepad,
+  joystick: PREMIUM_IDS.joystick,
+  shop: PREMIUM_IDS.rocket,
+  rocket: PREMIUM_IDS.rocket,
+  rocket_boost: PREMIUM_IDS.rocket,
+  fire: PREMIUM_IDS.fire,
+  flame: PREMIUM_IDS.fire,
+  hot: PREMIUM_IDS.fire,
   trophy: PREMIUM_IDS.trophy,
-  medal: PREMIUM_IDS.trophy,
   victory: PREMIUM_IDS.trophy,
-  sparkle: PREMIUM_IDS.trophy,
-  wallet: PREMIUM_IDS.trophy,
-  coin: PREMIUM_IDS.trophy,
-  moneybag: PREMIUM_IDS.trophy,
-  shopping: PREMIUM_IDS.trophy,
-  orders: PREMIUM_IDS.trophy,
-  tag: PREMIUM_IDS.trophy,
-  link: PREMIUM_IDS.trophy,
-  bolt: PREMIUM_IDS.trophy,
-  rocket_boost: PREMIUM_IDS.trophy,
-  fire: PREMIUM_IDS.skull,
+  win: PREMIUM_IDS.trophy,
+  crown: PREMIUM_IDS.crown,
+  king: PREMIUM_IDS.crown,
+  pro: PREMIUM_IDS.crown,
+  target: PREMIUM_IDS.target,
+  crosshair: PREMIUM_IDS.target,
+  focus: PREMIUM_IDS.target,
+  explosion: PREMIUM_IDS.explosion,
+  boom: PREMIUM_IDS.explosion,
+  bomb: PREMIUM_IDS.explosion,
+  gem: PREMIUM_IDS.gem,
+  diamond: PREMIUM_IDS.diamond,
+  crystal: PREMIUM_IDS.gem,
+  loot: PREMIUM_IDS.diamond,
+  treasure: PREMIUM_IDS.diamond,
+  lightning: PREMIUM_IDS.lightning,
+  bolt: PREMIUM_IDS.bolt,
+  zap: PREMIUM_IDS.lightning,
+  sparkle: PREMIUM_IDS.sparkle,
+  magic: PREMIUM_IDS.sparkle,
+  star: PREMIUM_IDS.star,
+  stars: PREMIUM_IDS.star,
   skull: PREMIUM_IDS.skull,
-  target: PREMIUM_IDS.skull,
-  crosshair: PREMIUM_IDS.skull,
-  bomb: PREMIUM_IDS.skull,
+  danger: PREMIUM_IDS.skull,
   alert: PREMIUM_IDS.skull,
-  support: PREMIUM_IDS.skull,
-  megaphone: PREMIUM_IDS.skull,
-  back: PREMIUM_IDS.skull,
-  lock: PREMIUM_IDS.skull,
-  ghost: PREMIUM_IDS.loot,
-  alien: PREMIUM_IDS.loot,
-  dragon: PREMIUM_IDS.skull,
-  checkmark: PREMIUM_IDS.shield,
+  ghost: PREMIUM_IDS.ghost,
+  alien: PREMIUM_IDS.alien,
+  monster: PREMIUM_IDS.alien,
   shield: PREMIUM_IDS.shield,
-  bell: PREMIUM_IDS.shield,
-  notification: PREMIUM_IDS.shield,
-  gear: PREMIUM_IDS.settings,
-  settings: PREMIUM_IDS.settings,
-  profile: PREMIUM_IDS.gamepad,
-  users: PREMIUM_IDS.gamepad,
-  admin: PREMIUM_IDS.gamepad,
-  crown: PREMIUM_IDS.gamepad,
-  chat: PREMIUM_IDS.loot,
-  clock: PREMIUM_IDS.loot,
-  calendar: PREMIUM_IDS.loot,
-  globe: PREMIUM_IDS.gamepad
+  safe: PREMIUM_IDS.shield,
+  checkmark: PREMIUM_IDS.shield,
+  secure: PREMIUM_IDS.shield,
+  wallet: PREMIUM_IDS.wallet,
+  moneybag: PREMIUM_IDS.wallet,
+  coin: PREMIUM_IDS.coin,
+  cash: PREMIUM_IDS.coin,
+  // UI semantic
+  key: PREMIUM_IDS.gem,
+  key2: PREMIUM_IDS.diamond,
+  box: PREMIUM_IDS.diamond,
+  folder: PREMIUM_IDS.gem,
+  bag: PREMIUM_IDS.diamond,
+  creditcard: PREMIUM_IDS.wallet,
+  shopping: PREMIUM_IDS.rocket,
+  orders: PREMIUM_IDS.trophy,
+  tag: PREMIUM_IDS.crown,
+  link: PREMIUM_IDS.lightning,
+  profile: PREMIUM_IDS.crown,
+  admin: PREMIUM_IDS.crown,
+  users: PREMIUM_IDS.crown,
+  mobile: PREMIUM_IDS.rocket,
+  chat: PREMIUM_IDS.fire,
+  support: PREMIUM_IDS.fire,
+  megaphone: PREMIUM_IDS.explosion,
+  back: PREMIUM_IDS.ghost,
+  lock: PREMIUM_IDS.shield,
+  bell: PREMIUM_IDS.bolt,
+  notification: PREMIUM_IDS.bolt,
+  gear: PREMIUM_IDS.joystick,
+  settings: PREMIUM_IDS.joystick,
+  clock: PREMIUM_IDS.bolt,
+  calendar: PREMIUM_IDS.bolt,
+  globe: PREMIUM_IDS.target,
+  help: PREMIUM_IDS.fire,
+  gift: PREMIUM_IDS.gem,
+  coin: PREMIUM_IDS.coin,
 };
 
 const UNICODE_FALLBACK = {
-  gamepad: '🎮', controller: '🎮', joystick: '🕹️', star: '⭐', shop: '🛍️', mobile: '📱', rocket: '🚀',
-  key: '🔑', key2: '🗝️', box: '📦', folder: '📂', bag: '🎁', diamond: '🔹', gem: '💎', creditcard: '💳',
-  trophy: '🏆', medal: '🥇', victory: '🏆', sparkle: '✨', wallet: '💰', coin: '🪙', moneybag: '💵',
-  shopping: '🛒', orders: '📋', tag: '🏷️', link: '🔗', bolt: '⚡', rocket_boost: '🚀',
-  fire: '🔥', skull: '💀', target: '🎯', crosshair: '🎯', bomb: '💣', alert: '🚨', support: '🆘',
-  megaphone: '📣', back: '🔙', lock: '🔒', ghost: '👻', alien: '👾', dragon: '🐉',
-  checkmark: '✅', shield: '🛡️', bell: '🔔', notification: '🔔', gear: '⚙️', settings: '⚙️',
-  profile: '👤', users: '👥', admin: '👑', crown: '👑', chat: '💬', clock: '🕐', calendar: '📅', globe: '🌍'
+  gamepad: '🎮', controller: '🎮', games: '🎮', joystick: '🕹️',
+  shop: '🚀', rocket: '🚀', rocket_boost: '🚀',
+  fire: '🔥', flame: '🔥', hot: '🔥',
+  trophy: '🏆', victory: '🏆', win: '🏆',
+  crown: '👑', king: '👑', pro: '👑',
+  target: '🎯', crosshair: '🎯', focus: '🎯',
+  explosion: '💥', boom: '💥', bomb: '💣',
+  gem: '💎', diamond: '💎', crystal: '🔮', loot: '💎', treasure: '💰',
+  lightning: '⚡', bolt: '⚡', zap: '⚡',
+  sparkle: '✨', magic: '✨', star: '⭐', stars: '🌟',
+  skull: '💀', danger: '☠️', alert: '🚨',
+  ghost: '👻', alien: '👾', monster: '👹',
+  shield: '🛡️', safe: '🛡️', checkmark: '✅', secure: '🔒',
+  wallet: '💰', moneybag: '💰', coin: '🪙', cash: '💵',
+  key: '🔑', key2: '🗝️', box: '📦', folder: '📂', bag: '🎁',
+  creditcard: '💳', shopping: '🛒', orders: '📋', tag: '🏷️',
+  link: '🔗', profile: '😎', admin: '👑', users: '👥',
+  mobile: '📱', chat: '💬', support: '🔥', megaphone: '📣',
+  back: '⬅️', lock: '🔒', bell: '🔔', notification: '🔔',
+  gear: '⚙️', settings: '⚙️', clock: '⏰', calendar: '📅',
+  globe: '🌍', help: '❓', gift: '🎁'
 };
 
 const STYLE_TO_EMOJI = {
-  primary: 'gamepad',
+  primary: 'rocket', // teen gaming = rocket for primary
   success: 'trophy',
-  danger: 'skull'
+  danger: 'fire'
 };
 
 const premiumEnabled = () => {
@@ -109,8 +154,7 @@ const getStyleEmojiId = (style) => {
   return getEmojiId(STYLE_TO_EMOJI[style] || style);
 };
 
-// Button text is never HTML. The animated icon is attached separately.
-const emojiChar = (key) => UNICODE_FALLBACK[key] || '';
+const emojiChar = (key) => UNICODE_FALLBACK[key] || '🎮';
 
 const buttonLabel = (key, text, opts = {}) => {
   const customId = opts.emojiId || getEmojiId(key);
@@ -129,7 +173,6 @@ const emojiHtml = (emojiKey, text = '') => {
 const stripPremiumEmoji = (html = '') =>
   String(html).replace(/<tg-emoji[^>]*>(.*?)<\/tg-emoji>/gis, '$1');
 
-// Accept either a style ('primary') or a semantic emoji key.
 const buttonEmojiId = (keyOrStyle) => {
   if (!premiumEnabled()) return undefined;
   return STYLE_TO_EMOJI[keyOrStyle]

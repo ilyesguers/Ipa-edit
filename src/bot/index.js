@@ -13,19 +13,24 @@ const { helpHandler } = require('./handlers/help');
 const { openAdminPortal } = require('./handlers/admin');
 const { callbackHandler } = require('./handlers/callbacks');
 const { paymentHandler } = require('./handlers/payment');
-// Single inline keyboard only — reply keyboard removed for cleaner UX
 
 const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim())).filter(Boolean);
 
 const createBot = (io) => {
+  if (!process.env.BOT_TOKEN) {
+    logger.warn('⚠️ BOT_TOKEN not set - bot will not start, but server will continue for Railway healthcheck');
+    // Return dummy bot that doesn't crash server
+    return {
+      telegram: { setWebhook: async () => {}, deleteWebhook: async () => {}, getMe: async () => ({ username: 'test' }), sendMessage: async () => {} },
+      launch: async () => {},
+      stop: () => {},
+      handleUpdate: () => {}
+    };
+  }
+
   const bot = new Telegraf(process.env.BOT_TOKEN);
 
-  // ── 🛡️ Global premium-emoji safety net ──
-  // Wrap the low-level Telegram API call so that ANY outgoing request that gets
-  // rejected because of an invalid premium custom emoji (in message HTML or on a
-  // button) is transparently retried without the premium emoji. This guarantees
-  // the bot NEVER breaks just because an emoji id is invalid or the owner has no
-  // Telegram Premium. See src/utils/safeSend.js for the rationale.
+  // Global premium-emoji safety net
   const { isPremiumEmojiError, stripKeyboardExtras } = require('../utils/safeSend');
   const { stripPremiumEmoji } = require('../utils/customEmoji');
 
@@ -40,15 +45,13 @@ const createBot = (io) => {
       const clean = { ...payload };
       if (typeof clean.text === 'string') clean.text = stripPremiumEmoji(clean.text);
       if (typeof clean.caption === 'string') clean.caption = stripPremiumEmoji(clean.caption);
-      const scrubbed = stripKeyboardExtras(clean); // removes button style / icon_custom_emoji_id
+      const scrubbed = stripKeyboardExtras(clean);
       return originalCallApi(method, scrubbed, ...rest);
     }
   };
 
-  // Session middleware
-  bot.use(session());
+  bot.use(session({ defaultSession: () => ({ menuMessageId: null }) }));
 
-  // ── User middleware: update ONLY on change ──
   bot.use(async (ctx, next) => {
     if (!ctx.from) return next();
 
@@ -59,7 +62,6 @@ const createBot = (io) => {
       let user = await User.findOne({ telegramId });
 
       if (!user) {
-        // ── Create new user ──
         user = await User.create({
           telegramId,
           username: ctx.from.username || null,
@@ -69,60 +71,37 @@ const createBot = (io) => {
           preferredLanguage: String(ctx.from.language_code || '').toLowerCase().startsWith('en') ? 'en' : 'ar',
           role: isAdmin ? 'admin' : 'customer'
         });
-        logger.info(`🆕 New user: ${user.fullName} (${telegramId})`);
+        logger.info(`🆕 New gamer: ${user.fullName} (${telegramId}) 🔥`);
       } else {
-        // ── Update ONLY if data changed (saves DB writes) ──
         let needsSave = false;
         const newUsername = ctx.from.username || null;
         const newFirstName = ctx.from.first_name || '';
         const newLastName = ctx.from.last_name || '';
 
-        if (user.username !== newUsername) {
-          user.username = newUsername;
-          needsSave = true;
-        }
-        if (user.firstName !== newFirstName) {
-          user.firstName = newFirstName;
-          needsSave = true;
-        }
-        if (user.lastName !== newLastName) {
-          user.lastName = newLastName;
-          needsSave = true;
-        }
-        // Update lastSeen every 5 minutes max (not every message)
+        if (user.username !== newUsername) { user.username = newUsername; needsSave = true; }
+        if (user.firstName !== newFirstName) { user.firstName = newFirstName; needsSave = true; }
+        if (user.lastName !== newLastName) { user.lastName = newLastName; needsSave = true; }
         const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
-        if (!user.lastSeen || user.lastSeen < fiveMinAgo) {
-          user.lastSeen = new Date();
-          needsSave = true;
-        }
-        // Role upgrade
-        if (isAdmin && user.role === 'customer') {
-          user.role = 'admin';
-          needsSave = true;
-        }
-
-        if (needsSave) {
-          await user.save();
-        }
+        if (!user.lastSeen || user.lastSeen < fiveMinAgo) { user.lastSeen = new Date(); needsSave = true; }
+        if (isAdmin && user.role === 'customer') { user.role = 'admin'; needsSave = true; }
+        if (needsSave) await user.save();
       }
 
       ctx.dbUser = user;
       ctx.isAdmin = isAdmin || user.role === 'admin' || user.role === 'superadmin';
       ctx.io = io;
 
-      // Check ban
       if (user.isBanned) {
         return ctx.reply(
-          `🚫 حسابك محظور. / Your account is banned.\n` +
-          `السبب / Reason: ${user.banReason || 'مخالفة القوانين / Violation'}\n\n` +
-          `للتواصل / Contact: @${process.env.SUPPORT_USERNAME || 'support'}`
+          `🚫 حسابك محظور يا برو / Your account is banned bro\n` +
+          `السبب / Reason: ${user.banReason || 'مخالفة'}\n\n` +
+          `تواصل / Contact: @${process.env.SUPPORT_USERNAME || 'support'}`
         );
       }
 
-      // Check maintenance mode
       const maintenance = await Settings.get('maintenance_mode', false);
       if (maintenance && !ctx.isAdmin) {
-        const maintenanceMsg = await Settings.get('maintenance_message', '🔧 الموقع تحت الصيانة / Site under maintenance');
+        const maintenanceMsg = await Settings.get('maintenance_message', '🔧 المتجر تحت الصيانة السريعة - بنرجع بسرعة الصاروخ 🚀 / Quick maintenance - coming back rocket fast 🚀');
         return ctx.reply(maintenanceMsg);
       }
 
@@ -133,33 +112,49 @@ const createBot = (io) => {
     return next();
   });
 
-  // ═══════════════════════════════════════
-  // COMMANDS
-  // ═══════════════════════════════════════
+  // Commands - all focus on webapp now
   bot.start(startHandler);
   bot.command('admin', (ctx) => openAdminPortal(ctx, 'dashboard'));
-  bot.command('shop', shopHandler);
+  bot.command('shop', async (ctx) => {
+    // Redirect to webapp instead of old inline shop
+    const { emojiHtml, buttonEmojiId, buttonLabel } = require('../utils/customEmoji');
+    const { Markup } = require('telegraf');
+    const lang = ctx.dbUser?.preferredLanguage || 'ar';
+    return ctx.reply(
+      `${emojiHtml('rocket')} <b>${lang === 'en' ? 'Open the Store for fastest shopping 🚀' : 'افتح المتجر للتسوق السريع 🚀'}</b>\n\n` +
+      `${emojiHtml('fire')} ${lang === 'en' ? 'All products inside the web app now!' : 'كل المنتجات صارت داخل المتجر الإلكتروني!'}`,
+      {
+        parse_mode: 'HTML',
+        ...Markup.inlineKeyboard([[
+          {
+            text: buttonLabel('rocket', lang === 'en' ? '🚀 PLAY NOW' : '🚀 افتح المتجر'),
+            web_app: { url: `${process.env.BASE_URL}/customer` },
+            style: 'primary',
+            icon_custom_emoji_id: buttonEmojiId('rocket')
+          }
+        ]])
+      }
+    );
+  });
   bot.command('profile', profileHandler);
   bot.command('keys', keysHandler);
   bot.command('history', historyHandler);
   bot.command('balance', balanceHandler);
   bot.command('help', helpHandler);
+  bot.command('store', (ctx) => ctx.telegram.sendMessage(ctx.chat.id, `🚀 https://${ctx.me} - Open: ${process.env.BASE_URL}/customer`));
 
-  // ── /stats alias for admins ──
   bot.command('stats', async (ctx) => {
-    if (!ctx.isAdmin) return ctx.reply('⛔ غير مصرح لك / Unauthorized');
+    if (!ctx.isAdmin) return ctx.reply('⛔ غير مصرح / Unauthorized 🔒');
     return openAdminPortal(ctx, 'dashboard');
   });
 
   bot.command('broadcast', async (ctx) => {
-    if (!ctx.isAdmin) return ctx.reply('⛔ غير مصرح لك / Unauthorized');
+    if (!ctx.isAdmin) return ctx.reply('⛔ غير مصرح / Unauthorized 🔒');
     return openAdminPortal(ctx, 'broadcast');
   });
 
-  // ── Callback queries (single inline-keyboard only) ──
   bot.on('callback_query', callbackHandler);
 
-  // ── CAPTCHA answer handler (runs before paymentHandler) ──
   bot.on('text', async (ctx, next) => {
     const user = ctx.dbUser;
     if (!user) return next();
@@ -167,17 +162,12 @@ const createBot = (io) => {
     const { hasActiveCaptcha, verifyCaptcha } = require('../utils/captcha');
     const lang = user.preferredLanguage || 'ar';
 
-    // Check if user has an active captcha
     if (!user.captchaPassed && hasActiveCaptcha(user.telegramId)) {
       const text = ctx.message.text.trim();
       const answer = parseInt(text);
 
       if (isNaN(answer)) {
-        return ctx.reply(
-          lang === 'en'
-            ? '🔢 Please enter a number only!'
-            : '🔢 الرجاء إدخال رقم فقط!'
-        );
+        return ctx.reply(lang === 'en' ? '🔢 Numbers only bro!' : '🔢 بس أرقام يا برو!');
       }
 
       const result = verifyCaptcha(user.telegramId, answer);
@@ -188,15 +178,11 @@ const createBot = (io) => {
         await user.save();
 
         await ctx.reply(
-          `✅ ${lang === 'en' ? 'Captcha passed! Welcome 🎉' : 'تم اجتياز التحقق! مرحباً بك 🎉'}\n\n` +
-          `${lang === 'en' ? 'Send /start to enter the bot' : 'أرسل /start للدخول إلى البوت'}`
+          `✅ ${lang === 'en' ? 'EZ! Verified - Welcome to legend zone 🎮🔥' : 'تم! مرحباً بك في منطقة الأساطير 🎮🔥'}\n\n` +
+          `${lang === 'en' ? 'Send /start to PLAY NOW 🚀' : 'ارسل /start عشان تبدأ اللعب 🚀'}`
         );
       } else {
         await ctx.reply(result.message);
-        if (result.message.includes('انتهت') || result.message.includes('expired') || 
-            result.message.includes('كثيرة') || result.message.includes('attempts')) {
-          // Allow them to try /start again
-        }
       }
       return;
     }
@@ -204,17 +190,12 @@ const createBot = (io) => {
     return next();
   });
 
-  // ── Payment messages (text handler) ──
   bot.on('message', paymentHandler);
 
-  // ── Error handler ──
   bot.catch((err, ctx) => {
     logger.error(`Bot error for ${ctx.updateType}:`, err);
     if (ctx.reply) {
-      ctx.reply(
-        '❌ حدث خطأ غير متوقع، يرجى المحاولة مجدداً\n' +
-        '❌ Unexpected error, please try again'
-      ).catch(() => {});
+      ctx.reply('❌ حصل لاق بسيط، جرب مرة ثانية / Small lag, try again 🔄').catch(() => {});
     }
   });
 

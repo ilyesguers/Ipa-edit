@@ -3,15 +3,22 @@ const Order = require('../../models/Order');
 const { buttonEmojiId, buttonLabel, emojiHtml } = require('../../utils/customEmoji');
 const { editOrReplyMenu } = require('../../utils/menuMessage');
 
-// ── Helper: get user language ──
 const getLang = (ctx) => ctx.dbUser?.preferredLanguage || 'ar';
 const t = (lang, ar, en) => lang === 'en' ? en : ar;
 
-const btn = (emojiKey, text, data, style = null) => {
-  const emojiId = buttonEmojiId(emojiKey) || (style && buttonEmojiId(style));
+const btn = (emojiKey, text, data, style = null, isWebApp = false, url = null) => {
+  const emojiId = buttonEmojiId(emojiKey);
+  if (isWebApp) {
+    return {
+      text: buttonLabel(emojiKey, text, { emojiId }),
+      web_app: { url },
+      ...(style ? { style } : {}),
+      ...(emojiId ? { icon_custom_emoji_id: emojiId } : {})
+    };
+  }
   return {
     text: buttonLabel(emojiKey, text, { emojiId }),
-    callback_data: data,
+    ...(url ? { url } : { callback_data: data }),
     ...(style ? { style } : {}),
     ...(emojiId ? { icon_custom_emoji_id: emojiId } : {})
   };
@@ -21,49 +28,36 @@ const profileHandler = async (ctx) => {
   const user = ctx.dbUser;
   const lang = getLang(ctx);
 
-  // ── Build referral link ──
   const botUsername = (await ctx.telegram.getMe()).username;
   const referralLink = `https://t.me/${botUsername}?start=ref_${user.telegramId}`;
 
-  // ── Role label ──
   const roleLabel = user.role === 'admin' || user.role === 'superadmin'
-    ? t(lang, 'مدير', 'Admin')
-    : t(lang, 'عميل', 'Customer');
+    ? t(lang, 'أسطورة 👑', 'Legend 👑')
+    : t(lang, 'جيمر 😎', 'Gamer 😎');
 
-  // ── Activity stats ──
   const completedOrders = await Order.countDocuments({ user: user.telegramId, status: 'completed' });
   const pendingOrders = await Order.countDocuments({ user: user.telegramId, status: { $in: ['pending', 'processing'] } });
-  const lastOrder = await Order.findOne({ user: user.telegramId }).sort({ createdAt: -1 }).select('createdAt');
-  const lastActiveText = lastOrder
-    ? lastOrder.createdAt.toLocaleDateString(lang === 'en' ? 'en-US' : 'ar-SA')
-    : t(lang, 'لا يوجد', 'None');
 
-  // ── Bilingual profile message with premium emojis ──
   const msg = (
-    `${emojiHtml('profile')} <b>${t(lang, 'ملف المستخدم', 'User Profile')}</b>\n\n` +
-    `${emojiHtml('tag')} ${t(lang, 'الاسم', 'Name')}: <b>${user.fullName}</b>\n` +
-    `${emojiHtml('orders')} ${t(lang, 'المعرف', 'ID')}: <code>${user.telegramId}</code>\n` +
-    `${emojiHtml('profile')} ${t(lang, 'اليوزر', 'Username')}: ${user.username ? `@${user.username}` : t(lang, 'غير محدد', 'Not set')}\n` +
-    `${emojiHtml('mobile')} ${t(lang, 'الهاتف', 'Phone')}: ${user.phone || t(lang, 'غير محقق', 'Not verified')}\n` +
-    `${emojiHtml('coin')} ${t(lang, 'العملة', 'Currency')}: <b>${user.currency}</b>\n` +
-    `${emojiHtml('tag')} ${t(lang, 'الدور', 'Role')}: <b>${emojiHtml('admin')} ${roleLabel}</b>\n\n`
-    `━━━━━━━━━━━━━━━━━━\n` +
-    `${emojiHtml('wallet')} ${t(lang, 'الرصيد', 'Balance')}: <b>$${user.balance.toFixed(2)}</b>\n` +
-    `${emojiHtml('shopping')} ${t(lang, 'إجمالي الطلبات', 'Total Orders')}: <b>${user.totalOrders}</b>\n` +
-    `${emojiHtml('coin')} ${t(lang, 'إجمالي الإنفاق', 'Total Spent')}: <b>$${user.totalSpent.toFixed(2)}</b>\n` +
-    `${emojiHtml('checkmark')} ${t(lang, 'طلبات مكتملة', 'Completed')}: <b>${completedOrders}</b> | ${emojiHtml('clock')} ${t(lang, 'قيد الانتظار', 'Pending')}: <b>${pendingOrders}</b>\n` +
-    `${emojiHtml('calendar')} ${t(lang, 'تاريخ الانضمام', 'Joined')}: <b>${user.createdAt.toLocaleDateString(lang === 'en' ? 'en-US' : 'ar-SA')}</b>\n` +
-    `${emojiHtml('clock')} ${t(lang, 'آخر نشاط', 'Last Active')}: <b>${lastActiveText}</b>\n\n`
-    `━━━━━━━━━━━━━━━━━━\n` +
-    `${emojiHtml('link')} ${t(lang, 'إحالاتك', 'Your Referrals')}: <b>${user.referralCount || 0}</b>\n` +
-    `${user.referredBy ? `${emojiHtml('link')} ${t(lang, 'أُحلت بواسطة', 'Referred by')}: <code>${user.referredBy}</code>\n` : ''}` +
-    `\n${emojiHtml('link')} ${t(lang, 'رابط الإحالة', 'Referral Link')}:\n<code>${referralLink}</code>`
+    `${emojiHtml('crown')} <b>${t(lang, 'بروفايل الأسطورة', 'Legend Profile')} 👑</b>\n\n` +
+    `${emojiHtml('rocket')} ${t(lang, 'الاسم', 'Name')}: <b>${user.fullName}</b> ${emojiHtml('fire')}\n` +
+    `${emojiHtml('target')} ID: <code>${user.telegramId}</code>\n` +
+    `${emojiHtml('fire')} ${user.username ? `@${user.username}` : t(lang, 'مو محدد', 'No username')} | ${emojiHtml('crown')} ${roleLabel}\n\n` +
+    `━━━━━━━━━━━━━━━\n` +
+    `${emojiHtml('wallet')} ${t(lang, 'الرصيد', 'Balance')}: <b>$${user.balance.toFixed(2)}</b> 💰\n` +
+    `${emojiHtml('trophy')} ${t(lang, 'الطلبات', 'Orders')}: <b>${user.totalOrders}</b> ${emojiHtml('fire')}\n` +
+    `${emojiHtml('gem')} ${t(lang, 'الصرف', 'Spent')}: <b>$${user.totalSpent.toFixed(2)}</b>\n` +
+    `${emojiHtml('shield')} ${t(lang, 'مكتملة', 'Done')}: <b>${completedOrders}</b> | ${emojiHtml('bolt')} ${t(lang, 'معلقة', 'Pending')}: <b>${pendingOrders}</b>\n\n` +
+    `━━━━━━━━━━━━━━━\n` +
+    `${emojiHtml('rocket')} ${t(lang, 'الإحالات', 'Referrals')}: <b>${user.referralCount || 0}</b> ${emojiHtml('explosion')}\n` +
+    `${emojiHtml('target')} ${t(lang, 'رابط الدعوة', 'Invite Link')}:\n<code>${referralLink}</code>\n\n` +
+    `${emojiHtml('fire')} ${t(lang, 'ادع ربعك وخذ بونص - كل ما زادوا كل ما صرت أسطورة أكثر!', 'Invite friends & get bonus - more friends = more legend!')} 👑🚀`
   );
 
   const buttons = Markup.inlineKeyboard([
-    [btn('target', t(lang, 'نشاطي', 'My Activity'), 'my_activity', 'primary')],
-    [btn('key', t(lang, 'مفاتيحي', 'My Keys'), 'mykeys', 'success')],
-    [btn('back', t(lang, 'الرئيسية', 'Home'), 'main_menu', 'danger')]
+    [btn('rocket', t(lang, '🚀 افتح المتجر - PLAY NOW', '🚀 Open Store - PLAY NOW'), null, 'primary', true, `${process.env.BASE_URL}/customer`)],
+    [btn('gem', t(lang, '🔑 مفاتيحي', '🔑 My Keys'), null, 'success', true, `${process.env.BASE_URL}/customer`)],
+    [btn('ghost', t(lang, '⬅️ الرئيسية', '⬅️ Home'), 'main_menu', 'primary')]
   ]);
 
   await editOrReplyMenu(ctx, msg, { parse_mode: 'HTML', ...buttons });
@@ -75,26 +69,23 @@ const showActivity = async (ctx) => {
   const recentOrders = await Order.find({ user: user.telegramId, status: 'completed' }).sort({ createdAt: -1 }).limit(5);
 
   let msg = (
-    `${emojiHtml('target')} <b>${t(lang, 'نشاطي الأخير', 'My Recent Activity')}</b>\n\n` +
-    `${emojiHtml('coin')} ${t(lang, 'إجمالي الإنفاق', 'Total Spent')}: <b>$${user.totalSpent.toFixed(2)}</b>\n` +
-    `${emojiHtml('wallet')} ${t(lang, 'إجمالي الشحن', 'Total Deposited')}: <b>$${user.totalDeposited.toFixed(2)}</b>\n` +
-    `${emojiHtml('shopping')} ${t(lang, 'عدد الطلبات', 'Total Orders')}: <b>${user.totalOrders}</b>\n` +
-    `${emojiHtml('link')} ${t(lang, 'الإحالات', 'Referrals')}: <b>${user.referralCount || 0}</b>\n\n`
+    `${emojiHtml('fire')} <b>${t(lang, 'نشاطك الأسطوري 🔥', 'Your Legendary Activity 🔥')}</b>\n\n` +
+    `${emojiHtml('trophy')} ${t(lang, 'إجمالي الطلبات', 'Total Orders')}: <b>${user.totalOrders}</b> | ${emojiHtml('wallet')} $${user.totalSpent.toFixed(2)}\n` +
+    `${emojiHtml('crown')} ${t(lang, 'المستوى', 'Level')}: <b>${user.totalOrders > 10 ? 'أسطورة 👑' : user.totalOrders > 5 ? 'محترف 🔥' : 'جيمر صاعد 🚀'}</b>\n\n`
   );
 
   if (recentOrders.length) {
-    msg += `${emojiHtml('orders')} <b>${t(lang, 'آخر الطلبات', 'Recent Orders')}:</b>\n`;
+    msg += `${emojiHtml('rocket')} <b>${t(lang, 'آخر مشترياتك', 'Last Purchases')}:</b>\n`;
     recentOrders.forEach((order, i) => {
-      const date = order.createdAt.toLocaleDateString(lang === 'en' ? 'en-US' : 'ar-SA');
-      msg += `${i + 1}. ${emojiHtml('checkmark')} ${order.productName} (${order.durationName}) - $${order.finalPrice.toFixed(2)} ${emojiHtml('calendar')}${date}\n`;
+      msg += `${i + 1}. ${emojiHtml('gem')} ${order.productName} - ${order.durationName} | $${order.finalPrice.toFixed(2)}\n`;
     });
   } else {
-    msg += `${emojiHtml('ghost')} ${t(lang, 'لا توجد طلبات بعد', 'No orders yet')}`;
+    msg += `${emojiHtml('ghost')} ${t(lang, 'لسا ما اشتريت؟ يلا ابدأ وكن أسطورة! 🚀', 'No purchases yet? Let\'s GO & become legend! 🚀')}`;
   }
 
   await editOrReplyMenu(ctx, msg, {
     parse_mode: 'HTML',
-    ...Markup.inlineKeyboard([[btn('back', t(lang, 'رجوع', 'Back'), 'profile', 'danger')]])
+    ...Markup.inlineKeyboard([[btn('ghost', t(lang, '⬅️ رجوع', '⬅️ Back'), 'profile', 'primary')]])
   });
 };
 

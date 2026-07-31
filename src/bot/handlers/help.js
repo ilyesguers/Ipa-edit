@@ -7,35 +7,50 @@ const helpHandler = async (ctx) => {
   const user = ctx.dbUser;
   const lang = user?.preferredLanguage || 'ar';
   const supportUsername = await Settings.get('support_username', 'support');
-  const botName = await Settings.get('bot_name', 'Digital Keys Store');
-  const contactId = buttonEmojiId('chat');
+  const botName = await Settings.get('bot_name', 'GAMER STORE 🔥');
 
-  const msg = `${emojiHtml('support')} <b>${lang === 'en' ? 'Help & Support' : 'المساعدة والدعم'}</b>\n\n` +
-    `<b>${botName}</b> — ${lang === 'en' ? 'Digital Keys Store' : 'متجر المفاتيح الرقمية'}\n\n` +
-    `${emojiHtml('orders')} <b>${lang === 'en' ? 'FAQ:' : 'الأسئلة الشائعة:'}</b>\n\n` +
-    `${emojiHtml('gamepad')} ${lang === 'en' ? 'How to buy?' : 'كيف أشتري؟'}\n` +
-    `   → ${lang === 'en' ? 'Open Games, then choose device → game → product.' : 'افتح الألعاب، ثم اختر الجهاز ← اللعبة ← المنتج.'}\n\n` +
-    `${emojiHtml('clock')} ${lang === 'en' ? 'How do I receive the key?' : 'كيف أتلقى المفتاح؟'}\n` +
-    `   → ${lang === 'en' ? 'It is delivered instantly after payment.' : 'يتم التسليم فورياً بعد تأكيد الدفع.'} ${emojiHtml('checkmark')}\n\n` +
-    `${emojiHtml('wallet')} ${lang === 'en' ? 'How do I top up?' : 'كيف أشحن؟'}\n` +
-    `   → ${lang === 'en' ? 'Open Top Up Balance and follow the instructions.' : 'افتح شحن الرصيد واتبع التعليمات.'}\n\n` +
-    `${emojiHtml('coin')} ${lang === 'en' ? 'Are prices in USD?' : 'هل الأسعار بالدولار؟'}\n` +
-    `   → ${lang === 'en' ? 'Yes, prices are displayed in USD/USDT.' : 'نعم، الأسعار معروضة بالدولار وUSDT.'}\n\n` +
-    `${emojiHtml('chat')} <b>${lang === 'en' ? 'Contact Support:' : 'تواصل مع الدعم:'}</b> @${supportUsername}\n` +
-    `${emojiHtml('clock')} ${lang === 'en' ? 'Support is available 24/7.' : 'الدعم متاح على مدار الساعة.'}`;
+  const msg = lang === 'en'
+    ? `${emojiHtml('fire')} <b>HELP - LEGEND ZONE 🔥</b>\n\n` +
+      `<b>${botName}</b> — ${emojiHtml('rocket')} Fastest gamer store\n\n` +
+      `${emojiHtml('rocket')} <b>HOW TO BECOME LEGEND?</b>\n` +
+      `   → ${emojiHtml('target')} Hit PLAY NOW 🚀 Choose game → product → pay\n` +
+      `   → ${emojiHtml('trophy')} Get key instantly! EZ WIN 🏆\n\n` +
+      `${emojiHtml('crown')} <b>WHY WE ARE BEST?</b>\n` +
+      `   → ${emojiHtml('fire')} Rocket speed delivery\n` +
+      `   → ${emojiHtml('shield')} 100% legit & safe\n` +
+      `   → ${emojiHtml('explosion')} Daily deals & giveaways\n\n` +
+      `${emojiHtml('chat')} <b>NEED HELP?</b> @${supportUsername} - Fast AF ⚡\n` +
+      `${emojiHtml('fire')} Support is 24/7 - We never sleep! 🎮`
+    : `${emojiHtml('fire')} <b>المساعدة - منطقة الأساطير 🔥</b>\n\n` +
+      `<b>${botName}</b> — ${emojiHtml('rocket')} أسرع متجر للجيمرز\n\n` +
+      `${emojiHtml('rocket')} <b>كيف تصير أسطورة؟</b>\n` +
+      `   → ${emojiHtml('target')} اضغط PLAY NOW 🚀 اختر اللعبة → المنتج → ادفع\n` +
+      `   → ${emojiHtml('trophy')} استلم المفتاح فوري! EZ WIN 🏆\n\n` +
+      `${emojiHtml('crown')} <b>ليش نحنا الأفضل؟</b>\n` +
+      `   → ${emojiHtml('fire')} تسليم بسرعة الصاروخ\n` +
+      `   → ${emojiHtml('shield')} مضمون 100% وآمن\n` +
+      `   → ${emojiHtml('explosion')} عروض يومية وجوائز\n\n` +
+      `${emojiHtml('chat')} <b>تحتاج مساعدة؟</b> @${supportUsername} - نرد بسرعة ⚡\n` +
+      `${emojiHtml('fire')} الدعم 24/7 - ما ننام! 🎮`;
 
   const buttons = Markup.inlineKeyboard([
     [{
-      text: buttonLabel('chat', lang === 'en' ? 'Contact Support' : 'تواصل مع الدعم', { emojiId: contactId }),
-      url: `https://t.me/${supportUsername}`,
+      text: buttonLabel('rocket', lang === 'en' ? '🚀 PLAY NOW - STORE' : '🚀 افتح المتجر - PLAY NOW'),
+      web_app: { url: `${process.env.BASE_URL}/customer` },
       style: 'primary',
-      ...(contactId ? { icon_custom_emoji_id: contactId } : {})
+      icon_custom_emoji_id: buttonEmojiId('rocket')
     }],
     [{
-      text: buttonLabel('back', lang === 'en' ? 'Home' : 'الرئيسية'),
-      callback_data: 'main_menu',
+      text: buttonLabel('fire', lang === 'en' ? '🔥 Contact Support' : '🔥 تواصل مع الدعم'),
+      url: `https://t.me/${supportUsername}`,
       style: 'danger',
-      ...(buttonEmojiId('back') ? { icon_custom_emoji_id: buttonEmojiId('back') } : {})
+      icon_custom_emoji_id: buttonEmojiId('fire')
+    }],
+    [{
+      text: buttonLabel('ghost', lang === 'en' ? '⬅️ Home' : '⬅️ الرئيسية'),
+      callback_data: 'main_menu',
+      style: 'primary',
+      icon_custom_emoji_id: buttonEmojiId('ghost')
     }]
   ]);
 
