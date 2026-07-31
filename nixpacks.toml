@@ -1,0 +1,20 @@
+[phases.setup]
+nixPkgs = ["...", "python3", "make", "gcc"]
+
+[phases.install]
+cmds = ["npm ci || npm install"]
+
+[phases.build]
+cmds = [
+  "npm run build:customer || (cd miniapp/customer && npm install && npm run build)",
+  "npm run build:admin || (cd miniapp/admin && npm install && npm run build)",
+  "ls -la miniapp/customer/dist || echo 'customer dist missing'",
+  "ls -la miniapp/admin/dist || echo 'admin dist missing'"
+]
+
+[start]
+cmd = "npm start"
+
+[variables]
+NPM_CONFIG_PRODUCTION = "false"
+NODE_ENV = "production"

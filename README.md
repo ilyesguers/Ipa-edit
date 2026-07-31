@@ -1,119 +1,151 @@
-# 🎮 Digital Keys Store — Telegram Bot + Game Mini Apps
-> متجر مفاتيح وألعاب رقمية لتلجرام مع بوت، متجر عميل، ولوحة تحكم إدارية.
+# 🔥 GAMER STORE — LEGENDARY EDITION 🎮👑
 
-## ما تم إصلاحه وإضافته
+> متجر أسطوري للجيمرز والمرهقين - بوت تلجرام + متجر ويب فخم + لوحة تحكم
+> Legendary store for pro gamers & teens - Telegram Bot + Web Store + Admin
 
-### 1) لوحة أزرار واحدة فقط
-- البوت يستخدم **Inline Keyboard واحدة** فقط؛ لا توجد `Markup.keyboard` أو Reply Keyboard ثانية فوقها.
-- عند الضغط على زر ينتقل البوت بتعديل الرسالة الحالية (للرسائل النصية والصور) بدل إنشاء رسالة جديدة.
-- عند تعذر التعديل، تُرسل رسالة بديلة ثم تُحذف القائمة القديمة تلقائياً.
-- تكرار `/start` لا يكدس قوائم قديمة؛ تُحفظ آخر قائمة في الجلسة وتُحذف قبل فتح القائمة الجديدة.
-- روابط القائمة تُنظف وتُزال التكرارات تلقائياً، ويُضاف زر اللغة حتى لقواعد البيانات القديمة.
-- القائمة الرئيسية مرتبة في صفوف واضحة: الألعاب، مفاتيحي، الطلبات، الحساب، الرصيد، الدعم، المتجر، واللغة.
+## 🚀 ما الجديد في الإصدار 3.0 - Gamer Edition؟
 
-### 2) Premium Game Emoji آمنة
-كل إيموجي البوت يمر من `src/utils/customEmoji.js`:
+### 1) 🎮 بوت يركز على الموقع 100% (Web-Focused)
+- **تم مسح جميع الكيبوردات القديمة المتكررة** - البوت الآن minimal ويركز على متجر الويب
+- الكيبورد الجديد فيه بس:
+  - 🚀 **PLAY NOW - فتح المتجر** (WebApp - زر أساسي كبير)
+  - 🔥 الدعم السريع
+  - 💥 قناة العروض
+  - 🌍 تبديل اللغة
+- كل منطق الشراء انتقل داخل المتجر الإلكتروني - أسرع، أسلس، وأكثر احترافية للمراهقين
+- أي ضغطة قديمة مثل `shop` أو `cat_` تعيد توجيه تلقائي للمتجر: "NEW UPDATE! Everything moved to web store 🔥"
 
-| الاستخدام | المجموعة | fallback |
-|---|---|---|
-| الإجراءات والألعاب | gamepad | 🎮 |
-| نجاح الشراء والمخزون | trophy | 🏆 |
-| التنبيه والخطر | skull | 💀 |
-| المنتجات والدفع | loot | 💎 |
-| التحقق والتأكيد | shield | 🛡️ |
+### 2) 🔥 إيموجيات بريميوم جديدة - 16 إيموجي مميز للجيمرز (بدل 4 متكررة)
+كل إيموجي له ID مميز خاص فيه - لا تكرار!
 
-- أزرار Telegram تستعمل `icon_custom_emoji_id`، والنص لا يحتوي HTML أو إيموجي مزدوج.
-- الرسائل تستعمل `<tg-emoji>` عند `parse_mode: HTML`.
-- `safeSend` يعيد الطلب بدون الحقول premium إذا كان المعرّف غير متاح، أو كانت نسخة Bot API لا تفهم لون الزر؛ بالتالي لا تختفي لوحة الأزرار.
-- يمكن تغيير IDs من `.env` بدون تعديل الملفات.
-- تنبيهات `answerCbQuery` تستخدم fallback نصياً لأن Telegram لا يفسر HTML داخل التنبيه.
+| الإيموجي | الاستخدام | ID افتراضي | Unicode |
+|---|---|---|---|
+| 🚀 Rocket | زر أساسي PLAY NOW | `PREMIUM_EMOJI_ROCKET` | 🚀 |
+| 🔥 Fire | دعم وحماس | `PREMIUM_EMOJI_FIRE` | 🔥 |
+| 👑 Crown | أسطورة وملك | `PREMIUM_EMOJI_CROWN` | 👑 |
+| 🏆 Trophy | فوز وطلبات | `PREMIUM_EMOJI_TROPHY` | 🏆 |
+| 💎 Gem | مفاتيح وجواهر | `PREMIUM_EMOJI_GEM` | 💎 |
+| ⚡ Lightning | سرعة وطاقة | `PREMIUM_EMOJI_LIGHTNING` | ⚡ |
+| 💥 Explosion | عروض وقناة | `PREMIUM_EMOJI_EXPLOSION` | 💥 |
+| 🎯 Target | تركيز ولغة | `PREMIUM_EMOJI_TARGET` | 🎯 |
+| 👻 Ghost | رجوع ومرح | `PREMIUM_EMOJI_GHOST` | 👻 |
+| 🛡️ Shield | آمان وتحقق | `PREMIUM_EMOJI_SHIELD` | 🛡️ |
 
-> ملاحظة: يجب أن يكون الـ bot owner قادراً على إرسال custom emoji وأن تكون IDs متاحة له. في حال الرفض سيظهر fallback تلقائياً، ولن يتعطل البوت.
+**20 إيموجي** قابل للتخصيص عبر `.env` والـ fallback تلقائي إلى Unicode لو فشل ID - البوت ما يتعطل أبداً!
 
-### 3) ترجمة صحيحة ومتزامنة
-- متجر العميل أصبح ثنائي اللغة عربي/إنجليزي من خلال `miniapp/customer/src/i18n.js`.
-- يوجد زر لغة واضح في رأس المتجر وداخل الملف الشخصي.
-- يتغير `dir` و`lang` تلقائياً (`rtl` للعربية و`ltr` للإنجليزية).
-- لغة Telegram الجديدة تُحفظ عند إنشاء الحساب، وتبديل اللغة يُحفظ في المستخدم عبر `PUT /api/users/me`.
-- النصوص المترجمة تشمل القائمة السفلية، الصفحة الرئيسية، البحث، المنتجات، المدد، الدفع، Binance، المفاتيح، الطلبات، الملف الشخصي، والدعم والأسئلة الشائعة.
-- زر `language` يُضاف تلقائياً في البوت حتى للمستخدمين الذين لديهم إعدادات قديمة في MongoDB.
+### 3) 💜 واجهة المتجر الجديدة - ستايل جيمر مراهق
+- **ألوان نيون**: `#00ff88` + `#00d4ff` + `#a855f7` مع خلفيات داكنة `#050508`
+- **تأثيرات**: glow، floating، rocket animations، glassmorphism
+- **خطوط**: Orbitron للعناوين + Cairo للعربي
+- **ترجمات شبابية**: "PLAY NOW 🚀"، "NO CAP 🔥"، "GG WP 👑"، "LEVEL UP!"، "كن أسطورة"
+- **تصميم**: 
+  - Hero section مع gradient نيون و highlight chips
+  - Product cards مع LIVE badges و hover effects
+  - Bottom nav مع ألوان مميزة لكل تاب + glow
+  - Header مع avatar و balance بستايل أسطوري
+  - Loading screen مع rocket و fire flicker
 
-### 4) شريط الهاتف في الصفحة الرئيسية
-- شريط التنقل السفلي موجود دائماً في `App` وليس داخل تبويب واحد.
-- أضيفت مساحة safe-area و`100dvh` و`padding-bottom` حتى لا يختفي في Telegram WebApp أو خلف لوحة المفاتيح الأصلية.
-- أزيل سكربت blur العام الذي كان يغلق لوحة الهاتف عند لمس أي مكان؛ لوحة الهاتف تظهر فقط عند التركيز على حقل إدخال، والتنقل يبقى مرئياً على الصفحة الرئيسية.
-- استُبدلت رموز واجهة العميل بأيقونات Game Icons vector موحدة عبر `PremiumIcon`؛ Telegram custom emoji خاصة برسائل البوت، أما WebApp فيستخدم SVG/React Icons لأن HTML العادي لا يرسم Telegram custom emoji.
+### 4) 🚂 جاهز 100% لـ Railway
+- `railway.toml` محسن: healthcheck 60s, restart 10 retries, watch patterns
+- `nixpacks.toml` جديد: يبني customer و admin تلقائياً مع فحص dist
+- `src/index.js` معاد كتابته:
+  - يربط `0.0.0.0` لـ Railway
+  - health check قبل كل شيء: `/health` يرد حتى لو DB فشل
+  - webhook يدعم `RAILWAY_PUBLIC_DOMAIN` تلقائياً
+  - لو BOT_TOKEN مو موجود، السيرفر يستمر (لا يطيح)
+  - صمود ضد 3 محاولات اتصال DB مع retry
 
-## التشغيل
+## 🎮 البوت - رسائل جديدة
+
+**قبل (ممل):**
+> مرحباً عزيزي العميل
+> متجر رقمي منظم وسريع
+
+**الآن (حماسي للمراهقين):**
+> 🔥 للجيمرز المحترفين فقط
+> هلا والله يا أسطورة 👑
+> متجر الجيمرز الأسطوري 🎮
+> أسرع متجر للألعاب والشحنات والبوستات - كل شي في مكان واحد مع تسليم فوري 🚀
+
+## 🌍 استهداف المراهقين والألعاب
+
+- **ألعاب**: Free Fire, PUBG, Roblox, Valorant, Fortnite - البحث يدعمها
+- **لغة**: مزيج عربي + إنجليزي شبابي (NO NOOBS, EZ WIN, GG)
+- **إيموجيات**: 🔥🚀💥⚡👑🎮 - كلها حماسية
+- **عروض**: HOT badges, LIVE indicators, rocket speed claims
+- **تفاعل**: Haptic feedback على تلجرام، motion animations، glow effects
+
+## 🚀 التشغيل المحلي
 
 ```bash
 npm install
-npm run start
+npm run build
+npm start
 ```
 
-للتطوير وبناء الواجهات:
+للتطوير:
 
 ```bash
 cd miniapp/customer && npm install && npm run dev
 cd miniapp/admin && npm install && npm run dev
-npm run build:customer
-npm run build:admin
+npm run dev
 ```
 
-## متغيرات البيئة المهمة
+## 🌐 النشر على Railway
 
-```env
-BOT_TOKEN=your_telegram_bot_token
-ADMIN_IDS=123456789
-MONGODB_URI=mongodb+srv://...
-BASE_URL=https://your-app.up.railway.app
-JWT_SECRET=change_this_secret
-USE_PREMIUM_EMOJI=true
-```
+1. اربط المستودع في Railway
+2. أضف المتغيرات:
+   ```
+   BOT_TOKEN=...
+   ADMIN_IDS=123...
+   MONGODB_URI=mongodb+srv://...
+   BASE_URL=https://xxx.up.railway.app
+   JWT_SECRET=random_secret
+   USE_PREMIUM_EMOJI=true
+   ```
+3. (اختياري) أضف 20 إيموجي بريميوم مخصص في `PREMIUM_EMOJI_*`
+4. Railway سيبني تلقائياً `customer` و `admin` dist
+5. البوت سيستخدم webhook تلقائياً لو `RAILWAY_PUBLIC_DOMAIN` موجود
+6. تأكد من `/health` يرد 200
 
-يمكن تخصيص IDs من خلال:
-
-```env
-PREMIUM_EMOJI_GAMEPAD=5285430309720966085
-PREMIUM_EMOJI_TROPHY=5310076249404621168
-PREMIUM_EMOJI_SKULL=5310169226856644648
-PREMIUM_EMOJI_LOOT=5388790256772331442
-PREMIUM_EMOJI_SHIELD=5368324170671202286
-PREMIUM_EMOJI_SETTINGS=5285032475490273112
-```
-
-## الهيكل
+## 📁 الهيكل الجديد
 
 ```
 src/
-  bot/handlers/       # القوائم، المتجر، الدفع، اللغة
-  utils/customEmoji.js# مجموعة premium موحدة + fallback
-  utils/menuMessage.js# تعديل القائمة الحالية ومنع التكرار
-  utils/safeSend.js   # حماية Telegram من IDs غير المتاحة
-  api/routes/users.js  # حفظ اللغة والتفضيلات
+  bot/
+    handlers/  # كلها web-focused الآن
+    index.js   # يدعم Railway webhook + fallback polling
+  utils/
+    customEmoji.js  # 20 ID مميز + gaming teen unicode
+    uiConfig.js     # مينيمال كيبورد: PLAY NOW فقط
+  index.js     # Railway-ready server
 miniapp/customer/
-  src/i18n.js
-  src/components/PremiumIcon.jsx
-  src/components/BottomNav.jsx
-  src/components/tabs/...
-miniapp/admin/
+  src/
+    components/
+      PremiumIcon.jsx  # 40+ gaming icons
+      Header.jsx       # gaming legend header
+      BottomNav.jsx    # colorful neon nav
+      tabs/ProductsTab.jsx # rocket hero + HOT badges
+    i18n.js    # teen slang ar/en
+    index.css  # neon gaming theme
+    App.jsx    # background effects
+railway.toml   # محسن
+nixpacks.toml  # بناء موثوق
 ```
 
-## فحوصات البناء
+## 🔧 إصلاحات
 
-تم التحقق من:
+- مسح الكيبوردات المكررة (reply + inline)
+- 16 إيموجي بريميوم بدل 4 - كل واحد ID مختلف
+- البوت يركز على الموقع 100%
+- Railway healthcheck يشتغل حتى لو DB فشل
+- Sharp و dependencies متوافقة مع Nixpacks
 
-```bash
-npm run build              # customer
-npm run build              # admin
-node --check src/**/*.js
-```
+## 🎯 TODO للمالك
 
-## النشر على Railway
+- غير IDs في `.env` لإيموجياتك الخاصة من حزمة تلجرام بريميوم
+- ارفع `public/banner.png` بصورة جيمر حماسية
+- أضف منتجات Free Fire / PUBG / Roblox للترجيت
+- فعّل قناة العروض اليومية لجذب المراهقين
 
-1. اربط المستودع في Railway.
-2. أضف `BOT_TOKEN`, `ADMIN_IDS`, `MONGODB_URI`, `BASE_URL`, و`JWT_SECRET`.
-3. أضف `WEBHOOK_DOMAIN` في الإنتاج إذا كان webhook مطلوباً.
-4. شغّل البناء؛ الخادم يخدم `/customer` و`/admin` عند وجود مجلدات `dist`.
-
-Built with Node.js, Express, MongoDB, Telegraf, React, Tailwind, Framer Motion, and React Icons.
+Built for legends with 🔥🚀👑 - Node.js, Express, MongoDB, Telegraf, React, Tailwind, Framer Motion

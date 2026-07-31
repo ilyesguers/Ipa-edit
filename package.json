@@ -1,15 +1,16 @@
 {
-  "name": "digital-keys-store",
-  "version": "2.0.0",
-  "description": "Full Telegram Digital Keys Store — Bot + Mini Apps + Admin Panel",
+  "name": "gamer-store-legends",
+  "version": "3.0.0",
+  "description": "🔥 GAMER STORE - Legendary Digital Keys for Pro Gamers & Teens - Telegram Bot + Mini Apps",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "build:admin": "cd miniapp/admin && npm install && npm run build",
-    "build:customer": "cd miniapp/customer && npm install && npm run build",
-    "build": "npm run build:admin && npm run build:customer",
-    "setup": "node src/utils/setup.js"
+    "build:admin": "cd miniapp/admin && npm install --no-audit --no-fund && npm run build",
+    "build:customer": "cd miniapp/customer && npm install --no-audit --no-fund && npm run build",
+    "build": "npm run build:customer && npm run build:admin",
+    "setup": "node src/utils/setup.js",
+    "postinstall": "echo '🔥 Gamer Store installed - Ready to play! 🎮'"
   },
   "dependencies": {
     "telegraf": "^4.16.3",

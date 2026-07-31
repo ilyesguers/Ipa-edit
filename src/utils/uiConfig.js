@@ -4,76 +4,72 @@ const { buttonEmojiId, buttonLabel } = require('./customEmoji');
 const THEME_PRESETS = {
   aurora: {
     key: 'aurora',
-    nameAr: 'أورورا',
-    nameEn: 'Aurora',
-    badge: '🫧',
-    accent: '#00d4ff',
+    nameAr: 'أورورا - جيمر',
+    nameEn: 'Aurora Gamer',
+    badge: '🚀',
+    accent: '#00ff88',
     secondary: '#7c3aed',
-    panelEmoji: '🪄',
-    welcomeEmoji: '💠'
+    panelEmoji: '🎮',
+    welcomeEmoji: '🔥'
   },
   emerald: {
     key: 'emerald',
-    nameAr: 'زمردي',
-    nameEn: 'Emerald',
-    badge: '💚',
+    nameAr: 'نايترو',
+    nameEn: 'Nitro',
+    badge: '⚡',
     accent: '#00ff88',
     secondary: '#00cfff',
-    panelEmoji: '🌿',
-    welcomeEmoji: '✨'
+    panelEmoji: '⚡',
+    welcomeEmoji: '💥'
   },
   velvet: {
     key: 'velvet',
-    nameAr: 'فيلفت',
-    nameEn: 'Velvet',
-    badge: '🪻',
+    nameAr: 'نيون',
+    nameEn: 'Neon',
+    badge: '💜',
     accent: '#a855f7',
     secondary: '#f472b6',
-    panelEmoji: '🎛️',
-    welcomeEmoji: '🌙'
+    panelEmoji: '👾',
+    welcomeEmoji: '👑'
   },
   sunset: {
     key: 'sunset',
-    nameAr: 'غروب',
-    nameEn: 'Sunset',
-    badge: '🌇',
+    nameAr: 'فاير',
+    nameEn: 'Fire',
+    badge: '🔥',
     accent: '#ff8a00',
     secondary: '#ff3b5c',
-    panelEmoji: '☀️',
-    welcomeEmoji: '🔥'
+    panelEmoji: '🔥',
+    welcomeEmoji: '🚀'
   },
   midnight: {
     key: 'midnight',
-    nameAr: 'منتصف الليل 🌙',
-    nameEn: 'Midnight 🌙',
+    nameAr: 'دارك جيمر 🌙',
+    nameEn: 'Dark Gamer 🌙',
     badge: '🌙',
     accent: '#00ff88',
     secondary: '#a855f7',
-    panelEmoji: '🌙',
-    welcomeEmoji: '🌟'
+    panelEmoji: '🎮',
+    welcomeEmoji: '💀'
   }
 };
 
-// These are semantic emoji keys, not loose unicode copied into every screen.
-// The bot renderer turns them into working premium icons and has a unicode fallback.
+// Gaming teen focused highlights - no more boring corporate text
 const DEFAULT_HIGHLIGHTS = [
-  { id: 'instant', emojiKey: 'bolt', textAr: 'تسليم فوري بعد تأكيد الدفع', textEn: 'Instant delivery right after payment confirmation' },
-  { id: 'safe', emojiKey: 'shield', textAr: 'واجهة مرتبة وتجربة احترافية', textEn: 'Organized interface with a premium experience' },
-  { id: 'games', emojiKey: 'target', textAr: 'إدارة كاملة للمخزون والطلبات', textEn: 'Complete control over stock and orders' }
+  { id: 'rocket', emojiKey: 'rocket', textAr: 'تسليم فوري بسرعة الصاروخ 🚀', textEn: 'Rocket-fast instant delivery 🚀' },
+  { id: 'fire', emojiKey: 'fire', textAr: 'أقوى العروض للجيمرز الحقيقيين 🔥', textEn: 'Hottest deals for real gamers 🔥' },
+  { id: 'crown', emojiKey: 'crown', textAr: 'كن محترف 👑 مفاتيح أصلية 100%', textEn: 'Be pro 👑 100% legit keys' },
+  { id: 'shield', emojiKey: 'shield', textAr: 'آمن ومضمون مع دعم 24/7 ⚡', textEn: 'Safe & secured + 24/7 hype support ⚡' }
 ];
 
-// One compact inline keyboard. Do not add another reply keyboard on top of it.
+// MINIMAL WEB-FOCUSED KEYBOARD - Bot focuses on website, not old shop callbacks
+// The old keyboard with shop/mykeys/history/profile/balance/help is removed
+// Now only 3-4 buttons max, all pointing to webapp or support
 const DEFAULT_QUICK_LINKS = [
-  { id: 'shop', emojiKey: 'gamepad', textAr: 'تصفح الألعاب', textEn: 'Browse Games', type: 'callback', value: 'shop', row: 1, visibility: 'all', style: 'primary' },
-  { id: 'keys', emojiKey: 'key', textAr: 'مفاتيحي', textEn: 'My Keys', type: 'callback', value: 'mykeys', row: 1, visibility: 'all', style: 'success' },
-  { id: 'history', emojiKey: 'orders', textAr: 'طلباتي', textEn: 'My Orders', type: 'callback', value: 'history', row: 2, visibility: 'all', style: 'success' },
-  { id: 'profile', emojiKey: 'profile', textAr: 'حسابي', textEn: 'Profile', type: 'callback', value: 'profile', row: 2, visibility: 'all', style: 'primary' },
-  { id: 'balance', emojiKey: 'wallet', textAr: 'شحن الرصيد', textEn: 'Top Up Balance', type: 'callback', value: 'addbalance', row: 3, visibility: 'all', style: 'success' },
-  { id: 'help', emojiKey: 'support', textAr: 'الدعم والمساعدة', textEn: 'Help & Support', type: 'callback', value: 'help', row: 3, visibility: 'all', style: 'danger' },
-  { id: 'customer_app', emojiKey: 'mobile', textAr: 'فتح المتجر', textEn: 'Open Store', type: 'webapp', value: '/customer', row: 4, visibility: 'all', style: 'primary' },
-  { id: 'support', emojiKey: 'chat', textAr: 'التواصل مع الدعم', textEn: 'Contact Support', type: 'url', value: 'https://t.me/{support}', row: 4, visibility: 'all', style: 'danger' },
-  { id: 'language', emojiKey: 'globe', textAr: 'English', textEn: 'العربية', type: 'callback', value: 'language', row: 5, visibility: 'all', style: 'primary' },
-  { id: 'channel', emojiKey: 'megaphone', textAr: 'القناة الرسمية', textEn: 'Official Channel', type: 'url', value: 'https://t.me/{channel}', row: 5, visibility: 'all' }
+  { id: 'customer_app', emojiKey: 'rocket', textAr: '🚀 فتح المتجر - PLAY NOW', textEn: '🚀 Open Store - PLAY NOW', type: 'webapp', value: '/customer', row: 1, visibility: 'all', style: 'primary' },
+  { id: 'support', emojiKey: 'fire', textAr: '🔥 الدعم السريع', textEn: '🔥 Fast Support', type: 'url', value: 'https://t.me/{support}', row: 2, visibility: 'all', style: 'danger' },
+  { id: 'channel', emojiKey: 'explosion', textAr: '💥 قناة العروض', textEn: '💥 Deals Channel', type: 'url', value: 'https://t.me/{channel}', row: 2, visibility: 'all' },
+  { id: 'language', emojiKey: 'target', textAr: '🌍 English', textEn: '🌍 العربية', type: 'callback', value: 'language', row: 3, visibility: 'all', style: 'primary' },
 ];
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -92,26 +88,34 @@ const parseJsonSetting = (value, fallback) => {
 };
 
 const LEGACY_ICON_KEYS = {
-  '🛍️': 'gamepad', '🗂️': 'gamepad', '🔑': 'key', '📋': 'orders', '🧾': 'orders', '👤': 'profile',
-  '💰': 'wallet', '💳': 'wallet', '🆘': 'support', '📱': 'mobile', '🛒': 'shopping', '💬': 'chat',
-  '📣': 'megaphone', '🌍': 'globe'
+  '🛍️': 'rocket', '🗂️': 'gamepad', '🔑': 'gem', '📋': 'trophy', '🧾': 'trophy', '👤': 'crown',
+  '💰': 'wallet', '💳': 'wallet', '🆘': 'fire', '📱': 'rocket', '🛒': 'rocket', '💬': 'fire',
+  '📣': 'explosion', '🌍': 'target'
 };
+
+const LEGACY_IDS = ['shop', 'keys', 'history', 'profile', 'balance', 'mykeys', 'my_activity', 'help'];
 
 const normalizeQuickLinks = (value) => {
   const parsed = parseJsonSetting(value, DEFAULT_QUICK_LINKS);
   if (!Array.isArray(parsed) || !parsed.length) return clone(DEFAULT_QUICK_LINKS);
 
+  // If old database still has legacy shop/mykeys/history buttons, reset to new minimal gaming menu
+  const hasLegacy = parsed.some(item => LEGACY_IDS.includes(item.id) || LEGACY_IDS.includes(item.value));
+  if (hasLegacy && parsed.length > 4) {
+    // Force migration to new web-focused menu
+    return clone(DEFAULT_QUICK_LINKS);
+  }
+
   const seen = new Set();
   const normalized = parsed
     .map((item, index) => ({
       id: item.id || `link_${index + 1}`,
-      emojiKey: item.emojiKey || item.iconKey || LEGACY_ICON_KEYS[item.icon] || 'gamepad',
-      // Keep old saved settings readable while the new renderer owns the icon.
+      emojiKey: item.emojiKey || item.iconKey || LEGACY_ICON_KEYS[item.icon] || 'rocket',
       icon: item.icon || '',
       textAr: item.textAr || item.text || 'زر',
       textEn: item.textEn || item.text || 'Button',
       type: ['callback', 'webapp', 'url'].includes(item.type) ? item.type : 'callback',
-      value: item.value || 'shop',
+      value: item.value || '/customer',
       row: Number(item.row) > 0 ? Number(item.row) : 1,
       visibility: ['all', 'admin'].includes(item.visibility) ? item.visibility : 'all',
       style: ['primary', 'success', 'danger'].includes(item.style) ? item.style : null
@@ -124,10 +128,11 @@ const normalizeQuickLinks = (value) => {
     })
     .sort((a, b) => a.row - b.row);
 
-  // Older databases predate the language action. Add it during normalization
-  // so translation is available without a manual migration.
   if (!normalized.some((item) => item.id === 'language')) {
     normalized.push(clone(DEFAULT_QUICK_LINKS.find((item) => item.id === 'language')));
+  }
+  if (!normalized.some((item) => item.id === 'customer_app')) {
+    normalized.unshift(clone(DEFAULT_QUICK_LINKS.find((item) => item.id === 'customer_app')));
   }
   return normalized.sort((a, b) => a.row - b.row);
 };
@@ -136,10 +141,13 @@ const normalizeHighlights = (value) => {
   const parsed = parseJsonSetting(value, DEFAULT_HIGHLIGHTS);
   if (!Array.isArray(parsed) || !parsed.length) return clone(DEFAULT_HIGHLIGHTS);
 
+  // Migrate old corporate highlights to gaming ones if they look old
+  const isOldStyle = parsed.some(h => (h.textAr || '').includes('واجهة مرتبة') || (h.textAr || '').includes('إدارة كاملة'));
+  if (isOldStyle) return clone(DEFAULT_HIGHLIGHTS);
+
   return parsed.map((item, index) => ({
     id: item.id || `highlight_${index + 1}`,
-    emojiKey: item.emojiKey || item.iconKey || 'sparkle',
-    // `icon` remains for old admin data but is no longer rendered by the bot.
+    emojiKey: item.emojiKey || item.iconKey || 'rocket',
     icon: item.icon || '',
     textAr: item.textAr || item.text || 'ميزة',
     textEn: item.textEn || item.text || 'Highlight'
@@ -195,26 +203,26 @@ const getUiSettings = async () => {
     adminPortalLabelAr,
     adminPortalLabelEn
   ] = await Promise.all([
-    Settings.get('bot_name', 'Digital Keys Store'),
+    Settings.get('bot_name', 'GAMER STORE 🔥'),
     Settings.get('welcome_message', ''),
     Settings.get('support_username', 'support'),
     Settings.get('channel_username', process.env.CHANNEL_USERNAME || ''),
-    Settings.get('ui_theme_preset', 'aurora'),
-    Settings.get('ui_welcome_badge_ar', 'واجهة جديدة • بوت أذكى'),
-    Settings.get('ui_welcome_badge_en', 'Fresh look • Smarter bot'),
-    Settings.get('ui_welcome_title_ar', 'متجر رقمي منظم وسريع'),
-    Settings.get('ui_welcome_title_en', 'A cleaner, faster digital storefront'),
-    Settings.get('ui_welcome_subtitle_ar', 'تسوّق بسرعة، راقب طلباتك، وافتح المتجر أو لوحة التحكم من مكان واحد.'),
-    Settings.get('ui_welcome_subtitle_en', 'Shop faster, track orders, and jump into the store or control panel from one place.'),
-    Settings.get('ui_footer_note_ar', 'جاهز دائماً للتحديثات والعروض الجديدة.'),
-    Settings.get('ui_footer_note_en', 'Always ready for new updates and fresh offers.'),
+    Settings.get('ui_theme_preset', 'midnight'),
+    Settings.get('ui_welcome_badge_ar', '🔥 للجيمرز المحترفين فقط'),
+    Settings.get('ui_welcome_badge_en', '🔥 For Pro Gamers Only'),
+    Settings.get('ui_welcome_title_ar', 'متجر الجيمرز الأسطوري 🎮'),
+    Settings.get('ui_welcome_title_en', 'Legendary Gamer Store 🎮'),
+    Settings.get('ui_welcome_subtitle_ar', 'أسرع متجر للألعاب والشحنات والبوستات - كل شي في مكان واحد مع تسليم فوري 🚀'),
+    Settings.get('ui_welcome_subtitle_en', 'Fastest game keys, boosts & top-ups - all in one place with rocket delivery 🚀'),
+    Settings.get('ui_footer_note_ar', '💥 عروض يومية + جوائز للمتابعين'),
+    Settings.get('ui_footer_note_en', '💥 Daily deals + giveaways for followers'),
     Settings.get('bot_quick_links', DEFAULT_QUICK_LINKS),
     Settings.get('ui_home_highlights', DEFAULT_HIGHLIGHTS),
-    Settings.get('admin_portal_label_ar', 'لوحة التحكم'),
-    Settings.get('admin_portal_label_en', 'Admin Portal')
+    Settings.get('admin_portal_label_ar', 'لوحة التحكم 👑'),
+    Settings.get('admin_portal_label_en', 'Admin Portal 👑')
   ]);
 
-  const theme = THEME_PRESETS[themeKey] || THEME_PRESETS.aurora;
+  const theme = THEME_PRESETS[themeKey] || THEME_PRESETS.midnight;
 
   return {
     botName,
@@ -255,24 +263,23 @@ const groupRows = (items = []) => {
   return [...rows.entries()].sort((a, b) => a[0] - b[0]).map(([, value]) => value);
 };
 
-const buildBotInlineKeyboard = ({ Markup, lang = 'ar', isAdmin = false, quickLinks = [], supportUsername = 'support', channelUsername = '', baseUrl = '', adminPortalLabel = { ar: 'لوحة التحكم', en: 'Admin Portal' } }) => {
+const buildBotInlineKeyboard = ({ Markup, lang = 'ar', isAdmin = false, quickLinks = [], supportUsername = 'support', channelUsername = '', baseUrl = '', adminPortalLabel = { ar: 'لوحة التحكم 👑', en: 'Admin Portal 👑' } }) => {
   const visibleLinks = quickLinks.filter((item) => item.visibility === 'all' || (item.visibility === 'admin' && isAdmin));
   const rows = groupRows(visibleLinks)
     .map((row) => row
       .map((item) => {
         const label = lang === 'en' ? (item.textEn || item.textAr) : (item.textAr || item.textEn);
-        const emojiKey = item.emojiKey || 'gamepad';
+        const emojiKey = item.emojiKey || 'rocket';
         const style = ['primary', 'success', 'danger'].includes(item.style) ? item.style : undefined;
         const emojiId = buttonEmojiId(emojiKey) || (style && buttonEmojiId(style));
         const text = buttonLabel(emojiKey, label, { emojiId, hasIcon: Boolean(emojiId) });
         const buttonExtra = emojiId ? { icon_custom_emoji_id: emojiId } : {};
-        // Button colors are a progressive enhancement; Telegram clients that do
-        // not understand them still receive the same single inline keyboard.
         if (style) buttonExtra.style = style;
         const rawValue = interpolateValue({ value: item.value, baseUrl, supportUsername, channelUsername });
 
         if (item.type === 'url') {
-          if (rawValue.includes('{channel}') || rawValue.endsWith('/')) return null;
+          if (!rawValue || rawValue.includes('{channel}') && !channelUsername) return null;
+          if (rawValue.endsWith('/{channel}')) return null;
           return { text, url: withProtocol(rawValue), ...buttonExtra };
         }
 
@@ -288,7 +295,7 @@ const buildBotInlineKeyboard = ({ Markup, lang = 'ar', isAdmin = false, quickLin
     .filter((row) => row.length > 0);
 
   if (isAdmin && !rows.flat().some((button) => button.web_app?.url?.includes('/admin'))) {
-    const emojiKey = 'admin';
+    const emojiKey = 'crown';
     const emojiId = buttonEmojiId(emojiKey) || buttonEmojiId('primary');
     rows.push([
       {

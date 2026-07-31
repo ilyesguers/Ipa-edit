@@ -1,10 +1,20 @@
 [build]
 builder = "NIXPACKS"
 buildCommand = "npm install && npm run build"
+watchPatterns = ["src/**", "miniapp/**", "public/**", "package.json"]
 
 [deploy]
 startCommand = "npm start"
 healthcheckPath = "/health"
-healthcheckTimeout = 30
+healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 5
+restartPolicyMaxRetries = 10
+numReplicas = 1
+
+[[deploy.environmentVariables]]
+name = "NODE_ENV"
+value = "production"
+
+[[deploy.environmentVariables]]
+name = "NPM_CONFIG_PRODUCTION"
+value = "false"

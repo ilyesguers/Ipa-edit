@@ -10,38 +10,46 @@ const { removeRememberedMenu, rememberMenu } = require('../../utils/menuMessage'
 const buildWelcomeMessage = async (user, lang = 'ar') => {
   const ui = await getUiSettings();
   const locale = lang === 'en' ? 'en' : 'ar';
-  const name = user.firstName || (locale === 'en' ? 'Dear Customer' : 'عزيزي العميل');
+  const name = user.firstName || (locale === 'en' ? 'Pro Gamer' : 'يا أسطورة');
   const welcome = ui.welcome[locale];
-  const highlights = ui.highlights.slice(0, 3);
+  const highlights = ui.highlights.slice(0, 4);
   const balance = Number(user.balance || 0).toFixed(2);
   const orders = Number(user.totalOrders || 0);
-  const referrals = Number(user.referralCount || 0);
   const customMessage = (ui.welcomeMessage || '').trim();
 
   const highlightLines = highlights
-    .map((item) => `${emojiHtml(item.emojiKey || 'sparkle')} ${locale === 'en' ? item.textEn : item.textAr}`)
+    .map((item) => `${emojiHtml(item.emojiKey || 'rocket')} ${locale === 'en' ? item.textEn : item.textAr}`)
     .join('\n');
 
-  const statsLine = locale === 'en'
-    ? `${emojiHtml('wallet')} <b>Balance</b>: $${balance} • ${emojiHtml('shopping')} <b>Orders</b>: ${orders} • ${emojiHtml('link')} <b>Referrals</b>: ${referrals}`
-    : `${emojiHtml('wallet')} <b>الرصيد</b>: $${balance} • ${emojiHtml('shopping')} <b>الطلبات</b>: ${orders} • ${emojiHtml('link')} <b>الإحالات</b>: ${referrals}`;
-
-  const footerLine = locale === 'en'
-    ? `${emojiHtml('sparkle')} <i>${welcome.footer}</i>`
-    : `${emojiHtml('sparkle')} <i>${welcome.footer}</i>`;
+  if (locale === 'en') {
+    return {
+      ui,
+      caption:
+        `${emojiHtml('fire')} <b>${welcome.badge}</b>\n\n` +
+        `${emojiHtml('crown')} <b>Yo ${name} 👑 Welcome to the LEGEND ZONE</b>\n` +
+        `${emojiHtml('rocket')} <b>${ui.botName}</b> - ${welcome.title}\n` +
+        `${welcome.subtitle}\n\n` +
+        `${highlightLines}\n\n` +
+        `${emojiHtml('wallet')} <b>Balance:</b> $${balance} • ${emojiHtml('trophy')} <b>Orders:</b> ${orders}\n\n` +
+        `${customMessage ? `${emojiHtml('explosion')} ${customMessage}\n\n` : ''}` +
+        `${emojiHtml('target')} <i>Hit PLAY NOW and level up! ${welcome.footer}</i>\n` +
+        `${emojiHtml('fire')} <b>NO CAP - FASTEST DELIVERY IN GAME!</b>`
+    };
+  }
 
   return {
     ui,
     caption:
-      `${emojiHtml('crown')} <b>${welcome.badge}</b>\n\n` +
-      `${emojiHtml('profile')} <b>${locale === 'en' ? `Welcome ${name}` : `أهلاً ${name}`}</b>\n` +
-      `${emojiHtml('tag')} <b>${ui.botName}</b>\n` +
-      `${emojiHtml('sparkle')} ${welcome.title}\n` +
+      `${emojiHtml('fire')} <b>${welcome.badge}</b>\n\n` +
+      `${emojiHtml('crown')} <b>هلا والله ${name} 👑</b>\n` +
+      `${emojiHtml('rocket')} <b>${ui.botName}</b>\n` +
+      `${welcome.title}\n` +
       `${welcome.subtitle}\n\n` +
       `${highlightLines}\n\n` +
-      `${statsLine}\n\n` +
-      `${customMessage ? `${emojiHtml('notification')} ${customMessage}\n\n` : ''}` +
-      `${footerLine}`
+      `${emojiHtml('wallet')} <b>رصيدك:</b> $${balance} • ${emojiHtml('trophy')} <b>طلباتك:</b> ${orders}\n\n` +
+      `${customMessage ? `${emojiHtml('explosion')} ${customMessage}\n\n` : ''}` +
+      `${emojiHtml('target')} <i>اضغط PLAY NOW وابدأ اللعب فوراً! ${welcome.footer}</i>\n` +
+      `${emojiHtml('fire')} <b>أسرع متجر للجيمرز - تسليم فوري مره نار 🔥</b>`
   };
 };
 
@@ -64,29 +72,29 @@ const startHandler = async (ctx) => {
     const user = ctx.dbUser;
     const lang = user.preferredLanguage || 'ar';
 
-    // ── CAPTCHA for new users ──
+    // CAPTCHA for new users
     const isBrandNew = (Date.now() - new Date(user.createdAt).getTime()) < 120000;
     if (!user.captchaPassed && isBrandNew) {
       const captcha = createCaptcha(user.telegramId);
 
       await ctx.reply(
-        `${emojiHtml('shield')} <b>${lang === 'en' ? 'Verification Required' : 'تحقق أمني'}</b>\n\n` +
+        `${emojiHtml('shield')} <b>${lang === 'en' ? 'Anti-Bot Check 🛡️' : 'تحقق سريع - انت انسان؟ 🛡️'}</b>\n\n` +
         `${lang === 'en'
-          ? `${emojiHtml('bolt')} Please solve this simple math problem to verify you are human:`
-          : `${emojiHtml('bolt')} حل المسألة الحسابية البسيطة للتحقق من أنك إنسان:`}\n\n` +
-        `${emojiHtml('target')} <b>${captcha.question}</b> = ?\n\n` +
+          ? `${emojiHtml('target')} Solve this quick math to enter the LEGEND ZONE:`
+          : `${emojiHtml('target')} حل هذي المسألة السريعة عشان تدخل منطقة الأساطير:`}\n\n` +
+        `${emojiHtml('explosion')} <b>${captcha.question}</b> = ?\n\n` +
         `${lang === 'en'
-          ? `${emojiHtml('sparkle')} Just type the number answer (e.g., 42)`
-          : `${emojiHtml('sparkle')} اكتب الإجابة رقمياً فقط (مثال: 42)`}\n` +
+          ? `${emojiHtml('rocket')} Just type the number (e.g., 42)`
+          : `${emojiHtml('rocket')} بس اكتب الرقم (مثال: 42)`}\n` +
         `${lang === 'en'
-          ? `${emojiHtml('clock')} You have 3 attempts`
-          : `${emojiHtml('clock')} لديك 3 محاولات`}`,
+          ? `${emojiHtml('fire')} You have 3 tries - EZ!`
+          : `${emojiHtml('fire')} عندك 3 محاولات - سهلة!`}`,
         { parse_mode: 'HTML' }
       );
       return;
     }
 
-    // ── Handle referral with ref_ prefix ──
+    // Handle referral
     if (ctx.startPayload && ctx.startPayload !== '' && !user.referredBy) {
       const payload = ctx.startPayload;
       let refId = null;
@@ -110,8 +118,8 @@ const startHandler = async (ctx) => {
           await referrer.save();
 
           await ctx.telegram.sendMessage(refId,
-            `${emojiHtml('trophy')} ${lang === 'en' ? 'New User Referral!' : 'تمت إحالة مستخدم جديد!'}\n` +
-            `${emojiHtml('coin')} +$${bonus} ${lang === 'en' ? 'Added to your balance' : 'أضيفت لرصيدك'}`
+            `${emojiHtml('crown')} ${lang === 'en' ? 'New teammate joined! 🔥' : 'واحد جديد انضم عن طريقك! 🔥'}\n` +
+            `${emojiHtml('gem')} +$${bonus} ${lang === 'en' ? 'Added - Keep grinding!' : 'انضافت لرصيدك - استمر!'}`
           ).catch(() => {});
 
           logger.info(`🔗 Referral: ${user.telegramId} referred by ${refId}`);
@@ -122,20 +130,20 @@ const startHandler = async (ctx) => {
     const { ui, caption } = await buildWelcomeMessage(user, lang);
     const inlineKeyboard = await mainKeyboard(lang, ctx.isAdmin);
 
-    // `/start` is allowed to reopen the menu, but never to stack a second
-    // keyboard on top of the first one.
     await removeRememberedMenu(ctx);
     let menuMessage;
     try {
+      const bannerUrl = `${process.env.BASE_URL}/public/banner.png`;
       menuMessage = await ctx.replyWithPhoto(
-        { url: `${process.env.BASE_URL}/public/banner.png` },
+        { url: bannerUrl },
         {
           caption,
           parse_mode: 'HTML',
           ...inlineKeyboard
         }
       );
-    } catch (_) {
+    } catch (err) {
+      logger.debug(`Banner failed, sending text: ${err.message}`);
       menuMessage = await ctx.reply(caption, {
         parse_mode: 'HTML',
         ...inlineKeyboard
@@ -143,7 +151,7 @@ const startHandler = async (ctx) => {
     }
     rememberMenu(ctx, menuMessage);
 
-    // Single inline keyboard only - no duplicate reply keyboard
+    // Admin notification for new users only
     const adminIds = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim())).filter(Boolean);
     const isNewUser = (Date.now() - new Date(user.createdAt).getTime()) < 60000;
 
@@ -151,20 +159,20 @@ const startHandler = async (ctx) => {
         for (const adminId of adminIds) {
           await ctx.telegram.sendMessage(
             adminId,
-            `${emojiHtml('star')} <b>${lang === 'en' ? 'New User' : 'مستخدم جديد'}</b>\n\n` +
-            `${emojiHtml('profile')} ${lang === 'en' ? 'Name' : 'الاسم'}: <b>${user.fullName}</b>\n` +
-            `${emojiHtml('admin')} ID: <code>${user.telegramId}</code>\n` +
-            `${user.username ? `${emojiHtml('chat')} ${lang === 'en' ? 'Username' : 'اليوزر'}: @${user.username}\n` : ''}` +
-            `${user.referredBy ? `${emojiHtml('link')} ${lang === 'en' ? 'Referred by' : 'بإحالة من'}: <code>${user.referredBy}</code>\n` : ''}` +
-            `${emojiHtml('calendar')} ${lang === 'en' ? 'Date' : 'التاريخ'}: ${new Date().toLocaleString('ar-SA')}`,
+            `${emojiHtml('fire')} <b>${lang === 'en' ? 'New Gamer Joined 🔥' : 'جيمر جديد دخل 🔥'}</b>\n\n` +
+            `${emojiHtml('crown')} ${user.fullName}\n` +
+            `${emojiHtml('target')} ID: <code>${user.telegramId}</code>\n` +
+            `${user.username ? `${emojiHtml('fire')} @${user.username}\n` : ''}` +
+            `${user.referredBy ? `${emojiHtml('rocket')} Ref: <code>${user.referredBy}</code>\n` : ''}` +
+            `${emojiHtml('bolt')} ${new Date().toLocaleString('ar-SA')}`,
             {
               parse_mode: 'HTML',
               ...Markup.inlineKeyboard([
                 [{
-                  text: buttonLabel('admin', lang === 'en' ? ui.adminPortalLabel.en : ui.adminPortalLabel.ar),
+                  text: buttonLabel('crown', lang === 'en' ? 'View User 👑' : 'شوف اليوزر 👑'),
                   web_app: { url: `${process.env.BASE_URL}/admin#users?search=${user.telegramId}` },
                   style: 'primary',
-                  icon_custom_emoji_id: buttonEmojiId('primary')
+                  icon_custom_emoji_id: buttonEmojiId('crown')
                 }]
               ])
             }
@@ -175,8 +183,8 @@ const startHandler = async (ctx) => {
   } catch (err) {
     logger.error('Start handler error:', err);
     await ctx.reply(
-      `${emojiHtml('sparkle')} أهلاً! حدث خطأ في التحميل، جرب /start مجدداً\n` +
-      `${emojiHtml('sparkle')} Welcome! Loading error, try /start again`
+      `${emojiHtml('rocket')} أهلاً يا أسطورة! حدث خلل بسيط، ارسل /start 🚀\n` +
+      `${emojiHtml('fire')} Yo legend! Small bug, send /start again 🔥`
     );
   }
 };
