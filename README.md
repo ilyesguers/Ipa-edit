@@ -1,5 +1,4 @@
 # 🔥 GAMER STORE — LEGENDARY EDITION 🎮👑
-
 > متجر أسطوري للجيمرز والمرهقين - بوت تلجرام + متجر ويب فخم + لوحة تحكم
 > Legendary store for pro gamers & teens - Telegram Bot + Web Store + Admin
 
