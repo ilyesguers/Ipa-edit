@@ -10,6 +10,7 @@ const Settings = require('../../models/Settings');
 const logger = require('../../utils/logger');
 const { buttonEmojiId, emojiHtml, emojiChar, buttonLabel } = require('../../utils/customEmoji');
 const { editOrReplyMenu } = require('../../utils/menuMessage');
+const { sendGamerError } = require('../../utils/gamerErrors');
 
 const getLang = (ctx) => ctx.dbUser?.preferredLanguage || 'ar';
 const t = (lang, ar, en) => lang === 'en' ? en : ar;
@@ -96,7 +97,8 @@ const redirectToWebApp = async (ctx, lang) => {
 
 const handleMainMenu = async (ctx, lang) => {
   if (!ctx.dbUser) {
-    return ctx.answerCbQuery(t(lang, '⚠️ جرب /start أولاً', '⚠️ Try /start first'), { show_alert: true });
+    await ctx.answerCbQuery(t(lang, '💀 جرب /start أولاً', '💀 Try /start first'), { show_alert: true });
+    return sendGamerError(ctx, 'userNotFound');
   }
   const { buildWelcomeMessage } = require('./start');
   const { caption } = await buildWelcomeMessage(ctx.dbUser, lang);
@@ -107,7 +109,8 @@ const handleMainMenu = async (ctx, lang) => {
 const handleLanguage = async (ctx, lang) => {
   const user = ctx.dbUser;
   if (!user) {
-    return ctx.answerCbQuery(t(lang, '⚠️ جرب /start أولاً', '⚠️ Try /start first'), { show_alert: true });
+    await ctx.answerCbQuery(t(lang, '💀 جرب /start أولاً', '💀 Try /start first'), { show_alert: true });
+    return sendGamerError(ctx, 'userNotFound');
   }
   const newLang = user.preferredLanguage === 'ar' ? 'en' : 'ar';
   user.preferredLanguage = newLang;

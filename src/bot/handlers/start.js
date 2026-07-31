@@ -6,6 +6,7 @@ const { Markup } = require('telegraf');
 const { createCaptcha } = require('../../utils/captcha');
 const { emojiHtml, buttonEmojiId, buttonLabel } = require('../../utils/customEmoji');
 const { removeRememberedMenu, rememberMenu } = require('../../utils/menuMessage');
+const { sendGamerError } = require('../../utils/gamerErrors');
 
 const buildWelcomeMessage = async (user, lang = 'ar') => {
   const ui = await getUiSettings();
@@ -71,11 +72,8 @@ const startHandler = async (ctx) => {
   try {
     const user = ctx.dbUser;
     if (!user) {
-      logger.error('Start handler: ctx.dbUser is undefined');
-      return ctx.reply(
-        `${emojiHtml('rocket')} أهلاً! حدث خلل بسيط، جرب مرة ثانية أو تواصل مع الدعم 🚀\n` +
-        `Hi! Small bug, try again or contact support 🚀`
-      );
+      logger.error('Start handler: ctx.dbUser is undefined - possible DB connection issue');
+      return sendGamerError(ctx, 'dbError');
     }
     const lang = user.preferredLanguage || 'ar';
 

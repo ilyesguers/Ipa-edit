@@ -107,14 +107,25 @@ const createBot = (io) => {
 
       return next();
     } catch (err) {
-      logger.error('User middleware error:', err);
-      // Send helpful error message and don't continue to handlers
+      logger.error('🔴 User middleware error:', err);
+      // Check if it's a database connection issue
+      const isDbError = err.message?.includes('MongoDB') || 
+                        err.message?.includes('ECONNREFUSED') ||
+                        err.message?.includes('timeout') ||
+                        err.name === 'MongoNetworkError' ||
+                        err.name === 'MongooseServerSelectionError';
+      
       const lang = String(ctx.from.language_code || '').toLowerCase().startsWith('en') ? 'en' : 'ar';
-      return ctx.reply(
-        lang === 'en'
-          ? `⚠️ Connection issue detected. Please try again in a few seconds.\nIf problem persists, contact support. 🔧`
-          : `⚠️ تم اكتشاف مشكلة في الاتصال. حاول مرة ثانية بعد شوي.\nإذا استمرت المشكلة، تواصل مع الدعم. 🔧`
-      ).catch(() => {});
+      const errorType = isDbError ? 'dbError' : 'generic';
+      
+      // Try to send a helpful error message
+      const { sendGamerError } = require('../utils/gamerErrors');
+      try {
+        return await sendGamerError(ctx, errorType);
+      } catch (sendErr) {
+        logger.error('Failed to send error message:', sendErr);
+      }
+      return; // Don't continue to handlers if user data failed
     }
   });
 
@@ -199,9 +210,25 @@ const createBot = (io) => {
   bot.on('message', paymentHandler);
 
   bot.catch((err, ctx) => {
-    logger.error(`Bot error for ${ctx.updateType}:`, err);
+    logger.error(`🎮 Bot error [${ctx.updateType}]:`, err);
+    
+    // Try to send a gaming-themed error message
+    const { sendGamerError } = require('../utils/gamerErrors');
+    const lang = ctx.dbUser?.preferredLanguage || 
+                 (ctx.from?.language_code?.toLowerCase().startsWith('en') ? 'en' : 'ar');
+    
+    // Determine error type based on the error
+    const errorType = err.message?.includes('MongoDB') || 
+                      err.message?.includes('ECONNREFUSED') ? 'dbError' : 'generic';
+    
     if (ctx.reply) {
-      ctx.reply('❌ حصل لاق بسيط، جرب مرة ثانية / Small lag, try again 🔄').catch(() => {});
+      sendGamerError(ctx, errorType).catch(() => {
+        // Fallback if even that fails
+        ctx.reply(lang === 'en' 
+          ? '💥 LAG! Try /start to respawn 🔄' 
+          : '💥 لك lag! جرب /start عشان تعيد التشغيل 🔄'
+        ).catch(() => {});
+      });
     }
   });
 

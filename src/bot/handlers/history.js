@@ -3,10 +3,12 @@ const Order = require('../../models/Order');
 const { buttonEmojiId, buttonLabel, emojiHtml } = require('../../utils/customEmoji');
 const { editOrReplyMenu } = require('../../utils/menuMessage');
 
+const { sendGamerError } = require('../../utils/gamerErrors');
+
 const historyHandler = async (ctx, page = 1) => {
   const user = ctx.dbUser;
   if (!user) {
-    return ctx.reply('⚠️ User data not loaded. Try /start again.');
+    return sendGamerError(ctx, 'userNotFound');
   }
   const lang = user.preferredLanguage || 'ar';
   const limit = 5;

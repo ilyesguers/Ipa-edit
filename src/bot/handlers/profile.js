@@ -24,11 +24,12 @@ const btn = (emojiKey, text, data, style = null, isWebApp = false, url = null) =
   };
 };
 
+const { sendGamerError } = require('../../utils/gamerErrors');
+
 const profileHandler = async (ctx) => {
   const user = ctx.dbUser;
   if (!user) {
-    const lang = getLang(ctx);
-    return ctx.reply(lang === 'en' ? '⚠️ User data not loaded. Try /start again.' : '⚠️ بيانات المستخدم ما تحميلت. جرب /start مرة ثانية.');
+    return sendGamerError(ctx, 'userNotFound');
   }
   const lang = getLang(ctx);
 
