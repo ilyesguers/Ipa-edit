@@ -80,11 +80,13 @@ export default function App() {
       <div className="fixed inset-0 pointer-events-none z-0 bg-gradient-to-b from-[#0d0f12] via-[#11141a] to-[#0d0f12]" />
 
       <Toaster
-        position="top-center"
+        position="bottom-center"
+        gutter={12}
         toastOptions={{
-          style: { background: '#161922', color: '#fff', border: '1px solid rgba(16,185,129,0.2)', fontFamily: 'Cairo', borderRadius: '16px' },
+          style: { background: '#161922', color: '#fff', border: '1px solid rgba(16,185,129,0.2)', fontFamily: 'Cairo', borderRadius: '14px', fontSize: '13px', boxShadow: '0 8px 24px rgba(0,0,0,0.45)', padding: '10px 16px', marginBottom: 'env(safe-area-inset-bottom)' },
           success: { iconTheme: { primary: '#10b981', secondary: '#000' } },
-          error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } }
+          error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
+          duration: 2500
         }}
       />
 
@@ -95,13 +97,13 @@ export default function App() {
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
               className="h-full"
             >
-              <Suspense fallback={<LoadingScreen />}>
+              <Suspense fallback={<div className="p-4 space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-24 rounded-2xl skeleton" />)}</div>}>
                 <ActiveTab />
               </Suspense>
             </motion.div>

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import useStore from '../store/useStore';
 import { localizedName, t } from '../i18n';
 import PremiumIcon from './PremiumIcon';
+import { haptic } from '../utils/haptic';
 
 export default function DurationSheet() {
   const { selectedProduct, selectDuration, locale } = useStore();
@@ -32,7 +33,7 @@ export default function DurationSheet() {
         <div className="p-5 overflow-y-auto flex-1 space-y-3">
           <p className="text-xs text-[#10b981] font-black tracking-wider flex items-center gap-2"><PremiumIcon name="rocket" /> {locale === 'en' ? 'CHOOSE YOUR POWER LEVEL:' : 'اختر قوتك:'} ⚡</p>
           <div className="space-y-3">
-            {durations.map((duration, index) => <DurationRow key={duration._id} duration={duration} index={index} locale={locale} onSelect={() => (duration.stockCount > 0 || duration.inStock) && selectDuration(duration)} />)}
+            {durations.map((duration, index) => <DurationRow key={duration._id} duration={duration} index={index} locale={locale} onSelect={() => { if (duration.stockCount > 0 || duration.inStock) { haptic.light(); selectDuration(duration); } }} />)}
           </div>
           <p className="text-center text-[11px] text-[#6b7280] mt-6 flex items-center justify-center gap-2"><PremiumIcon name="fire" /> {t(locale, 'levelUp')} - {t(locale, 'gg')} 👑</p>
         </div>
@@ -45,7 +46,7 @@ function DurationRow({ duration, index, locale, onSelect }) {
   const hasDiscount = duration.originalPrice > duration.price;
   const discount = hasDiscount ? Math.round(((duration.originalPrice - duration.price) / duration.originalPrice) * 100) : 0;
   return (
-    <motion.button type="button" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} whileTap={{ scale: 0.97 }} whileHover={{ y: -2, scale: 1.01 }} onClick={onSelect} disabled={!inStock} className={`w-full rounded-[20px] p-4 flex items-center justify-between border-2 transition-all relative overflow-hidden ${inStock ? 'bg-gradient-to-br from-[#161922] to-[#1f2430] border-[#2d3748] hover:border-[#10b981]/50 hover:shadow-xl hover:shadow-[#10b981]/10' : 'bg-[#0d0f12] border-[#1f2430]/50 opacity-60'}`}>
+    <motion.button type="button" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} whileTap={{ scale: 0.97 }} whileHover={{ y: -2, scale: 1.01 }} onClick={onSelect} disabled={!inStock} className={`glow-card w-full rounded-[20px] p-4 flex items-center justify-between border-2 transition-all relative overflow-hidden ${inStock ? 'bg-gradient-to-br from-[#161922] to-[#1f2430] border-[#2d3748] hover:border-[#10b981]/50 hover:shadow-xl hover:shadow-[#10b981]/10' : 'bg-[#0d0f12] border-[#1f2430]/50 opacity-60'}`}>
       {inStock && <div className="absolute inset-0 bg-gradient-to-r from-[#10b981]/0 via-[#10b981]/5 to-transparent opacity-0 hover:opacity-100 transition-opacity" />}
       <div className="text-right relative">
         <div className="flex items-center gap-2"><p className="font-black text-white text-[15px]">{localizedName(duration, locale)}</p>{discount > 0 && <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#ef4444] text-white animate-pulse">−{discount}%</span>}</div>

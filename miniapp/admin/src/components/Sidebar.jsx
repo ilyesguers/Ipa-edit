@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { canViewPage } from '../utils/permissions';
 
 const NAV = [
   { id: 'dashboard', icon: '🪄', label: 'لوحة التحكم', desc: 'ملخص سريع' },
@@ -47,7 +48,7 @@ export default function Sidebar({ activePage, setActivePage, setRouteQuery, user
       </div>
 
       <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
-        {NAV.map((item) => (
+        {NAV.filter((item) => canViewPage(user, item.id)).map((item) => (
           <button
             key={item.id}
             onClick={() => goTo(item.id)}

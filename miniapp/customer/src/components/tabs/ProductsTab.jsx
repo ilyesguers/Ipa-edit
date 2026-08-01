@@ -6,6 +6,7 @@ import ProductCard from '../ProductCard';
 import PremiumIcon from '../PremiumIcon';
 import api from '../../utils/api';
 import { cachedFetch } from '../../utils/cache';
+import { haptic } from '../../utils/haptic';
 
 export default function ProductsTab() {
   const { categories, selectedCategory, selectedGame, games, products, fetchCategories, selectCategory, selectGame, selectProduct, publicSettings, user, locale } = useStore();
@@ -38,10 +39,12 @@ export default function ProductsTab() {
   }, [search]);
 
   const handleCategory = async (category) => {
+    haptic.light();
     setLoading(true);
     try { await selectCategory(category); } finally { setLoading(false); }
   };
   const handleGame = async (game) => {
+    haptic.light();
     setLoading(true);
     try { await selectGame(game); } finally { setLoading(false); }
   };
@@ -201,7 +204,7 @@ function Breadcrumb({ locale }) {
   const { breadcrumb, goBack } = useStore();
   return (
     <div className="flex items-center gap-2 mb-3">
-      <motion.button type="button" whileTap={{ scale: 0.85 }} onClick={goBack} className="w-9 h-9 flex items-center justify-center rounded-xl bg-[#161922] text-white border border-[#2d3748] hover:border-[#10b981]/30 transition-colors">
+      <motion.button type="button" whileTap={{ scale: 0.85 }} onClick={() => { haptic.light(); goBack(); }} className="w-11 h-11 flex items-center justify-center rounded-xl bg-[#161922] text-white border border-[#2d3748] hover:border-[#10b981]/30 transition-colors">
         <PremiumIcon name={locale === 'ar' ? 'right' : 'left'} />
       </motion.button>
       <div className="flex items-center gap-1.5 text-xs text-muted overflow-x-auto scrollbar-hide">
@@ -219,7 +222,7 @@ function Breadcrumb({ locale }) {
 }
 function CategoryCard({ category, index, locale, onSelect }) {
   return (
-    <motion.button type="button" initial={{ opacity: 0, scale: 0.8, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ delay: index * 0.07, type: 'spring', stiffness: 200 }} whileTap={{ scale: 0.92 }} whileHover={{ y: -4, scale: 1.02 }} onClick={onSelect} className="aspect-square bg-gradient-to-br from-[#161922] to-[#1f2430] border border-[#2d3748] rounded-[22px] flex flex-col items-center justify-center gap-2.5 group hover:border-[#10b981]/40 transition-all relative overflow-hidden shadow-lg hover:shadow-xl hover:shadow-[#10b981]/10">
+    <motion.button type="button" initial={{ opacity: 0, scale: 0.8, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ delay: index * 0.07, type: 'spring', stiffness: 200 }} whileTap={{ scale: 0.92 }} whileHover={{ y: -4, scale: 1.02 }} onClick={onSelect} className="glow-card aspect-square bg-gradient-to-br from-[#161922] to-[#1f2430] border border-[#2d3748] rounded-[22px] flex flex-col items-center justify-center gap-2.5 group hover:border-[#10b981]/40 transition-all relative overflow-hidden shadow-lg hover:shadow-xl hover:shadow-[#10b981]/10">
       <div className="absolute inset-0 bg-gradient-to-br from-[#10b981]/0 to-[#10b981]/0 group-hover:from-[#10b981]/10 group-hover:to-transparent transition-all duration-500" />
       <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#10b981]/0 group-hover:via-[#10b981]/50 to-transparent transition-all" />
       <motion.div whileHover={{ rotate: [0, -10, 10, 0], scale: 1.1 }} transition={{ duration: 0.5 }} className="relative">
@@ -233,7 +236,7 @@ function CategoryCard({ category, index, locale, onSelect }) {
 function GameCard({ game, index, locale, onSelect }) {
   const hasImage = typeof game.icon === 'string' && /^(https?:\/\/|\/)/.test(game.icon);
   return (
-    <motion.button type="button" initial={{ opacity: 0, y: 25 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.06, type: 'spring' }} whileTap={{ scale: 0.93 }} whileHover={{ y: -3, scale: 1.02 }} onClick={onSelect} className="aspect-[4/3.2] bg-gradient-to-br from-[#161922] to-[#1f2430] border border-[#2d3748] rounded-[20px] flex flex-col items-center justify-center gap-2.5 group overflow-hidden relative shadow-lg hover:shadow-xl hover:border-purple/30 hover:shadow-purple/10 transition-all">
+    <motion.button type="button" initial={{ opacity: 0, y: 25 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.06, type: 'spring' }} whileTap={{ scale: 0.93 }} whileHover={{ y: -3, scale: 1.02 }} onClick={onSelect} className="glow-card aspect-[4/3.2] bg-gradient-to-br from-[#161922] to-[#1f2430] border border-[#2d3748] rounded-[20px] flex flex-col items-center justify-center gap-2.5 group overflow-hidden relative shadow-lg hover:shadow-xl hover:border-[#3b82f6]/40 hover:shadow-[#3b82f6]/10 transition-all">
       <div className="absolute inset-0 bg-gradient-to-br from-purple/0 to-transparent group-hover:from-purple/10 transition-all" />
       {hasImage ? <img src={game.icon} alt={localizedName(game, locale)} className="w-14 h-14 object-cover rounded-2xl ring-2 ring-[#2d3748] group-hover:ring-purple/40 transition-all shadow-lg" /> : <motion.div whileHover={{ scale: 1.15, rotate: 10 }}><PremiumIcon name="gamepad" size="2.8rem" className="text-purple-300 drop-shadow-[0_0_15px_rgba(99,102,241,0.5)]" /></motion.div>}
       <p className="text-[11px] font-black text-white px-2 text-center leading-tight">{localizedName(game, locale)}</p>
@@ -241,5 +244,24 @@ function GameCard({ game, index, locale, onSelect }) {
     </motion.button>
   );
 }
-function SkeletonList() { return Array(4).fill(0).map((_, index) => <div key={index} className="h-28 rounded-[20px] skeleton animate-pulse" style={{ animationDelay: `${index * 0.1}s` }} />); }
-function SkeletonGrid() { return Array(6).fill(0).map((_, index) => <div key={index} className="aspect-square rounded-[22px] skeleton" />); }
+// Skeletons mirror the real product-card shape — no blank screens while loading
+function SkeletonCard() {
+  return (
+    <div className="gamer-card rounded-[22px] p-4">
+      <div className="flex items-start gap-3.5">
+        <div className="w-14 h-14 rounded-2xl skeleton" />
+        <div className="flex-1 space-y-2.5 pt-1">
+          <div className="h-3.5 w-3/4 rounded-full skeleton" />
+          <div className="h-2.5 w-1/2 rounded-full skeleton" />
+          <div className="h-2.5 w-2/3 rounded-full skeleton" />
+        </div>
+      </div>
+      <div className="flex items-center justify-between mt-4 pt-3.5 border-t border-[#2d3748]">
+        <div className="h-3 w-16 rounded-full skeleton" />
+        <div className="h-7 w-16 rounded-xl skeleton" />
+      </div>
+    </div>
+  );
+}
+function SkeletonList() { return Array(3).fill(0).map((_, index) => <SkeletonCard key={index} />); }
+function SkeletonGrid() { return Array(6).fill(0).map((_, index) => <div key={index} className="aspect-[4/3.2] rounded-[22px] skeleton" />); }

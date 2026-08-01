@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authMiddleware, adminOnly } = require('../../middlewares/auth');
+const { authMiddleware, adminOnly, requirePermission, ALL_PERMISSIONS } = require('../../middlewares/auth');
 const Category = require('../../models/Category');
 const Game = require('../../models/Game');
 const Product = require('../../models/Product');
@@ -13,6 +13,19 @@ const Broadcast = require('../../models/Broadcast');
 const orderService = require('../../services/orderService');
 
 router.use(authMiddleware, adminOnly);
+
+// ── Granular section permissions (empty permissions = full access) ──
+router.use('/stats', requirePermission('dashboard'));
+router.use('/recent-orders', requirePermission('dashboard'));
+router.use('/categories', requirePermission('products'));
+router.use('/games', requirePermission('products'));
+router.use('/products', requirePermission('products'));
+router.use('/keys', requirePermission('inventory'));
+router.use('/users', requirePermission('users'));
+router.use('/coupons', requirePermission('coupons'));
+router.use('/broadcast', requirePermission('broadcast'));
+router.use('/broadcasts', requirePermission('broadcast'));
+router.use('/orders', requirePermission('orders'));
 
 // ── STATS ──
 router.get('/stats', async (req, res) => {
@@ -413,18 +426,68 @@ router.post('/users/:id/role', async (req, res) => {
     }
 
     target.role = role;
+    // Fresh admin = full access (empty permissions); demotion clears them too
+    target.permissions = [];
     await target.save();
 
     const bot = req.app.get('bot');
     if (bot) {
       await bot.telegram.sendMessage(target.telegramId,
         `👑 <b>${role === 'admin' ? 'مبروك! صرت أدمن في المتجر 🎉' : 'تم إلغاء صلاحية الأدمن'}</b>\n\n` +
-        `${role === 'admin' ? 'من الآن تقدر تدخل لوحة التحكم وتدير المتجر' : 'إذا كان عندك سؤال تواصل مع الدعم'}`,
+        `${role === 'admin'
+          ? 'دخولك للوحة التحكم مفعّل الآن بكل الصلاحيات. يقدر المالك يضبط لك صلاحيات محددة من لوحة التحكم.'
+          : 'إذا كان عندك سؤال تواصل مع الدعم'}`,
         { parse_mode: 'HTML' }
       ).catch(() => {});
     }
 
-    res.json({ success: true, data: { telegramId: target.telegramId, role: target.role } });
+    res.json({ success: true, data: { telegramId: target.telegramId, role: target.role, permissions: target.permissions } });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// ── NEW: set granular permissions for an admin ──
+router.post('/users/:id/permissions', async (req, res) => {
+  try {
+    const { permissions } = req.body;
+    const clean = (Array.isArray(permissions) ? permissions : [])
+      .filter((p) => ALL_PERMISSIONS.includes(p));
+    const unique = [...new Set(clean)];
+
+    const target = await User.findOne({ telegramId: parseInt(req.params.id) });
+    if (!target) return res.status(404).json({ success: false, error: 'User not found' });
+
+    // Owner's account can never be restricted
+    const ownerIds = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim())).filter(Boolean);
+    if (target.role === 'superadmin' || ownerIds.includes(target.telegramId)) {
+      return res.status(400).json({ success: false, error: 'لا يمكن تعديل صلاحيات المالك الأساسي' });
+    }
+    if (target.role !== 'admin') {
+      return res.status(400).json({ success: false, error: 'رقّ المستخدم لأدمن أولاً قبل ضبط الصلاحيات' });
+    }
+
+    target.permissions = unique;
+    await target.save();
+
+    // Notify the admin of their new permissions
+    const bot = req.app.get('bot');
+    if (bot) {
+      const permLabels = {
+        dashboard: 'الإحصائيات', products: 'المنتجات والأقسام', inventory: 'المخزون',
+        orders: 'الطلبات', users: 'المستخدمون', coupons: 'الكوبونات',
+        broadcast: 'الإذاعة', settings: 'الإعدادات'
+      };
+      const list = unique.length
+        ? unique.map((p) => `✓ ${permLabels[p] || p}`).join('\n')
+        : '✓ كل الصلاحيات (تحكم كامل)';
+      await bot.telegram.sendMessage(target.telegramId,
+        `🎛️ <b>تم تحديث صلاحياتك في لوحة التحكم</b>\n\n${list}`,
+        { parse_mode: 'HTML' }
+      ).catch(() => {});
+    }
+
+    res.json({ success: true, data: { telegramId: target.telegramId, permissions: unique } });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }

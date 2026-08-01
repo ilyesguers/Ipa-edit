@@ -27,6 +27,9 @@ const userSchema = new mongoose.Schema({
   phone: { type: String, default: null },
   currency: { type: String, default: 'USD' },
   role: { type: String, enum: ['customer', 'admin', 'superadmin'], default: 'customer' },
+  // Granular admin permissions. Empty array = full access (legacy admin).
+  // Only meaningful when role === 'admin'.
+  permissions: [{ type: String, enum: ['dashboard', 'products', 'inventory', 'orders', 'users', 'coupons', 'broadcast', 'settings'] }],
   balance: { type: Number, default: 0, min: 0 },
   totalSpent: { type: Number, default: 0 },
   totalDeposited: { type: Number, default: 0 },

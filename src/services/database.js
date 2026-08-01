@@ -91,8 +91,8 @@ const seedDefaults = async () => {
       value: [
         { id: 'customer_app', emojiKey: 'rocket', textAr: '🚀 فتح المتجر - PLAY NOW', textEn: '🚀 Open Store - PLAY NOW', type: 'webapp', value: '/customer', row: 1, visibility: 'all', style: 'primary' },
         { id: 'support', emojiKey: 'fire', textAr: '🔥 الدعم السريع', textEn: '🔥 Fast Support', type: 'url', value: 'https://t.me/{support}', row: 2, visibility: 'all', style: 'danger' },
-        { id: 'channel', emojiKey: 'explosion', textAr: '💥 قناة العروض', textEn: '💥 Deals Channel', type: 'url', value: 'https://t.me/{channel}', row: 2, visibility: 'all' },
-        { id: 'language', emojiKey: 'target', textAr: '🌍 English', textEn: '🌍 العربية', type: 'callback', value: 'language', row: 3, visibility: 'all', style: 'primary' }
+        { id: 'channel', emojiKey: 'explosion', textAr: '💥 قناة العروض', textEn: '💥 Deals Channel', type: 'url', value: 'https://t.me/{channel}', row: 2, visibility: 'all', style: 'secondary' },
+        { id: 'language', emojiKey: 'target', textAr: '🌍 English', textEn: '🌍 العربية', type: 'callback', value: 'language', row: 3, visibility: 'all', style: 'secondary' }
       ],
       description: 'Configurable bot quick links'
     }

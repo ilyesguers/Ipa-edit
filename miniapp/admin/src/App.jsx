@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Toaster, toast } from 'react-hot-toast';
 import { io } from 'socket.io-client';
 import api from './utils/api';
+import { canViewPage } from './utils/permissions';
 import Sidebar from './components/Sidebar';
 import LoadingScreen from './components/LoadingScreen';
 
@@ -77,7 +78,7 @@ export default function App() {
     const handleNav = (e) => {
       const nextPage = e.detail?.page || e.detail;
       const nextQuery = e.detail?.query || {};
-      if (PAGES[nextPage]) {
+      if (PAGES[nextPage] && canViewPage(user, nextPage)) {
         setActivePage(nextPage);
         setRouteQuery(nextQuery);
       }
@@ -85,8 +86,8 @@ export default function App() {
 
     const syncFromHash = () => {
       const next = parseLocationState();
-      setActivePage(next.page);
-      setRouteQuery(next.query);
+      setActivePage(canViewPage(user, next.page) ? next.page : 'dashboard');
+      setRouteQuery(canViewPage(user, next.page) ? next.query : {});
     };
 
     window.addEventListener('admin-navigate', handleNav);
@@ -95,7 +96,16 @@ export default function App() {
       window.removeEventListener('admin-navigate', handleNav);
       window.removeEventListener('hashchange', syncFromHash);
     };
-  }, []);
+  }, [user]);
+
+  // Guard: an admin whose permissions were reduced must not stay on a page
+  // they can no longer access.
+  useEffect(() => {
+    if (user && !canViewPage(user, activePage)) {
+      setActivePage('dashboard');
+      setRouteQuery({});
+    }
+  }, [user, activePage]);
 
   useEffect(() => {
     const params = new URLSearchParams(routeQuery);

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
+import { haptic } from '../utils/haptic';
 
 const STATUS = {
   pending: { label: 'انتظار', color: 'text-warning bg-warning/10 border-warning/20' },
@@ -67,42 +68,50 @@ export default function Orders({ routeQuery = {}, setRouteQuery }) {
   }, [search]);
 
   const handleVerify = async (orderId) => {
+    haptic.medium();
     try {
       await api.post(`/admin/orders/${orderId}/verify-payment`);
+      haptic.success();
       toast.success('✅ تم التأكيد والتسليم');
       load(1);
-    } catch (err) { toast.error(err.response?.data?.error || 'فشل'); }
+    } catch (err) { haptic.error(); toast.error(err.response?.data?.error || 'فشل'); }
   };
 
   const handleReject = async () => {
     if (!rejecting || !rejectReason.trim()) return toast.error('اكتب سبب الرفض');
+    haptic.medium();
     try {
       await api.post(`/admin/orders/${rejecting}/reject-payment`, { reason: rejectReason });
+      haptic.success();
       toast.success('❌ تم رفض الطلب');
       setRejecting(null);
       setRejectReason('');
       load(1);
-    } catch (err) { toast.error(err.response?.data?.error || 'فشل'); }
+    } catch (err) { haptic.error(); toast.error(err.response?.data?.error || 'فشل'); }
   };
 
   const handleRefund = async () => {
     if (!refunding) return;
+    haptic.medium();
     try {
       await api.post(`/admin/orders/${refunding}/refund`, { reason: refundReason || undefined });
+      haptic.success();
       toast.success('💰 تم الاسترجاع للمحفظة');
       setRefunding(null);
       setRefundReason('');
       load(1);
-    } catch (err) { toast.error(err.response?.data?.error || 'فشل'); }
+    } catch (err) { haptic.error(); toast.error(err.response?.data?.error || 'فشل'); }
   };
 
   const handleCancel = async (order) => {
     if (!confirm(`إلغاء الطلب ${order.orderNumber}؟`)) return;
+    haptic.medium();
     try {
       await api.post(`/admin/orders/${order._id}/cancel`, { reason: 'ألغي من الإدارة' });
+      haptic.success();
       toast.success('🚫 تم الإلغاء');
       load(1);
-    } catch (err) { toast.error(err.response?.data?.error || 'فشل'); }
+    } catch (err) { haptic.error(); toast.error(err.response?.data?.error || 'فشل'); }
   };
 
   const copy = (text) => {

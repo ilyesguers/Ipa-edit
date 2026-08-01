@@ -5,6 +5,7 @@ import { t } from '../../i18n';
 import PremiumIcon from '../PremiumIcon';
 import api from '../../utils/api';
 import { cachedFetch } from '../../utils/cache';
+import { haptic } from '../../utils/haptic';
 
 export default function ProfileTab() {
   const { user, locale, toggleLocale } = useStore();
@@ -79,7 +80,7 @@ export default function ProfileTab() {
         ))}
       </div>
 
-      <button type="button" onClick={() => toggleLocale()} className="w-full inline-flex items-center justify-center gap-2.5 rounded-2xl border border-purple/30 bg-gradient-to-r from-purple/10 to-pink/10 p-4 text-purple-200 font-black hover:from-purple/20 hover:to-pink/20 transition-all">
+      <button type="button" onClick={() => { haptic.light(); toggleLocale(); }} className="w-full inline-flex items-center justify-center gap-2.5 rounded-2xl border border-[#6366f1]/30 bg-gradient-to-r from-[#6366f1]/10 to-[#ec4899]/10 p-4 text-purple-200 font-black hover:from-[#6366f1]/20 hover:to-[#ec4899]/20 transition-all">
         <PremiumIcon name="globe" /> {t(locale, 'language')}: {t(locale, 'switchLanguage')} 🌍
       </button>
 

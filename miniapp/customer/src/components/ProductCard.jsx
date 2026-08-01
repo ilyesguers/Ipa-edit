@@ -2,6 +2,9 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { localizedName, t } from '../i18n';
 import PremiumIcon from './PremiumIcon';
+import { haptic } from '../utils/haptic';
+
+const selectWithHaptic = (onSelect) => () => { haptic.light(); onSelect?.(); };
 
 export default function ProductCard({ product, index = 0, locale = 'ar', onSelect, compact = false }) {
   const activeDurations = product.durations?.filter((duration) => duration.isActive) || [];
@@ -12,7 +15,7 @@ export default function ProductCard({ product, index = 0, locale = 'ar', onSelec
   const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(window.location?.href || '')}&text=${shareText}`;
 
   if (compact) return (
-    <motion.button type="button" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} whileTap={{ scale: 0.97 }} onClick={onSelect} className="w-full flex items-center gap-3 gamer-card rounded-2xl p-3.5 text-right group hover:border-[#10b981]/40">
+    <motion.button type="button" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} whileTap={{ scale: 0.97 }} onClick={selectWithHaptic(onSelect)} className="w-full flex items-center gap-3 gamer-card rounded-2xl p-3.5 text-right group hover:border-[#10b981]/40">
       {product.logo ? <img src={product.logo} alt={localizedName(product, locale)} className="w-12 h-12 rounded-xl object-cover flex-shrink-0 ring-1 ring-[#2d3748]" /> : <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#10b981]/20 to-[#3b82f6]/20 flex items-center justify-center"><PremiumIcon name="gem" size="1.6rem" className="text-[#10b981]" /></div>}
       <div className="flex-1 min-w-0"><p className="font-black text-[13px] text-white truncate">{localizedName(product, locale)}</p><p className="text-xs text-[#3b82f6] font-bold">${Number.isFinite(minPrice) ? minPrice.toFixed(2) : '—'} • {t(locale, 'playNow')}</p></div>
       <div className="w-8 h-8 rounded-xl bg-[#10b981]/10 border border-[#10b981]/20 flex items-center justify-center text-[#10b981] group-hover:bg-[#10b981]/20 transition-colors"><PremiumIcon name={locale === 'ar' ? 'left' : 'right'} /></div>
@@ -21,7 +24,7 @@ export default function ProductCard({ product, index = 0, locale = 'ar', onSelec
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05, type: 'spring' }} className="relative group">
-      <motion.button type="button" whileTap={{ scale: 0.97 }} whileHover={{ y: -3 }} onClick={onSelect} className="w-full gamer-card rounded-[22px] p-4 text-right overflow-hidden relative transition-all hover:shadow-2xl">
+      <motion.button type="button" whileTap={{ scale: 0.97 }} whileHover={{ y: -3 }} onClick={selectWithHaptic(onSelect)} className="glow-card w-full gamer-card rounded-[22px] p-4 text-right overflow-hidden relative transition-all hover:shadow-2xl">
         {isFeatured && <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#10b981] via-[#3b82f6] to-[#6366f1] rounded-t-[22px]" />}
         {isFeatured && <div className="absolute top-2 right-2 bg-gradient-to-r from-[#fbbf24] to-[#f97316] text-black text-[8px] font-black px-2 py-1 rounded-full shadow-lg animate-pulse">FEATURED 🔥</div>}
         <div className="flex items-start gap-3.5">

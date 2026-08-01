@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import useStore from '../store/useStore';
 import { t } from '../i18n';
 import PremiumIcon from './PremiumIcon';
+import { haptic } from '../utils/haptic';
 
 const TABS = [
   { id: 'products', icon: 'rocket', key: 'navProducts', label: 'PLAY', color: '#10b981' },
@@ -16,9 +17,7 @@ export default function BottomNav() {
   const { activeTab, setActiveTab, reset, locale } = useStore();
 
   const navigate = (tab) => {
-    if (typeof window !== 'undefined' && window.Telegram?.WebApp?.HapticFeedback) {
-      try { window.Telegram.WebApp.HapticFeedback.impactOccurred('light'); } catch {}
-    }
+    haptic.light();
     setActiveTab(tab);
     if (tab !== 'products') reset();
   };

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import useStore from '../store/useStore';
 import { t, cleanMarkdown } from '../i18n';
 import PremiumIcon from './PremiumIcon';
+import { haptic } from '../utils/haptic';
 
 const THEMES = {
   aurora: { ring: 'ring-cyan-400/40', badge: 'bg-cyan-500/10 text-cyan-300 border-cyan-400/20', glow: '0 0 20px rgba(34,211,238,0.25)' },
@@ -58,7 +59,7 @@ export default function Header() {
         </motion.button>
 
         <div className="flex items-center gap-2 shrink-0">
-          <motion.button type="button" whileTap={{ scale: 0.85 }} whileHover={{ scale: 1.05 }} onClick={() => toggleLocale()} className="language-switch rounded-xl px-3 py-2.5 border border-purple/30 bg-purple/10 text-purple-200 text-[11px] font-black hover:bg-purple/20 transition-all flex items-center gap-1" aria-label={t(locale, 'language')}>
+          <motion.button type="button" whileTap={{ scale: 0.85 }} whileHover={{ scale: 1.05 }} onClick={() => { haptic.light(); toggleLocale(); }} className="language-switch rounded-xl px-3 py-2.5 border border-[#6366f1]/30 bg-[#6366f1]/10 text-purple-200 text-[11px] font-black hover:bg-[#6366f1]/20 transition-all flex items-center gap-1" aria-label={t(locale, 'language')}>
             <PremiumIcon name="globe" /> {t(locale, 'switchLanguage')}
           </motion.button>
           <motion.button type="button" whileTap={{ scale: 0.9 }} whileHover={{ scale: 1.05, y: -1 }} onClick={() => setActiveTab('profile')} className="rounded-2xl px-4 py-2.5 border border-neon/30 bg-gradient-to-br from-neon/15 to-neon-blue/10 hover:from-neon/20 hover:to-neon-blue/20 transition-all relative overflow-hidden group" style={{ boxShadow: theme.glow }}>

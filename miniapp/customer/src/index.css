@@ -20,6 +20,11 @@
   }
   button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
   button { touch-action: manipulation; }
+  /* ── Touch targets: comfortable ≥44px tap areas on mobile ── */
+  button { min-height: 44px; }
+  a { min-height: 44px; }
+  /* ── Tap feedback: instant scale on press (100ms) ── */
+  button:active, a:active { transform: scale(0.96); transition: transform 100ms ease-out; }
   * { scrollbar-width: thin; scrollbar-color: #2d3748 #0d0f12; }
   *::-webkit-scrollbar { width: 6px; height: 6px; }
   *::-webkit-scrollbar-track { background: #0d0f12; }
@@ -183,4 +188,16 @@
     linear-gradient(rgba(16,185,129,0.03) 1px, transparent 1px),
     linear-gradient(90deg, rgba(16,185,129,0.03) 1px, transparent 1px);
   background-size: 20px 20px;
+}
+
+/* ── Cinematic glow cards: mint ring reacts on hover & tap ── */
+.glow-card {
+  transition: transform 150ms ease-out, border-color 200ms ease-out, box-shadow 200ms ease-out;
+}
+.glow-card:hover {
+  border-color: rgba(16,185,129,0.5) !important;
+  box-shadow: 0 0 0 1px rgba(16,185,129,0.15), 0 0 26px rgba(16,185,129,0.16) !important;
+}
+.glow-card:active {
+  transform: scale(0.96);
 }

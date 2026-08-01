@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import useStore from '../store/useStore';
 import { localizedName, t } from '../i18n';
 import PremiumIcon from './PremiumIcon';
+import { haptic } from '../utils/haptic';
 
 export default function CheckoutSheet() {
   const { selectedProduct, selectedDuration, quantity, user, locale, couponDiscount, applyCoupon, purchaseWithWallet, purchaseWithBinance } = useStore();
@@ -26,29 +27,44 @@ export default function CheckoutSheet() {
       await applyCoupon(couponInput, subtotal);
       useStore.setState({ couponCode: couponInput });
       setCouponState('success');
+      haptic.success();
       toast.success(`🔥 ${t(locale, 'applied')} - You're legend! 👑`);
     } catch (error) {
       setCouponState('error');
       setCouponError(error.response?.data?.error || t(locale, 'couponError'));
+      haptic.error();
       toast.error(error.response?.data?.error || t(locale, 'couponError'));
       setTimeout(() => setCouponState('idle'), 1800);
     }
   };
 
   const buyWallet = async () => {
-    if (!hasBalance) return toast.error(`💸 ${t(locale, 'insufficient')}`);
+    if (!hasBalance) {
+      haptic.error();
+      return toast.error(`💸 ${t(locale, 'insufficient')}`);
+    }
+    haptic.medium();
     setLoading(true);
     try {
       await purchaseWithWallet();
+      haptic.success();
       toast.success(`🎉 ${t(locale, 'purchaseSuccess')}`);
     } catch (error) {
+      haptic.error();
       toast.error(error.response?.data?.error || t(locale, 'failed'));
     } finally { setLoading(false); }
   };
 
   const buyBinance = async () => {
+    haptic.medium();
     setBinanceLoading(true);
-    try { await purchaseWithBinance(); } catch (error) { toast.error(error.response?.data?.error || t(locale, 'failed')); } finally { setBinanceLoading(false); }
+    try {
+      await purchaseWithBinance();
+      haptic.success();
+    } catch (error) {
+      haptic.error();
+      toast.error(error.response?.data?.error || t(locale, 'failed'));
+    } finally { setBinanceLoading(false); }
   };
 
   return (
@@ -66,9 +82,9 @@ export default function CheckoutSheet() {
               <div className="flex justify-between items-center">
               <span className="text-[#9ca3af] text-[13px] font-bold flex items-center gap-1.5"><PremiumIcon name="target" size="0.9em" /> {t(locale, 'quantity')}</span>
               <div className="flex items-center gap-3">
-                <button type="button" onClick={() => useStore.setState((state) => ({ quantity: Math.max(1, state.quantity - 1) }))} disabled={quantity <= 1} className="w-9 h-9 rounded-xl bg-[#1f2430] text-white font-black hover:bg-[#2d3748] transition-colors border border-[#2d3748] disabled:opacity-40">−</button>
+                <button type="button" onClick={() => { haptic.light(); useStore.setState((state) => ({ quantity: Math.max(1, state.quantity - 1) })); }} disabled={quantity <= 1} className="w-11 h-11 rounded-xl bg-[#1f2430] text-white font-black hover:bg-[#2d3748] transition-colors border border-[#2d3748] disabled:opacity-40 text-lg">−</button>
                 <span className="font-black text-white w-8 text-center text-[16px] bg-[#0d0f12] px-2 py-1 rounded-lg border border-[#2d3748]">{quantity}</span>
-                <button type="button" onClick={() => useStore.setState((state) => ({ quantity: Math.min(maxQty, state.quantity + 1) }))} disabled={quantity >= maxQty} className="w-9 h-9 rounded-xl bg-[#1f2430] text-white font-black hover:bg-[#2d3748] transition-colors border border-[#2d3748] disabled:opacity-40">+</button>
+                <button type="button" onClick={() => { haptic.light(); useStore.setState((state) => ({ quantity: Math.min(maxQty, state.quantity + 1) })); }} disabled={quantity >= maxQty} className="w-11 h-11 rounded-xl bg-[#1f2430] text-white font-black hover:bg-[#2d3748] transition-colors border border-[#2d3748] disabled:opacity-40 text-lg">+</button>
               </div>
             </div>
             {quantity >= maxQty && (
