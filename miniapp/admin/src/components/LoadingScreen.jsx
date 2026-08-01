@@ -67,7 +67,7 @@ export default function LoadingScreen() {
 
         {/* Progress bar */}
         <div className="w-full">
-          <div className="w-full h-2 bg-[#1a1a2e] rounded-full overflow-hidden">
+          <div className="w-full h-2 bg-[#1f2430] rounded-full overflow-hidden">
             <motion.div
               className="h-full rounded-full bg-gradient-to-r from-neon to-neon-blue"
               style={{ width: `${Math.min(progress, 100)}%` }}
@@ -86,11 +86,11 @@ export default function LoadingScreen() {
               key={i}
               animate={{
                 scale: i === step ? 1.3 : 1,
-                backgroundColor: i <= step ? '#00ff88' : '#1e1e30',
+                backgroundColor: i <= step ? '#10b981' : '#1f2430',
               }}
               transition={{ type: 'spring', stiffness: 300 }}
               className="w-2 h-2 rounded-full"
-              style={{ boxShadow: i === step ? '0 0 8px #00ff88' : 'none' }}
+              style={{ boxShadow: i === step ? '0 0 8px #10b981' : 'none' }}
             />
           ))}
         </div>

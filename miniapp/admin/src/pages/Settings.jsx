@@ -98,7 +98,7 @@ export default function Settings() {
   const navigationKeys = ['bot_quick_links'];
   const messageKeys = ['welcome_message', 'maintenance_message', 'shop_title', 'shop_description', 'footer_text'];
   const paymentKeys = ['binance_api_key', 'binance_secret_key', 'binance_merchant_id', 'usdt_wallet_trc20', 'min_deposit', 'payment_timeout_minutes'];
-  const systemKeys = ['referral_bonus', 'auto_verify_payments', 'admin_notification_on_order', 'admin_notification_on_payment', 'force_join_channel', 'channel_id'];
+  const systemKeys = ['referral_bonus', 'auto_verify_payments', 'admin_notification_on_order', 'admin_notification_on_payment', 'force_join_channel', 'channel_id', 'maintenance_mode', 'maintenance_message'];
 
   const themeName = THEME_PRESETS.find((item) => item.id === settings.ui_theme_preset)?.title || 'Aurora';
 
@@ -386,6 +386,19 @@ export default function Settings() {
           <div className="grid gap-3 md:grid-cols-2">
             <Field label="مكافأة الإحالة" type="number" value={settings.referral_bonus ?? ''} onChange={(v) => update('referral_bonus', Number(v))} />
             <Field label="معرف القناة" value={settings.channel_id || ''} onChange={(v) => update('channel_id', v)} />
+          </div>
+
+          <div className="rounded-2xl border border-warning/20 bg-warning/5 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold text-white">🔧 وضع الصيانة</p>
+                <p className="text-[11px] text-muted mt-0.5">عند التفعيل يمنع المستخدمون العاديون من استخدام البوت</p>
+              </div>
+              <button onClick={() => update('maintenance_mode', !settings.maintenance_mode)} className={`w-12 h-6 rounded-full relative transition-colors ${settings.maintenance_mode ? 'bg-warning' : 'bg-border'}`}>
+                <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${settings.maintenance_mode ? 'right-1' : 'left-1'}`} />
+              </button>
+            </div>
+            <Field label="رسالة الصيانة" type="textarea" value={settings.maintenance_message || ''} onChange={(v) => update('maintenance_message', v)} />
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">

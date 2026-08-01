@@ -1,7 +1,9 @@
 const mongoose = require('mongoose');
 
 const broadcastSchema = new mongoose.Schema({
-  title: { type: String, required: true },
+  // Title is optional: the API auto-generates it from the message when missing,
+  // so old clients can never trigger "Path 'title' is required".
+  title: { type: String, default: '' },
   message: { type: String, required: true },
   imageUrl: { type: String, default: null },
   buttons: [{

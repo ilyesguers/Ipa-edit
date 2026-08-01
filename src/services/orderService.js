@@ -32,9 +32,9 @@ class OrderService {
 
     // Apply coupon
     if (couponCode) {
-      const coupon = await Coupon.findOne({ code: couponCode.toUpperCase() });
+      const coupon = await Coupon.findOne({ code: String(couponCode).toUpperCase() });
       if (coupon) {
-        const validity = coupon.isValid();
+        const validity = coupon.isValid(totalPrice);
         if (validity.valid) {
           discountAmount = coupon.calculateDiscount(totalPrice);
           couponApplied = coupon;
@@ -148,24 +148,72 @@ class OrderService {
     return { order, keys };
   }
 
+  /**
+   * Refund a completed order: return the money to the user's wallet, mark the
+   * delivered keys as invalid (so they can't be re-sold) and set the order to
+   * 'refunded'.
+   */
+  async refundOrder(order, user, reason = 'Refund', adminId = null) {
+    if (order.status !== 'completed') throw new Error('Only completed orders can be refunded');
+
+    const refundAmount = Number(order.finalPrice) || 0;
+    await user.addBalance(refundAmount, `استرجاع طلب ${order.orderNumber} - ${reason}`, adminId);
+
+    // Invalidate the delivered keys so a refunded key can't be resold
+    await Key.updateMany(
+      { orderId: order._id },
+      { status: 'invalid', notes: `Refunded: ${reason}` }
+    );
+
+    order.status = 'refunded';
+    order.refundedAt = new Date();
+    order.refundReason = reason;
+    order.adminNotes = order.adminNotes
+      ? `${order.adminNotes} | Refund: ${reason}`
+      : `Refund: ${reason}`;
+    await order.save();
+
+    // Keep product/duration counters honest
+    await Product.findByIdAndUpdate(order.product, {
+      $inc: { totalSales: -order.quantity, totalRevenue: -refundAmount }
+    });
+    await Product.findOneAndUpdate(
+      { _id: order.product, 'durations._id': order.duration },
+      { $inc: { 'durations.$.soldCount': -order.quantity } }
+    );
+
+    logger.info(`💰 Order ${order.orderNumber} refunded ($${refundAmount.toFixed(2)}) to user ${order.user}`);
+    return { refundedOrder: order };
+  }
+
   async getStats() {
-    const [totalUsers, totalOrders, totalRevenue, totalKeys, activeKeys] = await Promise.all([
+    const [totalUsers, totalOrders, totalRevenue, totalKeys, activeKeys, pendingOrders, processingOrders, refundedOrders] = await Promise.all([
       require('../models/User').countDocuments({ role: 'customer' }),
       Order.countDocuments({ status: 'completed' }),
       Order.aggregate([{ $match: { status: 'completed' } }, { $group: { _id: null, total: { $sum: '$finalPrice' } } }]),
       Key.countDocuments(),
-      Key.countDocuments({ status: 'available' })
+      Key.countDocuments({ status: 'available' }),
+      Order.countDocuments({ status: 'pending' }),
+      Order.countDocuments({ status: 'processing' }),
+      Order.countDocuments({ status: 'refunded' })
     ]);
 
+    const startOfToday = new Date(new Date().setHours(0, 0, 0, 0));
+    const startOfMonth = new Date(new Date().setDate(1));
+
     const revenueToday = await Order.aggregate([
-      { $match: { status: 'completed', createdAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) } } },
+      { $match: { status: 'completed', createdAt: { $gte: startOfToday } } },
       { $group: { _id: null, total: { $sum: '$finalPrice' } } }
     ]);
 
     const revenueMonth = await Order.aggregate([
-      { $match: { status: 'completed', createdAt: { $gte: new Date(new Date().setDate(1)) } } },
+      { $match: { status: 'completed', createdAt: { $gte: startOfMonth } } },
       { $group: { _id: null, total: { $sum: '$finalPrice' } } }
     ]);
+
+    const ordersMonth = await Order.countDocuments({ status: 'completed', createdAt: { $gte: startOfMonth } });
+    const ordersToday = await Order.countDocuments({ createdAt: { $gte: startOfToday } });
+    const newUsers = await require('../models/User').countDocuments({ createdAt: { $gte: startOfMonth } });
 
     // Revenue chart for last 7 days
     const last7Days = [];
@@ -194,6 +242,12 @@ class OrderService {
       soldKeys: totalKeys - activeKeys,
       revenueToday: revenueToday[0]?.total || 0,
       revenueMonth: revenueMonth[0]?.total || 0,
+      ordersMonth,
+      ordersToday,
+      newUsers,
+      pendingOrders,
+      processingOrders,
+      refundedOrders,
       revenueChart: last7Days
     };
   }

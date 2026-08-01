@@ -10,6 +10,14 @@ const { getAdminPortalUrl } = require('../../utils/uiConfig');
 
 router.use(authMiddleware);
 
+// Push a real-time event to the connected admin panels (socket.io 'admin_room')
+const notifyAdminPanel = (req, payload) => {
+  try {
+    const io = req.app.get('io');
+    if (io) io.to('admin_room').emit('new_order', payload);
+  } catch (_) { /* sockets are best-effort */ }
+};
+
 // Get user orders
 router.get('/', async (req, res) => {
   try {
@@ -31,10 +39,16 @@ router.get('/', async (req, res) => {
 router.post('/validate-coupon', async (req, res) => {
   try {
     const { code, amount } = req.body;
-    const coupon = await Coupon.findOne({ code: code.toUpperCase() });
+    if (!code || typeof code !== 'string' || !code.trim()) {
+      return res.status(400).json({ success: false, error: 'أدخل كود الخصم / Enter a coupon code' });
+    }
+    if (amount === undefined || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      return res.status(400).json({ success: false, error: 'مبلغ غير صالح / Invalid amount' });
+    }
+    const coupon = await Coupon.findOne({ code: code.trim().toUpperCase() });
     if (!coupon) return res.status(404).json({ success: false, error: 'الكود غير موجود' });
 
-    const validity = coupon.isValid();
+    const validity = coupon.isValid(parseFloat(amount));
     if (!validity.valid) return res.status(400).json({ success: false, error: validity.reason });
 
     // Check if already used by this user
@@ -94,7 +108,26 @@ router.post('/wallet', async (req, res) => {
       ).catch(() => {});
     }
 
-    res.json({ success: true, data: { order: result.order, keys: result.keys.map(k => k.keyValue) } });
+    notifyAdminPanel(req, {
+      type: 'wallet_order',
+      orderNumber: result.order.orderNumber,
+      productName: result.order.productName,
+      durationName: result.order.durationName,
+      amount: result.order.finalPrice,
+      username: req.user.username || req.user.fullName,
+      telegramId: req.telegramId,
+      createdAt: new Date().toISOString()
+    });
+
+    // Return the fresh balance so the mini-app header updates instantly
+    res.json({
+      success: true,
+      data: {
+        order: result.order,
+        keys: result.keys.map(k => k.keyValue),
+        balance: req.user.balance
+      }
+    });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }
@@ -118,6 +151,17 @@ router.post('/binance', async (req, res) => {
 
     order.binancePayId = binanceOrder.prepayId;
     await order.save();
+
+    notifyAdminPanel(req, {
+      type: 'binance_order',
+      orderNumber: order.orderNumber,
+      productName: order.productName,
+      durationName: order.durationName,
+      amount: finalPrice,
+      username: req.user.username || req.user.fullName,
+      telegramId: req.telegramId,
+      createdAt: new Date().toISOString()
+    });
 
     res.json({
       success: true,
@@ -146,6 +190,18 @@ router.post('/payment-proof', async (req, res) => {
     order.paymentTxHash = txHash;
     order.status = 'processing';
     await order.save();
+
+    notifyAdminPanel(req, {
+      type: 'payment_proof',
+      orderNumber: order.orderNumber,
+      productName: order.productName,
+      durationName: order.durationName,
+      amount: order.finalPrice,
+      txHash,
+      username: req.user.username || req.user.fullName,
+      telegramId: req.telegramId,
+      createdAt: new Date().toISOString()
+    });
 
     // Notify admins
     const adminIds = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim())).filter(Boolean);

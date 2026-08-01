@@ -22,10 +22,13 @@ const couponSchema = new mongoose.Schema({
   }]
 }, { timestamps: true });
 
-couponSchema.methods.isValid = function () {
+couponSchema.methods.isValid = function (orderAmount = 0) {
   if (!this.isActive) return { valid: false, reason: 'Coupon is inactive' };
   if (this.expiresAt && new Date() > this.expiresAt) return { valid: false, reason: 'Coupon has expired' };
   if (this.maxUses !== null && this.currentUses >= this.maxUses) return { valid: false, reason: 'Coupon usage limit reached' };
+  if (this.minOrderAmount > 0 && orderAmount < this.minOrderAmount) {
+    return { valid: false, reason: `Minimum order amount is $${this.minOrderAmount}` };
+  }
   return { valid: true };
 };
 

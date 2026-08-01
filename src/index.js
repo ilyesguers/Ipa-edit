@@ -48,13 +48,15 @@ app.use('/api', limiter);
 app.use('/webhook', botLimiter);
 
 // IMPORTANT: Health check BEFORE other heavy middleware for Railway
+let dbHealthy = false;
 app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'ok', 
+  res.status(200).json({
+    status: dbHealthy ? 'ok' : 'degraded',
+    db: dbHealthy ? 'connected' : 'disconnected',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     service: 'GAMER STORE 🔥',
-    version: '2.0-gamer-edition'
+    version: '3.0.0-gamer-edition'
   });
 });
 
@@ -66,7 +68,7 @@ app.get('/', (req, res) => {
   }
   res.json({
     name: 'GAMER STORE 🔥 - Digital Keys for Pro Gamers',
-    version: '2.0',
+    version: '3.0.0',
     status: 'online 🚀',
     endpoints: {
       customer: '/customer',
@@ -140,7 +142,10 @@ io.on('connection', (socket) => {
 
 // MAIN STARTUP
 const PORT = process.env.PORT || 3000;
-const BASE_URL = process.env.BASE_URL || process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : `http://localhost:${PORT}`;
+// NOTE: precedence matters here — without parentheses this evaluates as
+// (BASE_URL || RAILWAY_PUBLIC_DOMAIN) ? "https://undefined" : localhost,
+// breaking every generated link whenever only BASE_URL is set.
+const BASE_URL = process.env.BASE_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : `http://localhost:${PORT}`);
 
 (async () => {
   try {
@@ -151,6 +156,7 @@ const BASE_URL = process.env.BASE_URL || process.env.RAILWAY_PUBLIC_DOMAIN ? `ht
         await connectDB();
         await seedDefaults();
         dbConnected = true;
+        dbHealthy = true;
         logger.info(`✅ Database connected - Attempt ${attempt}`);
         break;
       } catch (dbErr) {
@@ -233,6 +239,41 @@ const BASE_URL = process.env.BASE_URL || process.env.RAILWAY_PUBLIC_DOMAIN ? `ht
       logger.info(`${'═'.repeat(60)}\n`);
     });
 
+    // ── Auto-cancel stale pending orders (payment timeout) ──
+    // Runs every 10 minutes: orders still 'pending' after the configured
+    // payment timeout are cancelled and their owners are notified.
+    const cron = require('node-cron');
+    cron.schedule('*/10 * * * *', async () => {
+      try {
+        const Settings = require('./models/Settings');
+        const Order = require('./models/Order');
+        const timeoutMinutes = await Settings.get('payment_timeout_minutes', 15);
+        const cutoff = new Date(Date.now() - timeoutMinutes * 60 * 1000);
+        const stale = await Order.find({ status: 'pending', createdAt: { $lt: cutoff } }).limit(50);
+        for (const order of stale) {
+          order.status = 'cancelled';
+          order.adminNotes = 'انتهت مهلة الدفع - أُلغي تلقائياً';
+          await order.save();
+          const b = app.get('bot');
+          if (b && b.telegram?.sendMessage) {
+            await b.telegram.sendMessage(
+              order.user,
+              `⏰ <b>انتهت مهلة الدفع</b>\n\n` +
+              `📦 ${order.productName} - ${order.durationName}\n` +
+              `📋 <code>${order.orderNumber}</code>\n\n` +
+              `أُلغي الطلب تلقائياً لأن الدفع ما وصل خلال ${timeoutMinutes} دقيقة.\n` +
+              `إذا كنت سويت الدفع فعلاً، تواصل مع الدعم وأرسل الإثبات! 🔥`,
+              { parse_mode: 'HTML' }
+            ).catch(() => {});
+          }
+        }
+        if (stale.length) logger.info(`⏰ Auto-cancelled ${stale.length} stale pending order(s)`);
+      } catch (err) {
+        logger.error('Auto-cancel cron error:', err.message);
+      }
+    });
+    logger.info('⏰ Payment timeout auto-cancel cron scheduled (every 10 min)');
+
     // Graceful shutdown
     const shutdown = async (signal) => {
       logger.info(`Received ${signal}, shutting down gracefully...`);
@@ -259,7 +300,6 @@ const BASE_URL = process.env.BASE_URL || process.env.RAILWAY_PUBLIC_DOMAIN ? `ht
     // Still start server for healthcheck even if DB fails, so Railway doesn't kill it immediately
     server.listen(PORT, '0.0.0.0', () => {
       logger.info(`⚠️ Server started in degraded mode on port ${PORT} - DB failed but healthcheck will respond`);
-      app.get('/health', (req, res) => res.status(500).json({ status: 'error', error: err.message }));
     });
   }
 })();

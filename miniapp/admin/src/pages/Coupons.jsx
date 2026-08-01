@@ -17,7 +17,14 @@ export default function Coupons() {
   const save = async () => {
     if (!form.code || !form.discountValue) return toast.error('الكود والخصم مطلوبان');
     try {
-      const data = { ...form, discountValue: parseFloat(form.discountValue), maxUses: form.maxUses ? parseInt(form.maxUses) : null };
+      const data = {
+        ...form,
+        discountValue: parseFloat(form.discountValue),
+        maxUses: form.maxUses ? parseInt(form.maxUses) : null,
+        minOrderAmount: parseFloat(form.minOrderAmount) || 0,
+        maxDiscountAmount: (form.maxDiscountAmount === '' || form.maxDiscountAmount === null || form.maxDiscountAmount === undefined)
+          ? null : parseFloat(form.maxDiscountAmount)
+      };
       if (editing) { await api.put(`/admin/coupons/${editing}`, data); toast.success('✅ تم التحديث'); }
       else { await api.post('/admin/coupons', data); toast.success('✅ تم إنشاء الكوبون'); }
       setShowForm(false); setForm(emptyForm); setEditing(null);
@@ -105,6 +112,16 @@ export default function Coupons() {
                 <div>
                   <label className="text-xs text-muted">تاريخ الانتهاء</label>
                   <input type="date" value={form.expiresAt?.split('T')[0] || ''} onChange={e => setForm(f => ({ ...f, expiresAt: e.target.value }))} className="input-admin mt-1" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-muted">أقل مبلغ للطلب ($)</label>
+                  <input type="number" min="0" value={form.minOrderAmount ?? ''} onChange={e => setForm(f => ({ ...f, minOrderAmount: e.target.value }))} placeholder="0" className="input-admin mt-1" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted">أقصى خصم ($) - اختياري</label>
+                  <input type="number" min="0" value={form.maxDiscountAmount ?? ''} onChange={e => setForm(f => ({ ...f, maxDiscountAmount: e.target.value }))} placeholder="بدون حد" className="input-admin mt-1" />
                 </div>
               </div>
               <div>

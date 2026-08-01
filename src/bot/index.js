@@ -1,4 +1,4 @@
-const { Telegraf, session } = require('telegraf');
+const { Telegraf, session, Markup } = require('telegraf');
 const logger = require('../utils/logger');
 const User = require('../models/User');
 const Settings = require('../models/Settings');
@@ -14,9 +14,14 @@ const { openAdminPortal } = require('./handlers/admin');
 const { callbackHandler } = require('./handlers/callbacks');
 const { paymentHandler } = require('./handlers/payment');
 
-const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim())).filter(Boolean);
+  const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim())).filter(Boolean);
 
-const createBot = (io) => {
+  // Cache successful channel-membership checks (10 min) so we don't hammer the
+  // Telegram API with getChatMember on every single message. Failures are never
+  // cached, so a user who just joined passes on the very next message.
+  const forceJoinOkCache = new Map();
+
+  const createBot = (io) => {
   if (!process.env.BOT_TOKEN) {
     logger.warn('⚠️ BOT_TOKEN not set - bot will not start, but server will continue for Railway healthcheck');
     // Return dummy bot that doesn't crash server
@@ -133,6 +138,53 @@ const createBot = (io) => {
         return ctx.reply(maintenanceMsg);
       }
 
+      // ── Optional force-join-channel gate (admin setting) ──
+      // Skipped for admins and for brand-new users who still need to pass the
+      // captcha first (otherwise they could never reach the captcha prompt).
+      if (!ctx.isAdmin && user.captchaPassed) {
+        const [forceJoin, channelId] = await Promise.all([
+          Settings.get('force_join_channel', false),
+          Settings.get('channel_id', '')
+        ]);
+        if (forceJoin && channelId) {
+          const cached = forceJoinOkCache.get(telegramId);
+          if (!cached || Date.now() - cached > 10 * 60 * 1000) {
+            let memberStatus = null;
+            try {
+              const member = await ctx.telegram.getChatMember(channelId, telegramId);
+              memberStatus = member?.status;
+            } catch (_) { /* channel unreachable — don't block users */ }
+            const isMember = ['member', 'administrator', 'creator'].includes(memberStatus);
+            if (isMember) {
+              forceJoinOkCache.set(telegramId, Date.now());
+            } else if (memberStatus && memberStatus !== 'restricted') {
+              const channelUsername = await Settings.get('channel_username', '');
+              const fallback = `https://t.me/${String(channelId).replace(/^-100/, '')}`;
+              const channelLink = channelUsername
+                ? `https://t.me/${channelUsername}`
+                : (memberStatus ? fallback : '');
+              const isEn = user.preferredLanguage === 'en';
+              return ctx.reply(
+                `${emojiHtml('lock')} <b>${isEn ? 'Join our channel first bro!' : 'اشترك في القناة أولاً يا بطل!'}</b>\n\n` +
+                `${emojiHtml('explosion')} ${isEn ? 'You must join the deals channel to keep playing:' : 'لازم تكون مشترك في قناة العروض عشان تكمل:'}\n\n` +
+                `${emojiHtml('rocket')} ${isEn ? 'Join, then hit /start - EZ!' : 'اشترك، وبعدها اضغط /start - سهلة!'}`,
+                {
+                  parse_mode: 'HTML',
+                  ...(channelLink ? Markup.inlineKeyboard([[
+                    {
+                      text: buttonLabel('megaphone', isEn ? 'JOIN CHANNEL' : 'اشترك في القناة'),
+                      url: channelLink,
+                      style: 'primary',
+                      icon_custom_emoji_id: buttonEmojiId('megaphone')
+                    }
+                  ]]) : {})
+                }
+              );
+            }
+          }
+        }
+      }
+
       return next();
     } catch (err) {
       logger.error('🔴 User middleware error:', err);
@@ -158,7 +210,6 @@ const createBot = (io) => {
   bot.command('admin', (ctx) => openAdminPortal(ctx, 'dashboard'));
   bot.command('shop', async (ctx) => {
     // Redirect to webapp instead of old inline shop
-    const { Markup } = require('telegraf');
     const lang = ctx.dbUser?.preferredLanguage || 'ar';
     return ctx.reply(
       `${emojiHtml('rocket')} <b>${lang === 'en' ? 'Open the Store for fastest shopping' : 'افتح المتجر للتسوق السريع'}</b>\n\n` +
@@ -181,7 +232,55 @@ const createBot = (io) => {
   bot.command('history', historyHandler);
   bot.command('balance', balanceHandler);
   bot.command('help', helpHandler);
-  bot.command('store', (ctx) => ctx.telegram.sendMessage(ctx.chat.id, `https://${ctx.me} - Open: ${process.env.BASE_URL}/customer`));
+  // /store and /menu — quick webapp link (fixed: old version sent a broken https://{username} link)
+  bot.command(['store', 'menu'], async (ctx) => {
+    const lang = ctx.dbUser?.preferredLanguage || 'ar';
+    const url = `${(process.env.BASE_URL || '').replace(/\/$/, '')}/customer`;
+    return ctx.reply(
+      `${emojiHtml('rocket')} <b>${lang === 'en' ? 'Open the store' : 'افتح المتجر'}</b>: <code>${url}</code>\n` +
+      `${emojiHtml('fire')} ${lang === 'en' ? 'Or hit PLAY NOW below' : 'أو اضغط PLAY NOW تحت'}`,
+      {
+        parse_mode: 'HTML',
+        ...Markup.inlineKeyboard([[
+          {
+            text: buttonLabel('rocket', lang === 'en' ? 'PLAY NOW 🚀' : 'افتح المتجر 🚀'),
+            web_app: { url },
+            style: 'primary',
+            icon_custom_emoji_id: buttonEmojiId('rocket')
+          }
+        ]])
+      }
+    );
+  });
+
+  // /id — show user ID (useful for support tickets & admin lookups)
+  bot.command('id', (ctx) => {
+    const user = ctx.dbUser;
+    return ctx.reply(
+      `${emojiHtml('target')} <b>${user?.fullName || 'Yo'}</b>\n` +
+      `${emojiHtml('tag')} ID: <code>${ctx.from.id}</code>\n` +
+      `${user?.role && ['admin', 'superadmin'].includes(user.role) ? `${emojiHtml('crown')} ${user.role === 'superadmin' ? 'SUPER ADMIN' : 'ADMIN'}\n` : ''}` +
+      `${emojiHtml('calendar')} ${new Date(user?.createdAt || Date.now()).toLocaleString()}`,
+      { parse_mode: 'HTML' }
+    );
+  });
+
+  // /panel — alias for /admin
+  bot.command('panel', (ctx) => openAdminPortal(ctx, 'dashboard'));
+
+  // /maintenance [on|off] — quick admin toggle from chat
+  bot.command('maintenance', async (ctx) => {
+    if (!ctx.isAdmin) return ctx.reply(`${emojiHtml('skull')} غير مصرح / Unauthorized`);
+    const arg = (ctx.message.text.split(' ')[1] || '').toLowerCase();
+    const current = await Settings.get('maintenance_mode', false);
+    const next = arg === 'on' ? true : arg === 'off' ? false : !current;
+    await Settings.set('maintenance_mode', next, ctx.from.id, 'Toggled from bot');
+    const lang = ctx.dbUser?.preferredLanguage || 'ar';
+    return ctx.reply(
+      `${next ? emojiHtml('gear') : emojiHtml('checkmark')} <b>${lang === 'en' ? `Maintenance ${next ? 'ENABLED' : 'DISABLED'}` : `الصيانة ${next ? 'مفعّلة' : 'معطّلة'}`}</b>`,
+      { parse_mode: 'HTML' }
+    );
+  });
 
   bot.command('stats', async (ctx) => {
     if (!ctx.isAdmin) return ctx.reply(`${emojiHtml('skull')} غير مصرح / Unauthorized`);

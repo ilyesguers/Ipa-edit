@@ -32,7 +32,10 @@ const callbackHandler = async (ctx) => {
     if (data === 'addbalance') return balanceHandler(ctx);
     if (data === 'help') return helpHandler(ctx);
     if (data === 'language') return handleLanguage(ctx, lang);
-    if (data.startsWith('history_')) return historyHandler(ctx, parseInt(data.split('_')[1]));
+    if (data.startsWith('history_')) {
+      const page = parseInt(data.split('_')[1]);
+      return historyHandler(ctx, Number.isFinite(page) && page > 0 ? page : 1);
+    }
 
     // Legacy shop callbacks - redirect to webapp now (bot focuses on site)
     if (data.startsWith('shop') || data.startsWith('cat_') || data.startsWith('game_') || data.startsWith('product_') || data.startsWith('buy_') || data.startsWith('confirm_wallet_')) {

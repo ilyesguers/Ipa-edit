@@ -8,6 +8,7 @@ router.get('/info', async (req, res) => {
   try {
     const wallet = await Settings.get('usdt_wallet_trc20', '');
     const minDeposit = await Settings.get('min_deposit', 1);
+    const paymentTimeoutMinutes = await Settings.get('payment_timeout_minutes', 15);
 
     res.json({
       success: true,
@@ -15,7 +16,8 @@ router.get('/info', async (req, res) => {
         usdtWallet: wallet,
         minDeposit,
         network: 'TRC20',
-        currency: 'USDT'
+        currency: 'USDT',
+        paymentTimeoutMinutes
       }
     });
   } catch (err) {

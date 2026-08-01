@@ -10,28 +10,20 @@ const helpHandler = async (ctx) => {
   const botName = await Settings.get('bot_name', 'GAMER STORE');
 
   const msg = lang === 'en'
-    ? `${emojiHtml('fire')} <b>HELP - LEGEND ZONE</b>\n\n` +
-      `<b>${botName}</b> — ${emojiHtml('rocket')} Fastest gamer store\n\n` +
-      `${emojiHtml('rocket')} <b>HOW TO BECOME LEGEND?</b>\n` +
-      `   → ${emojiHtml('target')} Hit PLAY NOW Choose game → product → pay\n` +
-      `   → ${emojiHtml('trophy')} Get key instantly! EZ WIN\n\n` +
-      `${emojiHtml('crown')} <b>WHY WE ARE BEST?</b>\n` +
-      `   → ${emojiHtml('fire')} Rocket speed delivery\n` +
-      `   → ${emojiHtml('shield')} 100% legit & safe\n` +
-      `   → ${emojiHtml('explosion')} Daily deals & giveaways\n\n` +
-      `${emojiHtml('chat')} <b>NEED HELP?</b> @${supportUsername} - Fast AF\n` +
-      `${emojiHtml('fire')} Support is 24/7 - We never sleep!`
-    : `${emojiHtml('fire')} <b>المساعدة - منطقة الأساطير</b>\n\n` +
-      `<b>${botName}</b> — ${emojiHtml('rocket')} أسرع متجر للجيمرز\n\n` +
-      `${emojiHtml('rocket')} <b>كيف تصير أسطورة؟</b>\n` +
-      `   → ${emojiHtml('target')} اضغط PLAY NOW اختر اللعبة → المنتج → ادفع\n` +
-      `   → ${emojiHtml('trophy')} استلم المفتاح فوري! EZ WIN\n\n` +
-      `${emojiHtml('crown')} <b>ليش نحنا الأفضل؟</b>\n` +
-      `   → ${emojiHtml('fire')} تسليم بسرعة الصاروخ\n` +
-      `   → ${emojiHtml('shield')} مضمون 100% وآمن\n` +
-      `   → ${emojiHtml('explosion')} عروض يومية وجوائز\n\n` +
-      `${emojiHtml('chat')} <b>تحتاج مساعدة؟</b> @${supportUsername} - نرد بسرعة\n` +
-      `${emojiHtml('fire')} الدعم 24/7 - ما ننام!`;
+    ? `<b>${botName}</b>\n` +
+      `${emojiHtml('rocket')} How to buy:\n` +
+      `  1. Tap PLAY NOW\n` +
+      `  2. Pick game → product → pay\n` +
+      `  3. Get your key instantly\n\n` +
+      `${emojiHtml('shield')} 100% legit • ${emojiHtml('bolt')} Instant delivery\n\n` +
+      `${emojiHtml('chat')} Need help? <b>@${supportUsername}</b> — 24/7`
+    : `<b>${botName}</b>\n` +
+      `${emojiHtml('rocket')} طريقة الشراء:\n` +
+      `  1. اضغط PLAY NOW\n` +
+      `  2. اختر اللعبة → المنتج → ادفع\n` +
+      `  3. استلم مفتاحك فوراً\n\n` +
+      `${emojiHtml('shield')} مضمون 100% • ${emojiHtml('bolt')} تسليم فوري\n\n` +
+      `${emojiHtml('chat')} تحتاج مساعدة؟ <b>@${supportUsername}</b> — 24/7`;
 
   const buttons = Markup.inlineKeyboard([
     [{

@@ -42,7 +42,7 @@ const historyHandler = async (ctx, page = 1) => {
 
   let msg = `${emojiHtml('crown')} <b>${lang === 'en' ? `Legend Orders - Page ${page}/${totalPages} 👑` : `طلبات الأسطورة - ${page}/${totalPages} 👑`}</b>\n\n`;
   orders.forEach((order) => {
-    const statusIcon = order.status === 'completed' ? 'trophy' : order.status === 'pending' ? 'bolt' : 'skull';
+    const statusIcon = order.status === 'completed' ? 'trophy' : order.status === 'pending' ? 'bolt' : order.status === 'refunded' ? 'wallet' : 'skull';
     msg += `${emojiHtml(statusIcon)} <b>${order.productName}</b> ${emojiHtml('fire')}\n`;
     msg += `   ${emojiHtml('gem')} ${order.durationName} × ${order.quantity}\n`;
     msg += `   ${emojiHtml('wallet')} $${order.finalPrice.toFixed(2)} | ${order.createdAt.toLocaleDateString(lang === 'en' ? 'en-US' : 'ar-SA')} | ${order.status}\n\n`;

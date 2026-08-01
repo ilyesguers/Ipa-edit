@@ -28,8 +28,11 @@ const connectDB = async () => {
     });
 
   } catch (error) {
+    // IMPORTANT: do NOT process.exit here — src/index.js wraps this call in a
+    // retry loop and falls back to a degraded server (healthcheck still up) so
+    // Railway doesn't kill the container on a temporary DB hiccup.
     logger.error('❌ MongoDB connection failed:', error.message);
-    process.exit(1);
+    throw error;
   }
 };
 
@@ -37,13 +40,13 @@ const seedDefaults = async () => {
   const Settings = require('../models/Settings');
   const Category = require('../models/Category');
 
-  // Default settings
+  // Default settings — GAMER EDITION (kept in sync with src/utils/uiConfig.js)
   const defaults = [
-    { key: 'bot_name', value: 'Digital Keys Store', description: 'Bot display name' },
+    { key: 'bot_name', value: 'GAMER STORE 🔥', description: 'Bot display name' },
     { key: 'bot_username', value: 'your_bot', description: 'Bot username' },
-    { key: 'welcome_message', value: 'أهلاً {name}!\n\nمتجر ألعاب رقمي بمخزون حي وتسليم فوري.', description: 'Welcome message' },
+    { key: 'welcome_message', value: '🔥 للجيمرز المحترفين فقط\n\nهلا والله يا أسطورة 👑\nأسرع متجر للألعاب والشحنات - تسليم فوري 🚀', description: 'Welcome message' },
     { key: 'maintenance_mode', value: false, description: 'Maintenance mode toggle' },
-    { key: 'maintenance_message', value: '🔧 الموقع تحت الصيانة، يرجى المحاولة لاحقاً', description: 'Maintenance message' },
+    { key: 'maintenance_message', value: '🔧 المتجر تحت الصيانة السريعة - بنرجع بسرعة الصاروخ 🚀 / Quick maintenance - coming back rocket fast', description: 'Maintenance message' },
     { key: 'support_username', value: 'support', description: 'Support username' },
     { key: 'channel_username', value: '', description: 'Telegram channel username' },
     { key: 'currency', value: 'USD', description: 'Default currency' },
@@ -62,39 +65,34 @@ const seedDefaults = async () => {
     { key: 'admin_notification_on_payment', value: true, description: 'Notify admin on payment proof' },
     { key: 'channel_id', value: '', description: 'Telegram channel ID for announcements' },
     { key: 'force_join_channel', value: false, description: 'Force users to join channel' },
-    { key: 'ui_theme_preset', value: 'aurora', description: 'Visual theme preset for bot and mini apps' },
-    { key: 'ui_welcome_badge_ar', value: 'واجهة جديدة • بوت أذكى', description: 'Arabic welcome badge' },
-    { key: 'ui_welcome_badge_en', value: 'Fresh look • Smarter bot', description: 'English welcome badge' },
-    { key: 'ui_welcome_title_ar', value: 'متجر رقمي منظم وسريع', description: 'Arabic welcome title' },
-    { key: 'ui_welcome_title_en', value: 'A cleaner, faster digital storefront', description: 'English welcome title' },
-    { key: 'ui_welcome_subtitle_ar', value: 'تسوّق بسرعة، راقب طلباتك، وافتح المتجر أو لوحة التحكم من مكان واحد.', description: 'Arabic welcome subtitle' },
-    { key: 'ui_welcome_subtitle_en', value: 'Shop faster, track orders, and jump into the store or control panel from one place.', description: 'English welcome subtitle' },
-    { key: 'ui_footer_note_ar', value: 'جاهز دائماً للتحديثات والعروض الجديدة.', description: 'Arabic footer note' },
-    { key: 'ui_footer_note_en', value: 'Always ready for new updates and fresh offers.', description: 'English footer note' },
-    { key: 'admin_portal_label_ar', value: 'لوحة التحكم', description: 'Admin portal button label in Arabic' },
-    { key: 'admin_portal_label_en', value: 'Admin Portal', description: 'Admin portal button label in English' },
+    { key: 'ui_theme_preset', value: 'midnight', description: 'Visual theme preset for bot and mini apps' },
+    { key: 'ui_welcome_badge_ar', value: '🔥 للجيمرز المحترفين فقط', description: 'Arabic welcome badge' },
+    { key: 'ui_welcome_badge_en', value: '🔥 For Pro Gamers Only', description: 'English welcome badge' },
+    { key: 'ui_welcome_title_ar', value: 'متجر الجيمرز الأسطوري 🎮', description: 'Arabic welcome title' },
+    { key: 'ui_welcome_title_en', value: 'Legendary Gamer Store 🎮', description: 'English welcome title' },
+    { key: 'ui_welcome_subtitle_ar', value: 'أسرع متجر للألعاب والشحنات والبوستات - كل شي في مكان واحد مع تسليم فوري 🚀', description: 'Arabic welcome subtitle' },
+    { key: 'ui_welcome_subtitle_en', value: 'Fastest game keys, boosts & top-ups - all in one place with rocket delivery 🚀', description: 'English welcome subtitle' },
+    { key: 'ui_footer_note_ar', value: '💥 عروض يومية + جوائز للمتابعين', description: 'Arabic footer note' },
+    { key: 'ui_footer_note_en', value: '💥 Daily deals + giveaways for followers', description: 'English footer note' },
+    { key: 'admin_portal_label_ar', value: 'لوحة التحكم 👑', description: 'Admin portal button label in Arabic' },
+    { key: 'admin_portal_label_en', value: 'Admin Portal 👑', description: 'Admin portal button label in English' },
     {
       key: 'ui_home_highlights',
       value: [
-        { id: 'instant', emojiKey: 'bolt', textAr: 'تسليم فوري بعد تأكيد الدفع', textEn: 'Instant delivery right after payment confirmation' },
-        { id: 'safe', emojiKey: 'shield', textAr: 'واجهة مرتبة وتجربة احترافية', textEn: 'Organized interface with a premium experience' },
-        { id: 'games', emojiKey: 'target', textAr: 'إدارة كاملة للمخزون والطلبات', textEn: 'Complete control over stock and orders' }
+        { id: 'rocket', emojiKey: 'rocket', textAr: 'تسليم فوري', textEn: 'Instant delivery' },
+        { id: 'shield', emojiKey: 'shield', textAr: 'مفاتيح أصلية 100%', textEn: '100% legit keys' },
+        { id: 'fire', emojiKey: 'fire', textAr: 'أقوى العروض', textEn: 'Best deals' },
+        { id: 'support', emojiKey: 'support', textAr: 'دعم 24/7', textEn: 'Support 24/7' }
       ],
       description: 'Highlights shown across bot and mini app'
     },
     {
       key: 'bot_quick_links',
       value: [
-        { id: 'shop', emojiKey: 'gamepad', textAr: 'تصفح الألعاب', textEn: 'Browse Games', type: 'callback', value: 'shop', row: 1, visibility: 'all', style: 'primary' },
-        { id: 'keys', emojiKey: 'key', textAr: 'مفاتيحي', textEn: 'My Keys', type: 'callback', value: 'mykeys', row: 1, visibility: 'all', style: 'success' },
-        { id: 'history', emojiKey: 'orders', textAr: 'طلباتي', textEn: 'My Orders', type: 'callback', value: 'history', row: 2, visibility: 'all', style: 'success' },
-        { id: 'profile', emojiKey: 'profile', textAr: 'حسابي', textEn: 'Profile', type: 'callback', value: 'profile', row: 2, visibility: 'all', style: 'primary' },
-        { id: 'balance', emojiKey: 'wallet', textAr: 'شحن الرصيد', textEn: 'Top Up Balance', type: 'callback', value: 'addbalance', row: 3, visibility: 'all', style: 'success' },
-        { id: 'help', emojiKey: 'support', textAr: 'الدعم والمساعدة', textEn: 'Help & Support', type: 'callback', value: 'help', row: 3, visibility: 'all', style: 'danger' },
-        { id: 'customer_app', emojiKey: 'mobile', textAr: 'فتح المتجر', textEn: 'Open Store', type: 'webapp', value: '/customer', row: 4, visibility: 'all', style: 'primary' },
-        { id: 'support', emojiKey: 'chat', textAr: 'التواصل مع الدعم', textEn: 'Contact Support', type: 'url', value: 'https://t.me/{support}', row: 4, visibility: 'all', style: 'danger' },
-        { id: 'language', emojiKey: 'globe', textAr: 'English', textEn: 'العربية', type: 'callback', value: 'language', row: 5, visibility: 'all', style: 'primary' },
-        { id: 'channel', emojiKey: 'megaphone', textAr: 'القناة الرسمية', textEn: 'Official Channel', type: 'url', value: 'https://t.me/{channel}', row: 5, visibility: 'all' }
+        { id: 'customer_app', emojiKey: 'rocket', textAr: '🚀 فتح المتجر - PLAY NOW', textEn: '🚀 Open Store - PLAY NOW', type: 'webapp', value: '/customer', row: 1, visibility: 'all', style: 'primary' },
+        { id: 'support', emojiKey: 'fire', textAr: '🔥 الدعم السريع', textEn: '🔥 Fast Support', type: 'url', value: 'https://t.me/{support}', row: 2, visibility: 'all', style: 'danger' },
+        { id: 'channel', emojiKey: 'explosion', textAr: '💥 قناة العروض', textEn: '💥 Deals Channel', type: 'url', value: 'https://t.me/{channel}', row: 2, visibility: 'all', style: 'secondary' },
+        { id: 'language', emojiKey: 'target', textAr: '🌍 English', textEn: '🌍 العربية', type: 'callback', value: 'language', row: 3, visibility: 'all', style: 'secondary' }
       ],
       description: 'Configurable bot quick links'
     }
@@ -104,6 +102,41 @@ const seedDefaults = async () => {
     const exists = await Settings.findOne({ key: s.key });
     if (!exists) {
       await Settings.create({ key: s.key, value: s.value, description: s.description, isSecret: s.isSecret || false });
+    }
+  }
+
+  // ── Legacy migration: upgrade old "Digital Keys Store" branding to Gamer Edition ──
+  // Only touches installs that still carry the untouched legacy defaults, so a
+  // store owner who customized values keeps their customization.
+  const legacyBranding = [
+    { key: 'bot_name', old: 'Digital Keys Store', value: 'GAMER STORE 🔥' },
+    { key: 'welcome_message', old: 'أهلاً {name}!\n\nمتجر ألعاب رقمي بمخزون حي وتسليم فوري.', value: '🔥 للجيمرز المحترفين فقط\n\nهلا والله يا أسطورة 👑\nأسرع متجر للألعاب والشحنات - تسليم فوري 🚀' },
+    { key: 'ui_welcome_badge_ar', old: 'واجهة جديدة • بوت أذكى', value: '🔥 للجيمرز المحترفين فقط' },
+    { key: 'ui_welcome_badge_en', old: 'Fresh look • Smarter bot', value: '🔥 For Pro Gamers Only' },
+    { key: 'ui_welcome_title_ar', old: 'متجر رقمي منظم وسريع', value: 'متجر الجيمرز الأسطوري 🎮' },
+    { key: 'ui_welcome_title_en', old: 'A cleaner, faster digital storefront', value: 'Legendary Gamer Store 🎮' },
+    { key: 'ui_welcome_subtitle_ar', old: 'تسوّق بسرعة، راقب طلباتك، وافتح المتجر أو لوحة التحكم من مكان واحد.', value: 'أسرع متجر للألعاب والشحنات والبوستات - كل شي في مكان واحد مع تسليم فوري 🚀' },
+    { key: 'ui_welcome_subtitle_en', old: 'Shop faster, track orders, and jump into the store or control panel from one place.', value: 'Fastest game keys, boosts & top-ups - all in one place with rocket delivery 🚀' }
+  ];
+  let migratedAny = false;
+  for (const item of legacyBranding) {
+    const setting = await Settings.findOne({ key: item.key });
+    if (setting && String(setting.value) === item.old) {
+      setting.value = item.value;
+      setting.description = defaults.find((d) => d.key === item.key)?.description || setting.description;
+      await setting.save();
+      migratedAny = true;
+      logger.info(`🔄 Migrated setting ${item.key} to Gamer Edition value`);
+    }
+  }
+  // Only bump the theme when the rest of the branding was still legacy, so an
+  // admin who intentionally picked the aurora theme keeps it.
+  if (migratedAny) {
+    const theme = await Settings.findOne({ key: 'ui_theme_preset' });
+    if (theme && String(theme.value) === 'aurora') {
+      theme.value = 'midnight';
+      await theme.save();
+      logger.info('🔄 Migrated ui_theme_preset aurora → midnight (legacy branding detected)');
     }
   }
 

@@ -82,8 +82,33 @@ const adminOnly = (req, res, next) => {
   next();
 };
 
+// ── Granular admin permissions ─────────────────────────────────────────────
+// A 'superadmin' (owner in ADMIN_IDS) has every permission. A regular 'admin'
+// with an empty `permissions` array keeps full access (backward compatible).
+// Admins with a non-empty `permissions` array can only touch their sections.
+const ALL_PERMISSIONS = ['dashboard', 'products', 'inventory', 'orders', 'users', 'coupons', 'broadcast', 'settings'];
+
+const hasPermission = (user, permission) => {
+  if (!user) return false;
+  if (user.role === 'superadmin') return true;
+  if (user.role !== 'admin') return false;
+  const perms = user.permissions || [];
+  if (!perms.length) return true; // full-access admin
+  return perms.includes(permission);
+};
+
+const requirePermission = (permission) => (req, res, next) => {
+  if (!req.user || !hasPermission(req.user, permission)) {
+    return res.status(403).json({
+      success: false,
+      error: `You need the "${permission}" permission to access this section`
+    });
+  }
+  next();
+};
+
 const generateToken = (telegramId) => {
   return jwt.sign({ telegramId }, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
 };
 
-module.exports = { authMiddleware, adminOnly, generateToken, verifyTelegramWebApp };
+module.exports = { authMiddleware, adminOnly, requirePermission, hasPermission, ALL_PERMISSIONS, generateToken, verifyTelegramWebApp };

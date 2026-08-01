@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import api from '../utils/api';
+import { cachedFetch, invalidateCache } from '../utils/cache';
 import { normalizeLocale } from '../i18n';
 
 const useStore = create((set, get) => ({
@@ -85,32 +86,35 @@ const useStore = create((set, get) => ({
     }
   },
 
-  // Categories
-  fetchCategories: async () => {
-    const res = await api.get('/shop/categories');
-    set({ categories: res.data.data });
+  // Categories (cached 60s — instant tab switching, no repeated network hits)
+  fetchCategories: async (force = false) => {
+    const data = force
+      ? await (async () => { const res = await api.get('/shop/categories'); return res.data.data; })()
+      : await cachedFetch('categories', async () => (await api.get('/shop/categories')).data.data);
+    set({ categories: data });
+    return data;
   },
 
-  // Games
+  // Games (cached per category)
   selectCategory: async (category) => {
     set({ selectedCategory: category, selectedGame: null, products: [], breadcrumb: [category] });
-    const res = await api.get(`/shop/categories/${category._id}/games`);
-    set({ games: res.data.data });
+    const data = await cachedFetch(`games:${category._id}`, async () => (await api.get(`/shop/categories/${category._id}/games`)).data.data);
+    set({ games: data });
   },
 
-  // Products
+  // Products (cached per game)
   selectGame: async (game) => {
     const { selectedCategory } = get();
     set({ selectedGame: game, breadcrumb: [selectedCategory, game] });
-    const res = await api.get(`/shop/games/${game._id}/products`);
-    set({ products: res.data.data });
+    const data = await cachedFetch(`products:${game._id}`, async () => (await api.get(`/shop/games/${game._id}/products`)).data.data);
+    set({ products: data });
   },
 
-  // Product detail
+  // Product detail (short TTL — prices/stock change often)
   selectProduct: async (product) => {
     set({ selectedProduct: null });
-    const res = await api.get(`/shop/products/${product._id}`);
-    set({ selectedProduct: res.data.data, showDurationSheet: true });
+    const data = await cachedFetch(`product:${product._id}`, async () => (await api.get(`/shop/products/${product._id}`)).data.data, 15 * 1000);
+    set({ selectedProduct: data, showDurationSheet: true });
   },
 
   selectDuration: (duration) => set({ selectedDuration: duration, showCheckout: true, showDurationSheet: false }),
@@ -135,7 +139,17 @@ const useStore = create((set, get) => ({
       quantity,
       couponCode: couponCode || undefined
     });
-    set({ currentOrder: res.data.data, showCheckout: false });
+    // Refresh the balance from the server response so the header updates instantly
+    const nextUser = res.data.data?.balance !== undefined
+      ? { ...get().user, balance: res.data.data.balance }
+      : get().user;
+    // Purchases change keys/orders/stock — drop those caches so tabs reload fresh
+    invalidateCache('my-keys');
+    invalidateCache('orders:1');
+    if (selectedProduct) invalidateCache(`product:${selectedProduct._id}`);
+    const gameId = selectedProduct?.game?._id || selectedProduct?.game;
+    if (gameId) invalidateCache(`products:${gameId}`);
+    set({ currentOrder: res.data.data, showCheckout: false, user: nextUser });
     return res.data.data;
   },
 

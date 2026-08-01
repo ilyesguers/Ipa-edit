@@ -8,7 +8,6 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [recentOrders, setRecentOrders] = useState([]);
   const [chartType, setChartType] = useState('revenue'); // 'revenue' | 'orders'
-  const [monthlySummary, setMonthlySummary] = useState(null);
 
   useEffect(() => {
     Promise.all([
@@ -19,18 +18,17 @@ export default function Dashboard() {
       setRecentOrders(ordersRes.data.data?.slice(0, 8) || []);
       setLoading(false);
     }).catch(() => setLoading(false));
-
-    // Monthly summary
-    api.get('/admin/stats?period=month').then(res => {
-      setMonthlySummary(res.data.data);
-    }).catch(() => {});
   }, []);
 
+  const pendingCount = (stats?.pendingOrders || 0) + (stats?.processingOrders || 0);
+
   const STAT_CARDS = stats ? [
-    { title: 'إجمالي المستخدمين', value: stats.totalUsers?.toLocaleString(), icon: '👥', gradient: 'from-blue-500/10 to-blue-600/5', border: 'border-blue-500/20', textColor: 'text-blue-400', sub: 'مستخدم مسجل' },
+    { title: 'إجمالي المستخدمين', value: stats.totalUsers?.toLocaleString(), icon: '👥', gradient: 'from-blue-500/10 to-blue-600/5', border: 'border-blue-500/20', textColor: 'text-blue-400', sub: `جديد هذا الشهر: ${stats.newUsers || 0}` },
     { title: 'إجمالي الأرباح', value: `$${stats.totalRevenue?.toFixed(2)}`, icon: '💰', gradient: 'from-green-500/10 to-green-600/5', border: 'border-green-500/20', textColor: 'text-green-400', sub: `اليوم: $${stats.revenueToday?.toFixed(2)}` },
-    { title: 'إجمالي الطلبات', value: stats.totalOrders?.toLocaleString(), icon: '🛒', gradient: 'from-purple-500/10 to-purple-600/5', border: 'border-purple-400/20', textColor: 'text-purple-400', sub: 'مكتمل' },
+    { title: 'إجمالي الطلبات', value: stats.totalOrders?.toLocaleString(), icon: '🛒', gradient: 'from-purple-500/10 to-purple-600/5', border: 'border-purple-400/20', textColor: 'text-purple-400', sub: `هذا الشهر: ${stats.ordersMonth || 0} · اليوم: ${stats.ordersToday || 0}` },
+    { title: 'متابعة مطلوبة', value: pendingCount, icon: '⏳', gradient: 'from-orange-500/10 to-red-500/5', border: 'border-orange-400/20', textColor: pendingCount > 0 ? 'text-orange-400' : 'text-green', sub: `${stats.pendingOrders || 0} انتظار · ${stats.processingOrders || 0} معالجة` },
     { title: 'المخزون الحالي', value: `${stats.activeKeys} / ${stats.totalKeys}`, icon: '🔑', gradient: 'from-amber-500/10 to-amber-600/5', border: 'border-amber-400/20', textColor: 'text-amber-400', sub: 'متاح / إجمالي' },
+    { title: 'طلبات مسترجعة', value: stats.refundedOrders || 0, icon: '💰', gradient: 'from-gold/10 to-amber-500/5', border: 'border-gold/20', textColor: 'text-gold', sub: 'إجمالي الاسترجاعات' },
   ] : [];
 
   // Quick actions
@@ -52,8 +50,8 @@ export default function Dashboard() {
       </div>
 
       {/* Stat Cards with gradient cells */}
-      <div className="grid grid-cols-2 gap-3">
-        {loading ? Array(4).fill(0).map((_, i) => <div key={i} className="h-28 rounded-2xl skeleton" />) :
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        {loading ? Array(6).fill(0).map((_, i) => <div key={i} className="h-28 rounded-2xl skeleton" />) :
           STAT_CARDS.map((card, i) => <StatCard key={i} {...card} index={i} />)}
       </div>
 
@@ -82,7 +80,7 @@ export default function Dashboard() {
             <h3 className="font-bold text-white text-sm">
               📈 {chartType === 'revenue' ? 'الأرباح' : 'الطلبات'} - آخر 7 أيام
             </h3>
-            <div className="flex gap-1 bg-[#0a0a12] rounded-lg p-0.5 border border-border">
+            <div className="flex gap-1 bg-[#0d0f12] rounded-lg p-0.5 border border-border">
               <button
                 onClick={() => setChartType('revenue')}
                 className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${chartType === 'revenue' ? 'bg-neon/20 text-neon' : 'text-muted'}`}
@@ -100,19 +98,19 @@ export default function Dashboard() {
           <ResponsiveContainer width="100%" height={160}>
             {chartType === 'revenue' ? (
               <BarChart data={stats.revenueChart}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e1e30" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#1f2430" />
                 <XAxis dataKey="date" tick={{ fill: '#6b7280', fontSize: 10 }} tickFormatter={d => d.slice(5)} />
                 <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} />
-                <Tooltip contentStyle={{ background: '#12121c', border: '1px solid #1e1e30', borderRadius: '10px', color: '#fff' }} formatter={(v) => [`$${v}`, 'الأرباح']} />
-                <Bar dataKey="revenue" fill="#00d4ff" radius={[4, 4, 0, 0]} />
+                <Tooltip contentStyle={{ background: '#161922', border: '1px solid #1f2430', borderRadius: '10px', color: '#fff' }} formatter={(v) => [`$${v}`, 'الأرباح']} />
+                <Bar dataKey="revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} />
               </BarChart>
             ) : (
               <LineChart data={stats.revenueChart}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e1e30" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#1f2430" />
                 <XAxis dataKey="date" tick={{ fill: '#6b7280', fontSize: 10 }} tickFormatter={d => d.slice(5)} />
                 <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} />
-                <Tooltip contentStyle={{ background: '#12121c', border: '1px solid #1e1e30', borderRadius: '10px', color: '#fff' }} formatter={(v) => [v, 'الطلبات']} />
-                <Line type="monotone" dataKey="orders" stroke="#a855f7" strokeWidth={2} dot={{ fill: '#a855f7', r: 3 }} />
+                <Tooltip contentStyle={{ background: '#161922', border: '1px solid #1f2430', borderRadius: '10px', color: '#fff' }} formatter={(v) => [v, 'الطلبات']} />
+                <Line type="monotone" dataKey="orders" stroke="#6366f1" strokeWidth={2} dot={{ fill: '#6366f1', r: 3 }} />
               </LineChart>
             )}
           </ResponsiveContainer>
@@ -120,20 +118,20 @@ export default function Dashboard() {
       )}
 
       {/* Monthly Summary */}
-      {monthlySummary && (
+      {stats && (
         <div className="admin-card">
           <h3 className="font-bold text-white mb-3 text-sm">📅 ملخص هذا الشهر</h3>
           <div className="grid grid-cols-3 gap-3 text-center">
             <div>
-              <p className="text-2xl font-black text-neon">${monthlySummary.revenueMonth?.toFixed(2) || '0.00'}</p>
+              <p className="text-2xl font-black text-neon">${stats.revenueMonth?.toFixed(2) || '0.00'}</p>
               <p className="text-[10px] text-muted mt-1">الأرباح</p>
             </div>
             <div>
-              <p className="text-2xl font-black text-purple-400">{monthlySummary.ordersMonth || 0}</p>
+              <p className="text-2xl font-black text-purple-400">{stats.ordersMonth || 0}</p>
               <p className="text-[10px] text-muted mt-1">الطلبات</p>
             </div>
             <div>
-              <p className="text-2xl font-black text-amber-400">{monthlySummary.newUsers || 0}</p>
+              <p className="text-2xl font-black text-amber-400">{stats.newUsers || 0}</p>
               <p className="text-[10px] text-muted mt-1">مستخدم جديد</p>
             </div>
           </div>
@@ -157,8 +155,8 @@ export default function Dashboard() {
                 <div className="text-right">
                   <p className="text-neon font-bold text-xs">${order.finalPrice?.toFixed(2)}</p>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold
-                    ${order.status === 'completed' ? 'bg-green/10 text-green' : order.status === 'pending' ? 'bg-warning/10 text-warning' : 'bg-red/10 text-red'}`}>
-                    {order.status === 'completed' ? 'مكتمل' : order.status === 'pending' ? 'انتظار' : order.status}
+                    ${order.status === 'completed' ? 'bg-green/10 text-green' : order.status === 'pending' ? 'bg-warning/10 text-warning' : order.status === 'processing' ? 'bg-neon-blue/10 text-neon-blue' : order.status === 'refunded' ? 'bg-gold/10 text-gold' : 'bg-red/10 text-red'}`}>
+                    {order.status === 'completed' ? 'مكتمل' : order.status === 'pending' ? 'انتظار' : order.status === 'processing' ? 'معالجة' : order.status === 'refunded' ? 'مسترجع' : order.status}
                   </span>
                 </div>
               </motion.div>

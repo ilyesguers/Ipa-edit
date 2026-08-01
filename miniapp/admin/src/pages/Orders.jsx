@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
+import { haptic } from '../utils/haptic';
 
 const STATUS = {
   pending: { label: 'انتظار', color: 'text-warning bg-warning/10 border-warning/20' },
@@ -10,6 +11,14 @@ const STATUS = {
   failed: { label: 'فاشل', color: 'text-red bg-red/10 border-red/20' },
   cancelled: { label: 'ملغي', color: 'text-muted bg-muted/10 border-muted/20' },
   rejected: { label: 'مرفوض', color: 'text-red bg-red/10 border-red/20' },
+  refunded: { label: 'مسترجع', color: 'text-gold bg-gold/10 border-gold/20' },
+};
+
+const PAYMENT_LABELS = {
+  wallet: '💰 محفظة',
+  binance: '🟡 Binance',
+  manual_crypto: '🔗 يدوي',
+  admin_gift: '🎁 هدية',
 };
 
 export default function Orders({ routeQuery = {}, setRouteQuery }) {
@@ -22,6 +31,9 @@ export default function Orders({ routeQuery = {}, setRouteQuery }) {
   const [totalPages, setTotalPages] = useState(1);
   const [rejecting, setRejecting] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [refunding, setRefunding] = useState(null);
+  const [refundReason, setRefundReason] = useState('');
+  const [detail, setDetail] = useState(null); // order detail modal
 
   const load = async (p = 1, searchValue = search, statusValue = filterStatus) => {
     setLoading(true);
@@ -56,22 +68,54 @@ export default function Orders({ routeQuery = {}, setRouteQuery }) {
   }, [search]);
 
   const handleVerify = async (orderId) => {
+    haptic.medium();
     try {
       await api.post(`/admin/orders/${orderId}/verify-payment`);
+      haptic.success();
       toast.success('✅ تم التأكيد والتسليم');
       load(1);
-    } catch (err) { toast.error(err.response?.data?.error || 'فشل'); }
+    } catch (err) { haptic.error(); toast.error(err.response?.data?.error || 'فشل'); }
   };
 
   const handleReject = async () => {
     if (!rejecting || !rejectReason.trim()) return toast.error('اكتب سبب الرفض');
+    haptic.medium();
     try {
       await api.post(`/admin/orders/${rejecting}/reject-payment`, { reason: rejectReason });
+      haptic.success();
       toast.success('❌ تم رفض الطلب');
       setRejecting(null);
       setRejectReason('');
       load(1);
-    } catch (err) { toast.error('فشل'); }
+    } catch (err) { haptic.error(); toast.error(err.response?.data?.error || 'فشل'); }
+  };
+
+  const handleRefund = async () => {
+    if (!refunding) return;
+    haptic.medium();
+    try {
+      await api.post(`/admin/orders/${refunding}/refund`, { reason: refundReason || undefined });
+      haptic.success();
+      toast.success('💰 تم الاسترجاع للمحفظة');
+      setRefunding(null);
+      setRefundReason('');
+      load(1);
+    } catch (err) { haptic.error(); toast.error(err.response?.data?.error || 'فشل'); }
+  };
+
+  const handleCancel = async (order) => {
+    if (!confirm(`إلغاء الطلب ${order.orderNumber}؟`)) return;
+    haptic.medium();
+    try {
+      await api.post(`/admin/orders/${order._id}/cancel`, { reason: 'ألغي من الإدارة' });
+      haptic.success();
+      toast.success('🚫 تم الإلغاء');
+      load(1);
+    } catch (err) { haptic.error(); toast.error(err.response?.data?.error || 'فشل'); }
+  };
+
+  const copy = (text) => {
+    navigator.clipboard.writeText(text).then(() => toast.success('📋 تم النسخ'));
   };
 
   return (
@@ -116,11 +160,13 @@ export default function Orders({ routeQuery = {}, setRouteQuery }) {
                     <p className="font-bold text-white text-sm">{order.productName}</p>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${status.color}`}>{status.label}</span>
                     <span className="text-[10px] px-2 py-0.5 rounded-full border border-border text-muted">{order.orderNumber}</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full border border-border text-muted">{PAYMENT_LABELS[order.paymentMethod] || order.paymentMethod}</span>
                   </div>
                   <p className="text-xs text-muted mt-1">{order.durationName} × {order.quantity}</p>
                   <p className="text-xs text-muted">@{order.username || 'N/A'} · {order.user}</p>
                   {order.paymentTxHash && <p className="text-[10px] text-neon font-mono truncate mt-1">TxHash: {order.paymentTxHash}</p>}
                   {order.adminNotes && <p className="text-[10px] text-warning mt-1">ملاحظة: {order.adminNotes}</p>}
+                  {order.refundReason && <p className="text-[10px] text-gold mt-1">💰 سبب الاسترجاع: {order.refundReason}</p>}
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="font-black text-neon">${order.finalPrice?.toFixed(2)}</p>
@@ -128,12 +174,24 @@ export default function Orders({ routeQuery = {}, setRouteQuery }) {
                 </div>
               </div>
 
-              {order.status === 'processing' && (
-                <div className="flex gap-2 mt-3 pt-3 border-t border-border">
-                  <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleVerify(order._id)} className="flex-1 success-btn py-2 rounded-xl text-xs font-bold">✅ تأكيد وتسليم</motion.button>
-                  <motion.button whileTap={{ scale: 0.95 }} onClick={() => setRejecting(order._id)} className="flex-1 danger-btn py-2 rounded-xl text-xs font-bold">❌ رفض</motion.button>
-                </div>
-              )}
+              <div className="flex gap-2 mt-3 pt-3 border-t border-border flex-wrap">
+                <button onClick={() => setDetail(order)} className="text-xs px-3 py-2 rounded-xl border border-border text-muted hover:text-white transition-all">👁 التفاصيل</button>
+                {order.status === 'processing' && (
+                  <>
+                    <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleVerify(order._id)} className="flex-1 min-w-[140px] success-btn py-2 rounded-xl text-xs font-bold">✅ تأكيد وتسليم</motion.button>
+                    <motion.button whileTap={{ scale: 0.95 }} onClick={() => setRejecting(order._id)} className="flex-1 min-w-[100px] danger-btn py-2 rounded-xl text-xs font-bold">❌ رفض</motion.button>
+                  </>
+                )}
+                {order.status === 'pending' && (
+                  <>
+                    <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleVerify(order._id)} className="flex-1 min-w-[140px] success-btn py-2 rounded-xl text-xs font-bold">✅ تأكيد وتسليم</motion.button>
+                    <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleCancel(order)} className="flex-1 min-w-[100px] py-2 rounded-xl text-xs font-bold border border-border text-muted hover:text-white">🚫 إلغاء</motion.button>
+                  </>
+                )}
+                {order.status === 'completed' && (
+                  <motion.button whileTap={{ scale: 0.95 }} onClick={() => setRefunding(order._id)} className="flex-1 min-w-[140px] py-2 rounded-xl text-xs font-bold border border-gold/30 text-gold hover:bg-gold/10">💰 استرجاع</motion.button>
+                )}
+              </div>
 
               {order.status === 'completed' && order.keyValues?.length > 0 && (
                 <div className="mt-2 pt-2 border-t border-border">
@@ -154,6 +212,37 @@ export default function Orders({ routeQuery = {}, setRouteQuery }) {
         <button onClick={() => { const p = page + 1; setPage(p); load(p); }} className="w-full py-2 text-sm text-muted border border-border rounded-xl">تحميل المزيد</button>
       )}
 
+      {/* Order detail modal */}
+      <AnimatePresence>
+        {detail && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDetail(null)} className="fixed inset-0 bg-black/80 z-40" />
+            <motion.div initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.92, opacity: 0 }}
+              className="fixed left-4 right-4 top-1/2 -translate-y-1/2 z-50 bg-panel border border-border rounded-3xl p-5 max-w-md mx-auto space-y-3 max-h-[85vh] overflow-y-auto">
+              <div className="flex items-center justify-between">
+                <h3 className="font-black text-white">📋 تفاصيل الطلب</h3>
+                <button onClick={() => setDetail(null)} className="text-muted hover:text-white text-sm">✕</button>
+              </div>
+              <InfoRow label="رقم الطلب" value={detail.orderNumber} mono onCopy={() => copy(detail.orderNumber)} />
+              <InfoRow label="الحالة" value={STATUS[detail.status]?.label || detail.status} />
+              <InfoRow label="طريقة الدفع" value={PAYMENT_LABELS[detail.paymentMethod] || detail.paymentMethod} />
+              <InfoRow label="المنتج" value={`${detail.productName} - ${detail.durationName}`} />
+              <InfoRow label="الكمية" value={detail.quantity} />
+              <InfoRow label="السعر النهائي" value={`$${detail.finalPrice?.toFixed(2)}`} />
+              {detail.couponCode && <InfoRow label="الكوبون" value={detail.couponCode} />}
+              {detail.paymentTxHash && <InfoRow label="TxHash" value={detail.paymentTxHash} mono onCopy={() => copy(detail.paymentTxHash)} />}
+              {detail.adminNotes && <InfoRow label="ملاحظة الإدارة" value={detail.adminNotes} />}
+              <InfoRow label="التاريخ" value={new Date(detail.createdAt).toLocaleString('ar-SA')} />
+              <div className="flex gap-2 pt-2">
+                <button onClick={() => { setDetail(null); window.dispatchEvent(new CustomEvent('admin-navigate', { detail: { page: 'users', query: { search: detail.user } } })); }} className="flex-1 py-2.5 rounded-xl border border-neon/30 bg-neon/10 text-neon text-xs font-bold">👤 ملف المستخدم</button>
+                <button onClick={() => setDetail(null)} className="px-4 py-2.5 border border-border rounded-xl text-muted text-xs font-bold">إغلاق</button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Reject modal */}
       {rejecting && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-md rounded-3xl border border-border bg-panel p-5 space-y-4">
@@ -166,6 +255,31 @@ export default function Orders({ routeQuery = {}, setRouteQuery }) {
           </div>
         </div>
       )}
+
+      {/* Refund modal */}
+      {refunding && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md rounded-3xl border border-border bg-panel p-5 space-y-4">
+            <h3 className="text-white font-black">💰 استرجاع الطلب</h3>
+            <p className="text-xs text-muted">سيتم تحويل المبلغ إلى محفظة المستخدم وإبطال المفاتيح المسلّمة.</p>
+            <textarea value={refundReason} onChange={(e) => setRefundReason(e.target.value)} rows={3} className="input-admin resize-none" placeholder="سبب الاسترجاع (اختياري)" />
+            <div className="flex gap-2">
+              <button onClick={handleRefund} className="flex-1 py-3 rounded-xl font-bold text-sm bg-gold/10 border border-gold/30 text-gold">تأكيد الاسترجاع</button>
+              <button onClick={() => { setRefunding(null); setRefundReason(''); }} className="border border-border text-muted rounded-xl px-4">إلغاء</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InfoRow({ label, value, mono, onCopy }) {
+  return (
+    <div className="flex items-center justify-between gap-3 bg-bg border border-border rounded-xl px-3 py-2">
+      <span className="text-[11px] text-muted font-semibold shrink-0">{label}</span>
+      <span className={`text-xs text-white font-bold truncate ${mono ? 'font-mono' : ''}`}>{value}</span>
+      {onCopy && <button onClick={onCopy} className="text-[10px] text-neon border border-neon/20 rounded px-1.5 py-0.5 shrink-0">نسخ</button>}
     </div>
   );
 }

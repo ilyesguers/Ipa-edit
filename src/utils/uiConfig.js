@@ -54,12 +54,12 @@ const THEME_PRESETS = {
   }
 };
 
-// Gaming teen focused highlights - no more boring corporate text
+// Clean, minimal highlights — no emoji spam
 const DEFAULT_HIGHLIGHTS = [
-  { id: 'rocket', emojiKey: 'rocket', textAr: 'تسليم فوري بسرعة الصاروخ 🚀', textEn: 'Rocket-fast instant delivery 🚀' },
-  { id: 'fire', emojiKey: 'fire', textAr: 'أقوى العروض للجيمرز الحقيقيين 🔥', textEn: 'Hottest deals for real gamers 🔥' },
-  { id: 'crown', emojiKey: 'crown', textAr: 'كن محترف 👑 مفاتيح أصلية 100%', textEn: 'Be pro 👑 100% legit keys' },
-  { id: 'shield', emojiKey: 'shield', textAr: 'آمن ومضمون مع دعم 24/7 ⚡', textEn: 'Safe & secured + 24/7 hype support ⚡' }
+  { id: 'rocket', emojiKey: 'rocket', textAr: 'تسليم فوري', textEn: 'Instant delivery' },
+  { id: 'shield', emojiKey: 'shield', textAr: 'مفاتيح أصلية 100%', textEn: '100% legit keys' },
+  { id: 'fire', emojiKey: 'fire', textAr: 'أقوى العروض', textEn: 'Best deals' },
+  { id: 'support', emojiKey: 'support', textAr: 'دعم 24/7', textEn: 'Support 24/7' }
 ];
 
 // MINIMAL WEB-FOCUSED KEYBOARD - Bot focuses on website, not old shop callbacks
@@ -68,8 +68,8 @@ const DEFAULT_HIGHLIGHTS = [
 const DEFAULT_QUICK_LINKS = [
   { id: 'customer_app', emojiKey: 'rocket', textAr: '🚀 فتح المتجر - PLAY NOW', textEn: '🚀 Open Store - PLAY NOW', type: 'webapp', value: '/customer', row: 1, visibility: 'all', style: 'primary' },
   { id: 'support', emojiKey: 'fire', textAr: '🔥 الدعم السريع', textEn: '🔥 Fast Support', type: 'url', value: 'https://t.me/{support}', row: 2, visibility: 'all', style: 'danger' },
-  { id: 'channel', emojiKey: 'explosion', textAr: '💥 قناة العروض', textEn: '💥 Deals Channel', type: 'url', value: 'https://t.me/{channel}', row: 2, visibility: 'all' },
-  { id: 'language', emojiKey: 'target', textAr: '🌍 English', textEn: '🌍 العربية', type: 'callback', value: 'language', row: 3, visibility: 'all', style: 'primary' },
+  { id: 'channel', emojiKey: 'explosion', textAr: '💥 قناة العروض', textEn: '💥 Deals Channel', type: 'url', value: 'https://t.me/{channel}', row: 2, visibility: 'all', style: 'secondary' },
+  { id: 'language', emojiKey: 'target', textAr: '🌍 English', textEn: '🌍 العربية', type: 'callback', value: 'language', row: 3, visibility: 'all', style: 'secondary' },
 ];
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -118,7 +118,7 @@ const normalizeQuickLinks = (value) => {
       value: item.value || '/customer',
       row: Number(item.row) > 0 ? Number(item.row) : 1,
       visibility: ['all', 'admin'].includes(item.visibility) ? item.visibility : 'all',
-      style: ['primary', 'success', 'danger'].includes(item.style) ? item.style : null
+      style: ['primary', 'secondary', 'success', 'danger'].includes(item.style) ? item.style : null
     }))
     .filter((item) => {
       const signature = `${item.type}:${item.value}:${item.textAr}:${item.textEn}`;
@@ -270,7 +270,7 @@ const buildBotInlineKeyboard = ({ Markup, lang = 'ar', isAdmin = false, quickLin
       .map((item) => {
         const label = lang === 'en' ? (item.textEn || item.textAr) : (item.textAr || item.textEn);
         const emojiKey = item.emojiKey || 'rocket';
-        const style = ['primary', 'success', 'danger'].includes(item.style) ? item.style : undefined;
+        const style = ['primary', 'secondary', 'success', 'danger'].includes(item.style) ? item.style : undefined;
         const emojiId = buttonEmojiId(emojiKey) || (style && buttonEmojiId(style));
         const text = buttonLabel(emojiKey, label, { emojiId, hasIcon: Boolean(emojiId) });
         const buttonExtra = emojiId ? { icon_custom_emoji_id: emojiId } : {};

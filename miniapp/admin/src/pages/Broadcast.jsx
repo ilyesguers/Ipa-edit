@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
 
+const AUDIENCE_LABELS = { all: 'جميع المستخدمين', buyers: 'المشترون فقط', with_balance: 'من لديهم رصيد', specific: 'محددون' };
+
 export default function Broadcast() {
   const [form, setForm] = useState({
     title: '',
@@ -11,18 +13,57 @@ export default function Broadcast() {
     targetAudience: 'all',
     buttons: []
   });
+  const [specificIds, setSpecificIds] = useState('');
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null);
   const [newButton, setNewButton] = useState({ text: '', url: '' });
+  const [previewCount, setPreviewCount] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  const handlePreview = async () => {
+    setPreviewLoading(true);
+    try {
+      const ids = form.targetAudience === 'specific'
+        ? specificIds.split(/[\s,،]+/).map(s => parseInt(s)).filter(id => !isNaN(id) && id > 0)
+        : [];
+      const r = await api.post('/admin/broadcast/target-count', { targetAudience: form.targetAudience, specificUserIds: ids });
+      setPreviewCount(r.data.data.count);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'فشل في حساب العدد');
+      setPreviewCount(null);
+    }
+    setPreviewLoading(false);
+  };
 
   const handleSend = async () => {
     if (!form.message.trim()) return toast.error('الرسالة مطلوبة');
+    if (form.targetAudience === 'specific') {
+      const ids = specificIds.split(/[\s,،]+/).map(s => parseInt(s)).filter(id => !isNaN(id) && id > 0);
+      if (!ids.length) return toast.error('أدخل على الأقل ID واحد للمستخدمين المحددين');
+      form.specificUserIds = ids;
+    }
     if (!confirm(`إرسال الإذاعة إلى: ${AUDIENCE_LABELS[form.targetAudience]}؟`)) return;
     setSending(true);
     try {
       const r = await api.post('/admin/broadcast', form);
       setResult(r.data);
       toast.success(`📢 جاري الإرسال إلى ${r.data.totalTargets} مستخدم`);
+      // Poll until the broadcast finishes so the admin sees live sent/failed counts
+      const broadcastId = r.data.data?._id;
+      if (broadcastId) {
+        const timer = setInterval(async () => {
+          try {
+            const list = await api.get('/admin/broadcasts');
+            const b = list.data.data?.find(x => x._id === broadcastId);
+            if (!b) return clearInterval(timer);
+            setResult(prev => ({ ...prev, data: b }));
+            if (b.status === 'completed') {
+              clearInterval(timer);
+              toast.success(`✅ اكتمل الإرسال: ${b.sentCount} نجح / ${b.failedCount} فشل`);
+            }
+          } catch (_) {}
+        }, 5000);
+      }
     } catch (err) {
       toast.error(err.response?.data?.error || 'فشل في الإرسال');
     }
@@ -34,8 +75,6 @@ export default function Broadcast() {
     setForm(f => ({ ...f, buttons: [...f.buttons, newButton] }));
     setNewButton({ text: '', url: '' });
   };
-
-  const AUDIENCE_LABELS = { all: 'جميع المستخدمين', buyers: 'المشترون فقط', with_balance: 'من لديهم رصيد', specific: 'محددون' };
 
   const formatMessage = (text) => text
     .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
@@ -51,10 +90,23 @@ export default function Broadcast() {
           className="bg-green/10 border border-green/30 rounded-2xl p-4 text-green">
           <p className="font-bold">✅ تم إرسال الإذاعة!</p>
           <p className="text-sm mt-1">إجمالي المستهدفين: {result.totalTargets}</p>
+          {result.data?.status === 'completed' ? (
+            <p className="text-xs mt-1 text-white/80">
+              📨 المُرسل: <b>{result.data.sentCount || 0}</b> · ❌ الفاشل: <b>{result.data.failedCount || 0}</b>
+            </p>
+          ) : (
+            <p className="text-xs mt-1 text-muted">⏳ جاري الإرسال... يتم التحديث تلقائياً</p>
+          )}
         </motion.div>
       )}
 
       <div className="admin-card space-y-4">
+        {/* Title */}
+        <div>
+          <label className="text-xs text-muted font-semibold block mb-1">🏷️ العنوان (اختياري)</label>
+          <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="مثال: عرض نهاية الأسبوع 🔥" className="input-admin" />
+        </div>
+
         {/* Target Audience */}
         <div>
           <label className="text-xs text-muted font-semibold block mb-2">🎯 الجمهور المستهدف</label>
@@ -67,6 +119,27 @@ export default function Broadcast() {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Specific IDs */}
+        {form.targetAudience === 'specific' && (
+          <div>
+            <label className="text-xs text-muted font-semibold block mb-1">👥 معرّفات المستخدمين (IDs) - افصل بينها بفاصلة أو مسافة</label>
+            <textarea value={specificIds} onChange={e => setSpecificIds(e.target.value)} rows={2} className="input-admin resize-none font-mono" placeholder="123456789, 987654321" />
+            <p className="text-[10px] text-muted mt-1">💡 تجد الـ ID في ملف أي مستخدم أو من أمر /id في البوت</p>
+          </div>
+        )}
+
+        {/* Preview count */}
+        <div className="flex items-center gap-2">
+          <button onClick={handlePreview} disabled={previewLoading} className="text-xs px-3 py-2 rounded-xl border border-neon/30 bg-neon/10 text-neon font-bold hover:bg-neon/20 transition-all disabled:opacity-50">
+            {previewLoading ? '⏳...' : '🔍 معاينة العدد'}
+          </button>
+          {previewCount !== null && (
+            <span className="text-xs text-white bg-bg border border-border rounded-xl px-3 py-2 font-bold">
+              سيصل إلى: <span className="text-neon font-black">{previewCount}</span> مستخدم 🚀
+            </span>
+          )}
         </div>
 
         {/* Image URL */}
@@ -94,6 +167,7 @@ export default function Broadcast() {
         {form.message && (
           <div className="bg-bg border border-border rounded-xl p-3">
             <p className="text-[10px] text-muted mb-2">معاينة الرسالة:</p>
+            {form.title && <p className="text-[11px] text-neon font-black mb-1">🏷️ {form.title}</p>}
             <div className="text-sm text-white" dangerouslySetInnerHTML={{ __html: formatMessage(form.message).replace(/\n/g, '<br>') }} />
           </div>
         )}
@@ -122,7 +196,7 @@ export default function Broadcast() {
           onClick={handleSend}
           disabled={sending || !form.message.trim()}
           className="w-full py-4 rounded-2xl font-black text-base transition-all disabled:opacity-40"
-          style={{ background: 'linear-gradient(135deg, #00d4ff20, #00d4ff10)', border: '1px solid rgba(0,212,255,0.4)', color: '#00d4ff', boxShadow: '0 0 20px rgba(0,212,255,0.1)' }}
+          style={{ background: 'linear-gradient(135deg, #3b82f620, #3b82f610)', border: '1px solid rgba(59,130,246,0.4)', color: '#3b82f6', boxShadow: '0 0 20px rgba(59,130,246,0.1)' }}
         >
           {sending ? '⏳ جاري الإرسال...' : `📢 إرسال إلى ${AUDIENCE_LABELS[form.targetAudience]}`}
         </motion.button>

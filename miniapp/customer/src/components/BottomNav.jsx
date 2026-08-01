@@ -3,29 +3,28 @@ import { motion } from 'framer-motion';
 import useStore from '../store/useStore';
 import { t } from '../i18n';
 import PremiumIcon from './PremiumIcon';
+import { haptic } from '../utils/haptic';
 
 const TABS = [
-  { id: 'products', icon: 'rocket', key: 'navProducts', label: 'PLAY', color: '#00ff88' },
-  { id: 'keys', icon: 'gem', key: 'navKeys', label: 'KEYS', color: '#00d4ff' },
-  { id: 'history', icon: 'crown', key: 'navHistory', label: 'ORDERS', color: '#ffd700' },
-  { id: 'profile', icon: 'fire', key: 'navProfile', label: 'PROFILE', color: '#ff8a00' },
-  { id: 'support', icon: 'explosion', key: 'navSupport', label: 'SUPPORT', color: '#ff3b5c' },
+  { id: 'products', icon: 'rocket', key: 'navProducts', label: 'PLAY', color: '#10b981' },
+  { id: 'keys', icon: 'gem', key: 'navKeys', label: 'KEYS', color: '#3b82f6' },
+  { id: 'history', icon: 'crown', key: 'navHistory', label: 'ORDERS', color: '#fbbf24' },
+  { id: 'profile', icon: 'fire', key: 'navProfile', label: 'PROFILE', color: '#f97316' },
+  { id: 'support', icon: 'explosion', key: 'navSupport', label: 'SUPPORT', color: '#ef4444' },
 ];
 
 export default function BottomNav() {
   const { activeTab, setActiveTab, reset, locale } = useStore();
 
   const navigate = (tab) => {
-    if (typeof window !== 'undefined' && window.Telegram?.WebApp?.HapticFeedback) {
-      try { window.Telegram.WebApp.HapticFeedback.impactOccurred('light'); } catch {}
-    }
+    haptic.light();
     setActiveTab(tab);
     if (tab !== 'products') reset();
   };
 
   return (
     <nav className="mobile-nav fixed bottom-0 left-0 right-0 z-50">
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-[#050508]/95 to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-[#0d0f12]/95 to-transparent pointer-events-none" />
       <div className="mobile-nav-inner flex items-center justify-around px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] relative">
         {TABS.map((tab, idx) => {
           const isActive = activeTab === tab.id;

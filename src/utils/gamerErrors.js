@@ -24,9 +24,9 @@ const getGamerError = (errorType, lang = 'ar') => {
     },
     
     dbError: {
-      ar: `${emojiHtml('bolt')} <b>LAG太大了! ⏳</b>\n\n` +
-          `${emojiHtml('target')} السرفر يتحمل ضغط - جرب بعد شوي\n\n` +
-          `${emojiHtml('explosion')} لو استمرت، تواصل مع الدعم`,
+      ar: `${emojiHtml('bolt')} <b>لاق كبير! ⏳</b>\n\n` +
+          `${emojiHtml('target')} السيرفر يتحمل ضغط - جرب بعد شوي\n\n` +
+          `${emojiHtml('explosion')} لو استمرت المشكلة، تواصل مع الدعم`,
       en: `${emojiHtml('bolt')} <b>Major LAG detected!</b>\n\n` +
           `${emojiHtml('target')} Server under pressure - try again in a bit\n\n` +
           `${emojiHtml('explosion')} If it continues, contact support`

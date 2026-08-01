@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
@@ -35,6 +35,17 @@ export default function Inventory() {
   const handleAddKeys = async () => {
     const keyArray = manualKeys.split('\n').map(k => k.trim()).filter(k => k.length > 0);
     if (!keyArray.length) return toast.error('❌ أضف مفاتيح أولاً');
+
+    // Duplicate detection inside the paste buffer
+    const seen = new Set();
+    const dups = new Set();
+    keyArray.forEach(k => {
+      const v = k.toLowerCase();
+      if (seen.has(v)) dups.add(k);
+      seen.add(v);
+    });
+    if (dups.size > 0 && !confirm(`⚠️ يوجد ${dups.size} مفتاح مكرر في النص - متابعة على أي حال؟`)) return;
+
     try {
       const r = await api.post('/admin/keys/bulk', {
         productId: selectedProduct._id,
@@ -72,6 +83,36 @@ export default function Inventory() {
       toast.error('❌ فشل في الحذف');
     }
   };
+
+  const handleKeyStatus = async (key, status) => {
+    try {
+      await api.post(`/admin/keys/${key._id}/status`, { status });
+      toast.success(status === 'available' ? '🔄 أُعيد المفتاح للمخزون' : status === 'invalid' ? '🚫 تم إبطال المفتاح' : `✅ تم التحديث إلى ${status}`);
+      loadKeys(1);
+    } catch (err) {
+      toast.error(err.response?.data?.error || '❌ فشل في التحديث');
+    }
+  };
+
+  const STATUS_META = {
+    available: { label: 'متاح', cls: 'text-green bg-green/10 border-green/20', icon: '🟢' },
+    sold: { label: 'مباع', cls: 'text-red bg-red/10 border-red/20', icon: '🔴' },
+    reserved: { label: 'محجوز', cls: 'text-warning bg-warning/10 border-warning/20', icon: '⏳' },
+    expired: { label: 'منتهي', cls: 'text-muted bg-muted/10 border-muted/20', icon: '🕓' },
+    invalid: { label: 'غير صالح', cls: 'text-gold bg-gold/10 border-gold/20', icon: '🚫' },
+  };
+
+  const duplicates = useMemo(() => {
+    const seen = new Map();
+    const dup = new Set();
+    keys.forEach(k => {
+      const v = String(k.keyValue || '').trim().toLowerCase();
+      if (!v) return;
+      if (seen.has(v)) dup.add(v);
+      seen.set(v, (seen.get(v) || 0) + 1);
+    });
+    return dup;
+  }, [keys]);
 
   return (
     <div className="space-y-4">
@@ -149,14 +190,19 @@ export default function Inventory() {
 
           {/* Filter */}
           <div className="flex gap-2 flex-wrap">
-            {['', 'available', 'sold'].map(s => (
-              <button key={s} onClick={() => setFilterStatus(s)}
+            {[['', '🔄 الكل'], ['available', '🟢 متاح'], ['sold', '🔴 مباع'], ['reserved', '⏳ محجوز'], ['expired', '🕓 منتهي'], ['invalid', '🚫 غير صالح']].map(([val, label]) => (
+              <button key={val} onClick={() => setFilterStatus(val)}
                 className={`text-xs px-3 py-1.5 rounded-lg font-semibold border transition-all
-                  ${filterStatus === s ? 'bg-neon/10 border-neon/30 text-neon' : 'border-border text-muted bg-card'}`}>
-                {s === '' ? '🔄 الكل' : s === 'available' ? '🟢 متاح' : '🔴 مباع'}
+                  ${filterStatus === val ? 'bg-neon/10 border-neon/30 text-neon' : 'border-border text-muted bg-card'}`}>
+                {label}
               </button>
             ))}
           </div>
+          {duplicates.size > 0 && (
+            <p className="text-[11px] text-gold bg-gold/5 border border-gold/20 rounded-xl px-3 py-2">
+              ⚠️ يوجد {duplicates.size} مفتاح مكرر في هذه الصفحة - انتبه من البيع المزدوج!
+            </p>
+          )}
         </div>
       )}
 
@@ -167,23 +213,30 @@ export default function Inventory() {
             🔑 المفاتيح {keysLoading ? '⏳...' : `(${keys.length})`}
           </p>
           <div className="space-y-1.5 max-h-96 overflow-y-auto">
-            {keys.map((key, i) => (
-              <motion.div key={key._id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: Math.min(i * 0.03, 0.3) }}
-                className="flex items-center justify-between bg-bg border border-border rounded-xl px-3 py-2 text-xs">
-                <span className="font-mono text-white flex-1 truncate ml-2">{key.keyValue}</span>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {key.status === 'available' ? (
-                    <span className="text-green font-bold text-[10px] px-2 py-0.5 rounded-full bg-green/10 border border-green/20">🟢 متاح</span>
-                  ) : (
-                    <div className="text-right flex items-center gap-2">
-                      <span className="text-red font-bold text-[10px] px-2 py-0.5 rounded-full bg-red/10 border border-red/20">🔴 مباع</span>
-                      <span className="text-muted text-[10px]">@{key.soldToUsername || key.soldTo}</span>
-                    </div>
-                  )}
-                  <button onClick={async () => { await api.delete(`/admin/keys/${key._id}`); loadKeys(1); }} className="text-red opacity-50 hover:opacity-100 text-sm">🗑️</button>
-                </div>
-              </motion.div>
-            ))}
+            {keys.map((key, i) => {
+              const meta = STATUS_META[key.status] || STATUS_META.available;
+              const isDup = duplicates.has(String(key.keyValue || '').trim().toLowerCase());
+              return (
+                <motion.div key={key._id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: Math.min(i * 0.03, 0.3) }}
+                  className={`flex items-center justify-between bg-bg border rounded-xl px-3 py-2 text-xs ${isDup ? 'border-gold/40' : 'border-border'}`}>
+                  <span className="font-mono text-white flex-1 truncate ml-2">
+                    {key.keyValue}
+                    {isDup && <span className="text-gold mr-1" title="مفتاح مكرر">⚠️</span>}
+                  </span>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className={`font-bold text-[10px] px-2 py-0.5 rounded-full border ${meta.cls}`}>{meta.icon} {meta.label}</span>
+                    {key.status === 'sold' && <span className="text-muted text-[10px]">@{key.soldToUsername || key.soldTo}</span>}
+                    {key.status !== 'available' && (
+                      <button onClick={() => handleKeyStatus(key, 'available')} title="إعادة للمخزون" className="text-green opacity-60 hover:opacity-100 text-sm">🔄</button>
+                    )}
+                    {key.status === 'available' && (
+                      <button onClick={() => handleKeyStatus(key, 'invalid')} title="إبطال المفتاح" className="text-gold opacity-60 hover:opacity-100 text-sm">🚫</button>
+                    )}
+                    <button onClick={async () => { if (confirm('حذف هذا المفتاح؟')) { await api.delete(`/admin/keys/${key._id}`); loadKeys(1); } }} className="text-red opacity-50 hover:opacity-100 text-sm">🗑️</button>
+                  </div>
+                </motion.div>
+              );
+            })}
             {keysLoading && <div className="text-center text-muted text-sm py-2">⏳ جاري التحميل...</div>}
             {!keysLoading && keys.length === 0 && <div className="text-center text-muted text-sm py-4">🔍 لا توجد مفاتيح لهذا المنتج/المدة</div>}
           </div>

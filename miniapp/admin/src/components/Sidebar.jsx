@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { canViewPage } from '../utils/permissions';
 
 const NAV = [
   { id: 'dashboard', icon: '🪄', label: 'لوحة التحكم', desc: 'ملخص سريع' },
@@ -13,7 +14,7 @@ const NAV = [
   { id: 'settings', icon: '🎛️', label: 'الإعدادات والتصميم', desc: 'هوية وأزرار' },
 ];
 
-export default function Sidebar({ activePage, setActivePage, setRouteQuery, user, sidebarOpen, setSidebarOpen }) {
+export default function Sidebar({ activePage, setActivePage, setRouteQuery, user, sidebarOpen, setSidebarOpen, unreadOrders = 0 }) {
   const goTo = (page) => {
     setActivePage(page);
     setRouteQuery?.({});
@@ -47,7 +48,7 @@ export default function Sidebar({ activePage, setActivePage, setRouteQuery, user
       </div>
 
       <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
-        {NAV.map((item) => (
+        {NAV.filter((item) => canViewPage(user, item.id)).map((item) => (
           <button
             key={item.id}
             onClick={() => goTo(item.id)}
@@ -62,9 +63,14 @@ export default function Sidebar({ activePage, setActivePage, setRouteQuery, user
               <motion.div
                 layoutId="sidebar-bar"
                 className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-full"
-                style={{ background: 'linear-gradient(180deg, #00ff88, #a855f7)', boxShadow: '0 0 10px #00ff88' }}
+                style={{ background: 'linear-gradient(180deg, #10b981, #6366f1)', boxShadow: '0 0 10px #10b981' }}
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               />
+            )}
+            {item.id === 'orders' && unreadOrders > 0 && (
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 min-w-[20px] h-5 px-1 rounded-full bg-red text-white text-[10px] font-black flex items-center justify-center shadow-lg shadow-red/40 animate-pulse">
+                {unreadOrders > 99 ? '99+' : unreadOrders}
+              </span>
             )}
           </button>
         ))}

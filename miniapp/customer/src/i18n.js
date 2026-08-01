@@ -15,7 +15,7 @@ export const TRANSLATIONS = {
     noGames: 'مافي ألعاب هنا لسه 🎮', soon: 'قريباً... انتظر المفاجأة 💥', back: 'رجوع ⬅️',
     myKeys: 'مفاتيحي الأسطورية 🔑', noKeys: 'لسا ما عندك مفاتيح؟ يلا ابدأ! 🚀', buyFirst: 'اشترِ أول مفتاح وكن أسطورة! 👑',
     orderHistory: 'سجل الأبطال 📜', noOrders: 'لسا ما طلبت شي؟ 👀', loadMore: 'حمل المزيد ⬇️', loading: 'جاري التحميل... ⚡',
-    completed: 'تم ✅', pending: 'قيد الانتظار ⏳', processing: 'يتجهز 🔄', failed: 'فشل ❌', cancelled: 'ملغي 🚫',
+    completed: 'تم ✅', pending: 'قيد الانتظار ⏳', processing: 'يتجهز 🔄', failed: 'فشل ❌', cancelled: 'ملغي 🚫', refunded: 'مسترجع 💰',
     profile: 'بروفايلي 😎', name: 'الاسم', id: 'الآيدي', phone: 'الجوال', notVerified: 'مو محقق 😅',
     currency: 'العملة', joined: 'منضم من', totalOrders: 'طلباتي', totalSpent: 'صرفياتي', totalDeposited: 'شحنت',
     balanceHistory: 'سجل الرصيد 💰',
@@ -51,7 +51,7 @@ export const TRANSLATIONS = {
     tryAnother: 'Try another section', noGames: 'No games here yet 🎮', soon: 'Coming soon... Wait for surprise 💥', back: 'Back ⬅️',
     myKeys: 'My Legendary Keys 🔑', noKeys: 'No keys yet? Let\'s GO! 🚀', buyFirst: 'Buy first key & become legend! 👑',
     orderHistory: 'Hero History 📜', noOrders: 'No orders yet? 👀', loadMore: 'Load More ⬇️', loading: 'Loading... ⚡',
-    completed: 'Done ✅', pending: 'Pending ⏳', processing: 'Processing 🔄', failed: 'Failed ❌', cancelled: 'Cancelled 🚫',
+    completed: 'Done ✅', pending: 'Pending ⏳', processing: 'Processing 🔄', failed: 'Failed ❌', cancelled: 'Cancelled 🚫', refunded: 'Refunded 💰',
     profile: 'My Profile 😎', name: 'Name', id: 'ID', phone: 'Phone', notVerified: 'Not verified 😅',
     currency: 'Currency', joined: 'Joined', totalOrders: 'Orders', totalSpent: 'Spent', totalDeposited: 'Charged',
     balanceHistory: 'Balance History 💰',
@@ -91,3 +91,13 @@ export const localizedName = (item, locale) => {
     ? (item.name || item.nameAr || '')
     : (item.nameAr || item.name || '');
 };
+
+/**
+ * Strip raw Markdown markers (**bold**, *italic*, `code`) from admin-configured
+ * strings before rendering them as plain text — otherwise users see literal
+ * asterisks like `**PANEL RESELLER**` in headers and titles.
+ */
+export const cleanMarkdown = (text = '') => String(text)
+  .replace(/\*\*(.+?)\*\*/g, '$1')
+  .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1$2')
+  .replace(/`([^`\n]+)`/g, '$1');

@@ -1,18 +1,23 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Toaster } from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast';
+import { io } from 'socket.io-client';
 import api from './utils/api';
+import { canViewPage } from './utils/permissions';
 import Sidebar from './components/Sidebar';
-import Dashboard from './pages/Dashboard';
-import Categories from './pages/Categories';
-import Products from './pages/Products';
-import Inventory from './pages/Inventory';
-import Users from './pages/Users';
-import Orders from './pages/Orders';
-import Coupons from './pages/Coupons';
-import Settings from './pages/Settings';
-import Broadcast from './pages/Broadcast';
 import LoadingScreen from './components/LoadingScreen';
+
+// Code-split every page — only the visited page is downloaded & mounted,
+// so the admin portal opens fast and switching pages doesn't jank.
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Categories = lazy(() => import('./pages/Categories'));
+const Products = lazy(() => import('./pages/Products'));
+const Inventory = lazy(() => import('./pages/Inventory'));
+const Users = lazy(() => import('./pages/Users'));
+const Orders = lazy(() => import('./pages/Orders'));
+const Coupons = lazy(() => import('./pages/Coupons'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Broadcast = lazy(() => import('./pages/Broadcast'));
 
 const PAGES = {
   dashboard: { component: Dashboard, title: 'لوحة التحكم', subtitle: 'نظرة سريعة على الأداء والاختصارات المهمة', icon: '🪄' },
@@ -41,14 +46,39 @@ export default function App() {
   const [routeQuery, setRouteQuery] = useState(initialRoute.query);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [maintenance, setMaintenance] = useState(false);
+  const [unreadOrders, setUnreadOrders] = useState(0);
+
+  // Real-time order notifications via socket.io
+  useEffect(() => {
+    if (!user?.isAdmin) return undefined;
+    const socket = io('/', { transports: ['websocket', 'polling'] });
+    socket.on('connect', () => socket.emit('admin_join'));
+    socket.on('new_order', (data) => {
+      setUnreadOrders((n) => n + 1);
+      toast(
+        <div dir="rtl" className="space-y-0.5 cursor-pointer" onClick={() => window.dispatchEvent(new CustomEvent('admin-navigate', { detail: 'orders' }))}>
+          <p className="font-black text-white text-[13px]">{data.type === 'payment_proof' ? '💳 إثبات دفع جديد!' : '🛒 طلب جديد وصل!'}</p>
+          <p className="text-xs text-muted">{data.productName}{data.durationName ? ` - ${data.durationName}` : ''}</p>
+          <p className="text-[11px] text-neon font-bold">💰 ${Number(data.amount || 0).toFixed(2)} · @{data.username || data.telegramId}</p>
+        </div>,
+        { duration: 8000 }
+      );
+    });
+    return () => socket.close();
+  }, [user?.isAdmin]);
+
+  useEffect(() => {
+    if (activePage === 'orders') setUnreadOrders(0);
+  }, [activePage]);
 
   useEffect(() => {
     const handleNav = (e) => {
       const nextPage = e.detail?.page || e.detail;
       const nextQuery = e.detail?.query || {};
-      if (PAGES[nextPage]) {
+      if (PAGES[nextPage] && canViewPage(user, nextPage)) {
         setActivePage(nextPage);
         setRouteQuery(nextQuery);
       }
@@ -56,8 +86,8 @@ export default function App() {
 
     const syncFromHash = () => {
       const next = parseLocationState();
-      setActivePage(next.page);
-      setRouteQuery(next.query);
+      setActivePage(canViewPage(user, next.page) ? next.page : 'dashboard');
+      setRouteQuery(canViewPage(user, next.page) ? next.query : {});
     };
 
     window.addEventListener('admin-navigate', handleNav);
@@ -66,7 +96,16 @@ export default function App() {
       window.removeEventListener('admin-navigate', handleNav);
       window.removeEventListener('hashchange', syncFromHash);
     };
-  }, []);
+  }, [user]);
+
+  // Guard: an admin whose permissions were reduced must not stay on a page
+  // they can no longer access.
+  useEffect(() => {
+    if (user && !canViewPage(user, activePage)) {
+      setActivePage('dashboard');
+      setRouteQuery({});
+    }
+  }, [user, activePage]);
 
   useEffect(() => {
     const params = new URLSearchParams(routeQuery);
@@ -81,15 +120,19 @@ export default function App() {
     api.post('/auth/telegram', { initData: tg?.initData || '' })
       .then((res) => {
         if (!res.data.user?.isAdmin) {
-          document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#ff3b5c;font-size:20px;font-family:Cairo">⛔ غير مصرح لك بالوصول</div>';
+          setAuthError('⛔ غير مصرح لك بالوصول');
+          setLoading(false);
           return;
         }
         localStorage.setItem('admin_token', res.data.token);
         setUser(res.data.user);
         setLoading(false);
       })
-      .catch(() => {
-        setUser({ firstName: 'Admin', role: 'admin', isAdmin: true, balance: 0 });
+      .catch((err) => {
+        // Never fall back to a fake admin account — show a clear error instead
+        setAuthError(err.response?.status === 401
+          ? '🔐 تعذر التحقق من الهوية - افتح اللوحة من داخل تيليجرام'
+          : '🔌 تعذر الاتصال بالسيرفر - تأكد من اتصالك وحاول مجدداً');
         setLoading(false);
       });
 
@@ -108,14 +151,31 @@ export default function App() {
 
   if (loading) return <LoadingScreen />;
 
+  if (authError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-bg text-center p-6">
+        <div className="text-6xl mb-5">🛡️</div>
+        <h1 className="text-white font-black text-xl mb-3">أمم... مشكلة في الدخول</h1>
+        <p className="text-muted text-sm mb-6 max-w-xs leading-6">{authError}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="neon-btn px-6 py-3 rounded-xl font-bold text-sm"
+        >
+          🔄 إعادة المحاولة
+        </button>
+        <p className="text-[10px] text-muted mt-6">افتح اللوحة من زر WebApp داخل البوت أو من تطبيق تيليجرام</p>
+      </div>
+    );
+  }
+
   const pageMeta = PAGES[activePage] || PAGES.dashboard;
   const ActivePage = pageMeta.component;
 
   return (
     <div className="flex h-screen bg-bg overflow-hidden">
-      <Toaster position="top-left" toastOptions={{ style: { background: '#12121c', color: '#fff', border: '1px solid #1e1e30', fontFamily: 'Cairo' } }} />
+      <Toaster position="top-left" toastOptions={{ style: { background: '#161922', color: '#fff', border: '1px solid #1f2430', fontFamily: 'Cairo' } }} />
 
-      <Sidebar activePage={activePage} setActivePage={setActivePage} setRouteQuery={setRouteQuery} user={user} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+      <Sidebar activePage={activePage} setActivePage={setActivePage} setRouteQuery={setRouteQuery} user={user} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} unreadOrders={unreadOrders} />
 
       <AnimatePresence>
         {sidebarOpen && (
@@ -130,7 +190,7 @@ export default function App() {
       </AnimatePresence>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-panel/95 backdrop-blur sticky top-0 z-20">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-panel sticky top-0 z-20">
           <div className="flex items-center gap-3 min-w-0">
             <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg bg-card border border-border text-neon">☰</button>
             <div className="w-11 h-11 rounded-2xl border border-neon/20 bg-neon/10 flex items-center justify-center text-xl shrink-0">{pageMeta.icon}</div>
@@ -165,13 +225,15 @@ export default function App() {
           <AnimatePresence mode="wait">
             <motion.div
               key={`${activePage}-${JSON.stringify(routeQuery)}`}
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -5 }}
-              transition={{ duration: 0.2 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
               className="p-4 max-w-6xl mx-auto"
             >
-              <ActivePage setActivePage={setActivePage} routeQuery={routeQuery} setRouteQuery={setRouteQuery} currentUser={user} />
+              <Suspense fallback={<div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-24 rounded-2xl skeleton" />)}</div>}>
+                <ActivePage setActivePage={setActivePage} routeQuery={routeQuery} setRouteQuery={setRouteQuery} currentUser={user} />
+              </Suspense>
             </motion.div>
           </AnimatePresence>
         </div>

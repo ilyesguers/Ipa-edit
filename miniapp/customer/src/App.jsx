@@ -1,19 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
 import useStore from './store/useStore';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
-import ProductsTab from './components/tabs/ProductsTab';
-import MyKeysTab from './components/tabs/MyKeysTab';
-import HistoryTab from './components/tabs/HistoryTab';
-import ProfileTab from './components/tabs/ProfileTab';
-import SupportTab from './components/tabs/SupportTab';
-import DurationSheet from './components/DurationSheet';
-import CheckoutSheet from './components/CheckoutSheet';
-import BinancePaySheet from './components/BinancePaySheet';
 import LoadingScreen from './components/LoadingScreen';
-import OrderSuccessModal from './components/OrderSuccessModal';
+
+// Lazy-loaded tabs & sheets — only loaded when actually opened,
+// so the initial bundle stays small and first paint is fast.
+const ProductsTab = lazy(() => import('./components/tabs/ProductsTab'));
+const MyKeysTab = lazy(() => import('./components/tabs/MyKeysTab'));
+const HistoryTab = lazy(() => import('./components/tabs/HistoryTab'));
+const ProfileTab = lazy(() => import('./components/tabs/ProfileTab'));
+const SupportTab = lazy(() => import('./components/tabs/SupportTab'));
+const DurationSheet = lazy(() => import('./components/DurationSheet'));
+const CheckoutSheet = lazy(() => import('./components/CheckoutSheet'));
+const BinancePaySheet = lazy(() => import('./components/BinancePaySheet'));
+const OrderSuccessModal = lazy(() => import('./components/OrderSuccessModal'));
 
 const TAB_COMPONENTS = {
   products: ProductsTab,
@@ -48,8 +51,8 @@ export default function App() {
       try {
         tg.ready();
         tg.expand();
-        tg.setHeaderColor('#050508');
-        tg.setBackgroundColor('#050508');
+        tg.setHeaderColor('#0d0f12');
+        tg.setBackgroundColor('#0d0f12');
       } catch {}
     }
   }, []);
@@ -73,20 +76,17 @@ export default function App() {
 
   return (
     <div dir={locale === 'ar' ? 'rtl' : 'ltr'} className="app-shell flex flex-col min-h-screen bg-bg text-white overflow-hidden relative">
-      {/* Gaming background effects */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#050508] via-[#0a0a14] to-[#050508]" />
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-neon/5 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple/5 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-1/2 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-neon/10 to-transparent" />
-      </div>
+      {/* Static gradient background — no heavy blur filters (iOS WebKit friendly) */}
+      <div className="fixed inset-0 pointer-events-none z-0 bg-gradient-to-b from-[#0d0f12] via-[#11141a] to-[#0d0f12]" />
 
       <Toaster
-        position="top-center"
+        position="bottom-center"
+        gutter={12}
         toastOptions={{
-          style: { background: '#12121c', color: '#fff', border: '1px solid rgba(0,255,136,0.2)', fontFamily: 'Cairo', borderRadius: '16px' },
-          success: { iconTheme: { primary: '#00ff88', secondary: '#000' } },
-          error: { iconTheme: { primary: '#ff3b5c', secondary: '#fff' } }
+          style: { background: '#161922', color: '#fff', border: '1px solid rgba(16,185,129,0.2)', fontFamily: 'Cairo', borderRadius: '14px', fontSize: '13px', boxShadow: '0 8px 24px rgba(0,0,0,0.45)', padding: '10px 16px', marginBottom: 'env(safe-area-inset-bottom)' },
+          success: { iconTheme: { primary: '#10b981', secondary: '#000' } },
+          error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
+          duration: 2500
         }}
       />
 
@@ -97,13 +97,15 @@ export default function App() {
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
-              initial={{ opacity: 0, y: 20, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -15, scale: 0.98 }}
-              transition={{ duration: 0.35, ease: [0.68, -0.55, 0.265, 1.55] }}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
               className="h-full"
             >
-              <ActiveTab />
+              <Suspense fallback={<div className="p-4 space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-24 rounded-2xl skeleton" />)}</div>}>
+                <ActiveTab />
+              </Suspense>
             </motion.div>
           </AnimatePresence>
         </main>
@@ -111,12 +113,20 @@ export default function App() {
         <BottomNav />
       </div>
 
-      {/* Overlays */}
+      {/* Overlays (lazy) */}
       <AnimatePresence>
-        {showDurationSheet && <DurationSheet />}
-        {showCheckout && <CheckoutSheet />}
-        {showBinanceSheet && <BinancePaySheet />}
-        {showSuccess && <OrderSuccessModal data={successData} onClose={() => { setShowSuccess(false); setSuccessData(null); useStore.setState({ currentOrder: null }); }} />}
+        {showDurationSheet && (
+          <Suspense fallback={null}><DurationSheet /></Suspense>
+        )}
+        {showCheckout && (
+          <Suspense fallback={null}><CheckoutSheet /></Suspense>
+        )}
+        {showBinanceSheet && (
+          <Suspense fallback={null}><BinancePaySheet /></Suspense>
+        )}
+        {showSuccess && (
+          <Suspense fallback={null}><OrderSuccessModal data={successData} onClose={() => { setShowSuccess(false); setSuccessData(null); useStore.setState({ currentOrder: null }); }} /></Suspense>
+        )}
       </AnimatePresence>
     </div>
   );

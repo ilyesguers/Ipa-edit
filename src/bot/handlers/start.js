@@ -16,41 +16,43 @@ const buildWelcomeMessage = async (user, lang = 'ar') => {
   const highlights = ui.highlights.slice(0, 4);
   const balance = Number(user.balance || 0).toFixed(2);
   const orders = Number(user.totalOrders || 0);
-  const customMessage = (ui.welcomeMessage || '').trim();
+
+  // The welcome_message setting supports {name}, {balance}, {orders} placeholders
+  const customMessage = (ui.welcomeMessage || '').trim()
+    .replace(/\{name\}/g, name)
+    .replace(/\{balance\}/g, balance)
+    .replace(/\{orders\}/g, orders);
 
   const highlightLines = highlights
-    .map((item) => `${emojiHtml(item.emojiKey || 'rocket')} ${locale === 'en' ? item.textEn : item.textAr}`)
+    .map((item) => `✓ ${locale === 'en' ? item.textEn : item.textAr}`)
     .join('\n');
 
   if (locale === 'en') {
     return {
       ui,
       caption:
-        `${emojiHtml('fire')} <b>${welcome.badge}</b>\n\n` +
-        `${emojiHtml('crown')} <b>Yo ${name} Welcome to the LEGEND ZONE</b>\n\n` +
-        `${emojiHtml('rocket')} <b>${ui.botName}</b> - ${welcome.title}\n` +
-        `${welcome.subtitle}\n\n` +
+        `<b>${welcome.badge}</b>\n\n` +
+        `Yo <b>${name}</b> 👋\n` +
+        `<b>${ui.botName}</b> — ${welcome.title}\n\n` +
         `${highlightLines}\n\n` +
-        `${emojiHtml('wallet')} <b>Balance:</b> $${balance} • ${emojiHtml('trophy')} <b>Orders:</b> ${orders}\n\n` +
-        `${customMessage ? `${emojiHtml('explosion')} ${customMessage}\n\n` : ''}` +
-        `${emojiHtml('target')} <i>Hit PLAY NOW and level up! ${welcome.footer}</i>\n` +
-        `${emojiHtml('fire')} <b>NO CAP - FASTEST DELIVERY IN GAME!</b>`
+        `💰 <b>$${balance}</b> • 🏆 <b>${orders}</b> orders\n\n` +
+        `${customMessage ? `${customMessage}\n\n` : ''}` +
+        `<i>${welcome.footer}</i>\n` +
+        `${emojiHtml('rocket')} <b>PLAY NOW</b> and level up!`
     };
   }
 
   return {
     ui,
     caption:
-      `${emojiHtml('fire')} <b>${welcome.badge}</b>\n\n` +
-      `${emojiHtml('crown')} <b>هلا والله ${name}</b>\n\n` +
-      `${emojiHtml('rocket')} <b>${ui.botName}</b>\n` +
-      `${welcome.title}\n` +
-      `${welcome.subtitle}\n\n` +
+      `<b>${welcome.badge}</b>\n\n` +
+      `هلا <b>${name}</b> 👋\n` +
+      `<b>${ui.botName}</b> — ${welcome.title}\n\n` +
       `${highlightLines}\n\n` +
-      `${emojiHtml('wallet')} <b>رصيدك:</b> $${balance} • ${emojiHtml('trophy')} <b>طلباتك:</b> ${orders}\n\n` +
-      `${customMessage ? `${emojiHtml('explosion')} ${customMessage}\n\n` : ''}` +
-      `${emojiHtml('target')} <i>اضغط PLAY NOW وابدأ اللعب فوراً! ${welcome.footer}</i>\n` +
-      `${emojiHtml('fire')} <b>أسرع متجر للجيمرز - تسليم فوري مره نار</b>`
+      `💰 <b>$${balance}</b> • 🏆 <b>${orders}</b> طلب\n\n` +
+      `${customMessage ? `${customMessage}\n\n` : ''}` +
+      `<i>${welcome.footer}</i>\n` +
+      `${emojiHtml('rocket')} <b>اضغط PLAY NOW</b> وابدأ فوراً`
   };
 };
 
