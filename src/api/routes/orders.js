@@ -119,7 +119,15 @@ router.post('/wallet', async (req, res) => {
       createdAt: new Date().toISOString()
     });
 
-    res.json({ success: true, data: { order: result.order, keys: result.keys.map(k => k.keyValue) } });
+    // Return the fresh balance so the mini-app header updates instantly
+    res.json({
+      success: true,
+      data: {
+        order: result.order,
+        keys: result.keys.map(k => k.keyValue),
+        balance: req.user.balance
+      }
+    });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }

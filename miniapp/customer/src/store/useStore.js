@@ -135,7 +135,11 @@ const useStore = create((set, get) => ({
       quantity,
       couponCode: couponCode || undefined
     });
-    set({ currentOrder: res.data.data, showCheckout: false });
+    // Refresh the balance from the server response so the header updates instantly
+    const nextUser = res.data.data?.balance !== undefined
+      ? { ...get().user, balance: res.data.data.balance }
+      : get().user;
+    set({ currentOrder: res.data.data, showCheckout: false, user: nextUser });
     return res.data.data;
   },
 
