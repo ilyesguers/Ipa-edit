@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
 
-export default function Users({ routeQuery = {}, setRouteQuery }) {
+export default function Users({ routeQuery = {}, setRouteQuery, currentUser }) {
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState(routeQuery.search || '');
   const [selected, setSelected] = useState(null);
@@ -13,6 +13,9 @@ export default function Users({ routeQuery = {}, setRouteQuery }) {
   const [balanceDesc, setBalanceDesc] = useState('');
   const [dmMessage, setDmMessage] = useState('');
   const [showDM, setShowDM] = useState(false);
+  const [banModal, setBanModal] = useState(false);
+  const [banReason, setBanReason] = useState('');
+  const [balanceHistory, setBalanceHistory] = useState([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -40,6 +43,9 @@ export default function Users({ routeQuery = {}, setRouteQuery }) {
   const loadUser = async (u) => {
     const r = await api.get(`/admin/users/${u.telegramId}`);
     setSelected(r.data.data);
+    api.get(`/admin/users/${u.telegramId}/balance-history`)
+      .then((res) => setBalanceHistory(res.data.data?.history || []))
+      .catch(() => setBalanceHistory([]));
   };
 
   const handleBalance = async () => {
@@ -52,16 +58,27 @@ export default function Users({ routeQuery = {}, setRouteQuery }) {
       const updated = { ...selected, balance: balanceModal.type === 'add' ? selected.balance + parseFloat(balanceAmount) : selected.balance - parseFloat(balanceAmount) };
       setSelected(updated);
       setBalanceModal(null); setBalanceAmount(''); setBalanceDesc('');
+      loadUser(updated);
     } catch (err) { toast.error(err.response?.data?.error || 'فشل'); }
   };
 
   const handleBan = async (ban) => {
-    if (!confirm(ban ? 'حظر هذا المستخدم؟' : 'رفع الحظر عن هذا المستخدم؟')) return;
+    if (ban && !banReason.trim()) return toast.error('اكتب سبب الحظر');
     try {
-      await api.post(`/admin/users/${selected.telegramId}/ban`, { ban, reason: 'مخالفة القوانين' });
+      await api.post(`/admin/users/${selected.telegramId}/ban`, { ban, reason: banReason || undefined });
       toast.success(ban ? '🚫 تم الحظر' : '✅ تم رفع الحظر');
-      setSelected({ ...selected, isBanned: ban });
-    } catch (err) { toast.error('فشل'); }
+      setSelected({ ...selected, isBanned: ban, banReason: ban ? banReason : null });
+      setBanModal(false); setBanReason('');
+    } catch (err) { toast.error(err.response?.data?.error || 'فشل'); }
+  };
+
+  const handleRole = async (role) => {
+    if (!confirm(role === 'admin' ? 'ترقية هذا المستخدم إلى أدمن؟' : 'إلغاء صلاحية الأدمن عن هذا المستخدم؟')) return;
+    try {
+      await api.post(`/admin/users/${selected.telegramId}/role`, { role });
+      toast.success(role === 'admin' ? '👑 تمت الترقية' : 'تم إلغاء الصلاحية');
+      setSelected({ ...selected, role });
+    } catch (err) { toast.error(err.response?.data?.error || 'فشل'); }
   };
 
   const handleDM = async () => {
@@ -88,7 +105,7 @@ export default function Users({ routeQuery = {}, setRouteQuery }) {
               onClick={() => loadUser(user)} whileTap={{ scale: 0.98 }}
               className={`w-full flex items-center gap-3 admin-card text-right border transition-all ${selected?.telegramId === user.telegramId ? 'border-neon/40' : 'border-transparent'}`}>
               <div className="w-10 h-10 rounded-xl bg-neon/10 border border-neon/20 flex items-center justify-center text-base flex-shrink-0">
-                {user.role === 'admin' ? '👑' : '👤'}
+                {user.role === 'admin' || user.role === 'superadmin' ? '👑' : '👤'}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-white text-sm truncate">{user.firstName} {user.lastName || ''}</p>
@@ -119,12 +136,15 @@ export default function Users({ routeQuery = {}, setRouteQuery }) {
             <div className="admin-card space-y-3">
               <div className="flex items-center gap-3">
                 <div className="w-14 h-14 rounded-2xl bg-neon/10 border border-neon/20 flex items-center justify-center text-2xl">
-                  {selected.role === 'admin' ? '👑' : '👤'}
+                  {selected.role === 'admin' || selected.role === 'superadmin' ? '👑' : '👤'}
                 </div>
                 <div>
                   <p className="font-black text-white">{selected.firstName} {selected.lastName || ''}</p>
                   <p className="text-muted text-xs">@{selected.username || 'N/A'} · {selected.telegramId}</p>
-                  <p className="text-xs mt-0.5">{selected.isBanned ? <span className="text-red">🚫 محظور</span> : <span className="text-green">✅ نشط</span>}</p>
+                  <p className="text-xs mt-0.5">
+                    {selected.isBanned ? <span className="text-red">🚫 محظور {selected.banReason ? `- ${selected.banReason}` : ''}</span> : <span className="text-green">✅ نشط</span>}
+                    {selected.role === 'superadmin' && <span className="text-gold ml-2">⭐ مالك</span>}
+                  </p>
                 </div>
               </div>
 
@@ -132,6 +152,14 @@ export default function Users({ routeQuery = {}, setRouteQuery }) {
                 {[['الرصيد', `$${selected.balance?.toFixed(2)}`, 'text-green'], ['إجمالي الإنفاق', `$${selected.totalSpent?.toFixed(2)}`, 'text-neon'], ['الطلبات', selected.totalOrders, 'text-gold']].map(([l, v, c]) => (
                   <div key={l} className="bg-bg border border-border rounded-xl p-2">
                     <p className={`font-black ${c}`}>{v}</p>
+                    <p className="text-[10px] text-muted">{l}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                {[['الإحالات', selected.referralCount || 0, 'text-neon-blue'], ['شحنت', `$${selected.totalDeposited?.toFixed(2)}`, 'text-green'], ['منضم', selected.createdAt ? new Date(selected.createdAt).toLocaleDateString('ar-SA') : '—', 'text-muted']].map(([l, v, c]) => (
+                  <div key={l} className="bg-bg border border-border rounded-xl p-2">
+                    <p className={`font-black ${c} text-xs`}>{v}</p>
                     <p className="text-[10px] text-muted">{l}</p>
                   </div>
                 ))}
@@ -152,12 +180,38 @@ export default function Users({ routeQuery = {}, setRouteQuery }) {
                 className="neon-btn py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-1 col-span-2">
                 ✉️ إرسال رسالة خاصة
               </motion.button>
-              <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleBan(!selected.isBanned)}
-                className={`col-span-2 py-3 rounded-xl font-bold text-sm border transition-all
+              <motion.button whileTap={{ scale: 0.95 }} onClick={() => setBanModal(true)}
+                className={`py-3 rounded-xl font-bold text-sm border transition-all
                   ${selected.isBanned ? 'bg-green/10 border-green/30 text-green' : 'bg-red/10 border-red/30 text-red'}`}>
                 {selected.isBanned ? '✅ رفع الحظر' : '🚫 حظر المستخدم'}
               </motion.button>
+              {selected.role !== 'superadmin' && (
+                <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleRole(selected.role === 'admin' ? 'customer' : 'admin')}
+                  className="py-3 rounded-xl font-bold text-sm border transition-all bg-gold/10 border-gold/30 text-gold">
+                  {selected.role === 'admin' ? '⬇️ إلغاء الأدمن' : '👑 ترقية لأدمن'}
+                </motion.button>
+              )}
             </div>
+
+            {/* Balance History */}
+            {balanceHistory.length > 0 && (
+              <div className="admin-card">
+                <p className="font-bold text-white text-sm mb-2">💰 سجل الرصيد ({balanceHistory.length})</p>
+                <div className="max-h-48 overflow-y-auto space-y-1">
+                  {balanceHistory.map((tx, i) => (
+                    <div key={i} className="flex justify-between items-center py-1.5 border-b border-border last:border-0 text-xs">
+                      <div className="min-w-0">
+                        <p className="text-white truncate">{tx.description || tx.type}</p>
+                        <p className="text-[10px] text-muted">{new Date(tx.createdAt).toLocaleString('ar-SA')}{tx.adminId ? ` · بواسطة ${tx.adminId}` : ''}</p>
+                      </div>
+                      <span className={`font-black shrink-0 ${tx.type === 'credit' || tx.type === 'refund' ? 'text-green' : 'text-red'}`}>
+                        {tx.type === 'credit' || tx.type === 'refund' ? '+' : '-'}${Number(tx.amount || 0).toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Recent Orders */}
             {selected.recentOrders?.length > 0 && (
@@ -165,8 +219,8 @@ export default function Users({ routeQuery = {}, setRouteQuery }) {
                 <p className="font-bold text-white text-sm mb-2">آخر الطلبات</p>
                 {selected.recentOrders.slice(0, 5).map(order => (
                   <div key={order._id} className="flex justify-between items-center py-1.5 border-b border-border last:border-0 text-xs">
-                    <span className="text-white">{order.productName} · {order.durationName}</span>
-                    <span className={order.status === 'completed' ? 'text-green font-bold' : 'text-red'}>${order.finalPrice?.toFixed(2)}</span>
+                    <span className="text-white truncate">{order.productName} · {order.durationName}</span>
+                    <span className={order.status === 'completed' ? 'text-green font-bold' : order.status === 'refunded' ? 'text-gold font-bold' : 'text-red'}>${order.finalPrice?.toFixed(2)}</span>
                   </div>
                 ))}
               </div>
@@ -191,6 +245,29 @@ export default function Users({ routeQuery = {}, setRouteQuery }) {
                   تأكيد
                 </motion.button>
                 <button onClick={() => setBalanceModal(null)} className="px-4 py-3 border border-border rounded-xl text-muted font-bold text-sm">إلغاء</button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Ban Modal */}
+      <AnimatePresence>
+        {banModal && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setBanModal(false)} className="fixed inset-0 bg-black/80 z-40" />
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="fixed left-4 right-4 top-1/2 -translate-y-1/2 z-50 bg-panel border border-border rounded-2xl p-5 max-w-sm mx-auto space-y-4">
+              <h3 className="font-black text-white">{selected?.isBanned ? '✅ رفع الحظر' : '🚫 حظر المستخدم'}</h3>
+              {!selected?.isBanned && (
+                <textarea value={banReason} onChange={e => setBanReason(e.target.value)} rows={3} className="input-admin resize-none" placeholder="سبب الحظر (سيظهر للمستخدم)" />
+              )}
+              <div className="flex gap-2">
+                <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleBan(!selected?.isBanned)}
+                  className={`flex-1 py-3 rounded-xl font-bold text-sm ${selected?.isBanned ? 'success-btn' : 'danger-btn'}`}>
+                  تأكيد
+                </motion.button>
+                <button onClick={() => { setBanModal(false); setBanReason(''); }} className="px-4 py-3 border border-border rounded-xl text-muted font-bold text-sm">إلغاء</button>
               </div>
             </motion.div>
           </>

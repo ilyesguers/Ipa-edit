@@ -5,7 +5,7 @@ import useStore from '../../store/useStore';
 import { t } from '../../i18n';
 import PremiumIcon from '../PremiumIcon';
 
-const STATUS_KEYS = { completed: 'completed', pending: 'pending', processing: 'processing', failed: 'failed', cancelled: 'cancelled' };
+const STATUS_KEYS = { completed: 'completed', pending: 'pending', processing: 'processing', failed: 'failed', cancelled: 'cancelled', refunded: 'refunded' };
 
 export default function HistoryTab() {
   const { locale } = useStore();
@@ -35,7 +35,8 @@ function OrderRow({ order, index, locale }) {
     pending: { color: '#f0b90b', bg: 'bg-[#f0b90b]/10', border: 'border-[#f0b90b]/20', icon: 'bolt', label: 'PENDING ⏳' },
     processing: { color: '#00d4ff', bg: 'bg-[#00d4ff]/10', border: 'border-[#00d4ff]/20', icon: 'rocket', label: 'ROCKET 🚀' },
     failed: { color: '#ff3b5c', bg: 'bg-[#ff3b5c]/10', border: 'border-[#ff3b5c]/20', icon: 'skull', label: 'FAILED ❌' },
-    cancelled: { color: '#8b8ba7', bg: 'bg-[#8b8ba7]/10', border: 'border-[#8b8ba7]/20', icon: 'ghost', label: 'CANCELLED' }
+    cancelled: { color: '#8b8ba7', bg: 'bg-[#8b8ba7]/10', border: 'border-[#8b8ba7]/20', icon: 'ghost', label: 'CANCELLED' },
+    refunded: { color: '#ffd700', bg: 'bg-[#ffd700]/10', border: 'border-[#ffd700]/20', icon: 'wallet', label: 'REFUNDED 💰' }
   }[statusKey];
 
   return (

@@ -32,9 +32,9 @@ class OrderService {
 
     // Apply coupon
     if (couponCode) {
-      const coupon = await Coupon.findOne({ code: couponCode.toUpperCase() });
+      const coupon = await Coupon.findOne({ code: String(couponCode).toUpperCase() });
       if (coupon) {
-        const validity = coupon.isValid();
+        const validity = coupon.isValid(totalPrice);
         if (validity.valid) {
           discountAmount = coupon.calculateDiscount(totalPrice);
           couponApplied = coupon;

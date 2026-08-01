@@ -9,7 +9,7 @@ import api from '../utils/api';
 
 export default function BinancePaySheet() {
   const { currentOrder, submitPaymentProof, selectedDuration, locale } = useStore(); const [txHash, setTxHash] = useState(''); const [loading, setLoading] = useState(false); const [copied, setCopied] = useState(false); const [walletInfo, setWalletInfo] = useState(null); const [countdown, setCountdown] = useState(900);
-  useEffect(() => { api.get('/payment/info').then((res) => setWalletInfo(res.data.data)).catch(() => {}); }, []);
+  useEffect(() => { api.get('/payment/info').then((res) => { setWalletInfo(res.data.data); setCountdown((res.data.data?.paymentTimeoutMinutes || 15) * 60); }).catch(() => {}); }, []);
   useEffect(() => { if (countdown > 0) { const timer = setTimeout(() => setCountdown((value) => value - 1), 1000); return () => clearTimeout(timer); } return undefined; }, [countdown]);
   const amount = currentOrder?.amount || selectedDuration?.price || 0; const address = walletInfo?.usdtWallet || (locale === 'en' ? 'Contact support' : 'يرجى التواصل مع الدعم'); const checkoutUrl = currentOrder?.checkoutUrl || address; const copy = (value) => navigator.clipboard.writeText(value).then(() => { setCopied(true); toast.success(t(locale, 'copied')); setTimeout(() => setCopied(false), 1800); });
   const submit = async () => { if (!txHash.trim()) return toast.error(t(locale, 'txHash')); setLoading(true); try { await submitPaymentProof(txHash); toast.success(t(locale, 'submitted') || t(locale, 'copied')); useStore.setState({ showBinanceSheet: false }); } catch (error) { toast.error(error.response?.data?.error || t(locale, 'failed')); } finally { setLoading(false); } };

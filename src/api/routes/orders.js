@@ -40,7 +40,7 @@ router.post('/validate-coupon', async (req, res) => {
     const coupon = await Coupon.findOne({ code: code.trim().toUpperCase() });
     if (!coupon) return res.status(404).json({ success: false, error: 'الكود غير موجود' });
 
-    const validity = coupon.isValid();
+    const validity = coupon.isValid(parseFloat(amount));
     if (!validity.valid) return res.status(400).json({ success: false, error: validity.reason });
 
     // Check if already used by this user

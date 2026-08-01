@@ -13,6 +13,7 @@ export default function CheckoutSheet() {
   const [loading, setLoading] = useState(false);
   const [binanceLoading, setBinanceLoading] = useState(false);
   if (!selectedProduct || !selectedDuration) return null;
+  const maxQty = Math.min(Math.max(1, Number(selectedDuration.stockCount || 1)), 99);
   const subtotal = Number(selectedDuration.price || 0) * quantity;
   const final = Math.max(0, subtotal - couponDiscount);
   const hasBalance = Number(user?.balance || 0) >= final;
@@ -62,14 +63,19 @@ export default function CheckoutSheet() {
           <div className="bg-[#12121c] rounded-[20px] p-5 space-y-3 border border-[#2a2a45] shadow-xl">
             <Summary label={t(locale, 'product')} value={localizedName(selectedProduct, locale)} icon="gamepad" />
             <Summary label={t(locale, 'duration')} value={localizedName(selectedDuration, locale)} icon="bolt" />
-            <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center">
               <span className="text-[#8b8ba7] text-[13px] font-bold flex items-center gap-1.5"><PremiumIcon name="target" size="0.9em" /> {t(locale, 'quantity')}</span>
               <div className="flex items-center gap-3">
-                <button type="button" onClick={() => useStore.setState((state) => ({ quantity: Math.max(1, state.quantity - 1) }))} className="w-9 h-9 rounded-xl bg-[#1e1e32] text-white font-black hover:bg-[#2a2a45] transition-colors border border-[#2a2a45]">−</button>
+                <button type="button" onClick={() => useStore.setState((state) => ({ quantity: Math.max(1, state.quantity - 1) }))} disabled={quantity <= 1} className="w-9 h-9 rounded-xl bg-[#1e1e32] text-white font-black hover:bg-[#2a2a45] transition-colors border border-[#2a2a45] disabled:opacity-40">−</button>
                 <span className="font-black text-white w-8 text-center text-[16px] bg-[#050508] px-2 py-1 rounded-lg border border-[#2a2a45]">{quantity}</span>
-                <button type="button" onClick={() => useStore.setState((state) => ({ quantity: state.quantity + 1 }))} className="w-9 h-9 rounded-xl bg-[#1e1e32] text-white font-black hover:bg-[#2a2a45] transition-colors border border-[#2a2a45]">+</button>
+                <button type="button" onClick={() => useStore.setState((state) => ({ quantity: Math.min(maxQty, state.quantity + 1) }))} disabled={quantity >= maxQty} className="w-9 h-9 rounded-xl bg-[#1e1e32] text-white font-black hover:bg-[#2a2a45] transition-colors border border-[#2a2a45] disabled:opacity-40">+</button>
               </div>
             </div>
+            {quantity >= maxQty && (
+              <p className="text-[10px] text-[#f0b90b] bg-[#f0b90b]/10 border border-[#f0b90b]/20 rounded-lg px-3 py-1.5 font-bold">
+                ⚡ وصلت للحد الأقصى المتاح ({maxQty}) من المخزون
+              </p>
+            )}
             <div className="border-t border-[#1e1e32] pt-3 space-y-2">
               <Summary label={t(locale, 'subtotal')} value={`$${subtotal.toFixed(2)}`} />
               <AnimatePresence>
