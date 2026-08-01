@@ -54,7 +54,7 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     service: 'GAMER STORE 🔥',
-    version: '2.0-gamer-edition'
+    version: '3.0.0-gamer-edition'
   });
 });
 
@@ -66,7 +66,7 @@ app.get('/', (req, res) => {
   }
   res.json({
     name: 'GAMER STORE 🔥 - Digital Keys for Pro Gamers',
-    version: '2.0',
+    version: '3.0.0',
     status: 'online 🚀',
     endpoints: {
       customer: '/customer',
@@ -140,7 +140,10 @@ io.on('connection', (socket) => {
 
 // MAIN STARTUP
 const PORT = process.env.PORT || 3000;
-const BASE_URL = process.env.BASE_URL || process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : `http://localhost:${PORT}`;
+// NOTE: precedence matters here — without parentheses this evaluates as
+// (BASE_URL || RAILWAY_PUBLIC_DOMAIN) ? "https://undefined" : localhost,
+// breaking every generated link whenever only BASE_URL is set.
+const BASE_URL = process.env.BASE_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : `http://localhost:${PORT}`);
 
 (async () => {
   try {

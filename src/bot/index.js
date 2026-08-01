@@ -1,4 +1,4 @@
-const { Telegraf, session } = require('telegraf');
+const { Telegraf, session, Markup } = require('telegraf');
 const logger = require('../utils/logger');
 const User = require('../models/User');
 const Settings = require('../models/Settings');
@@ -158,7 +158,6 @@ const createBot = (io) => {
   bot.command('admin', (ctx) => openAdminPortal(ctx, 'dashboard'));
   bot.command('shop', async (ctx) => {
     // Redirect to webapp instead of old inline shop
-    const { Markup } = require('telegraf');
     const lang = ctx.dbUser?.preferredLanguage || 'ar';
     return ctx.reply(
       `${emojiHtml('rocket')} <b>${lang === 'en' ? 'Open the Store for fastest shopping' : 'افتح المتجر للتسوق السريع'}</b>\n\n` +
@@ -181,7 +180,55 @@ const createBot = (io) => {
   bot.command('history', historyHandler);
   bot.command('balance', balanceHandler);
   bot.command('help', helpHandler);
-  bot.command('store', (ctx) => ctx.telegram.sendMessage(ctx.chat.id, `https://${ctx.me} - Open: ${process.env.BASE_URL}/customer`));
+  // /store and /menu — quick webapp link (fixed: old version sent a broken https://{username} link)
+  bot.command(['store', 'menu'], async (ctx) => {
+    const lang = ctx.dbUser?.preferredLanguage || 'ar';
+    const url = `${(process.env.BASE_URL || '').replace(/\/$/, '')}/customer`;
+    return ctx.reply(
+      `${emojiHtml('rocket')} <b>${lang === 'en' ? 'Open the store' : 'افتح المتجر'}</b>: <code>${url}</code>\n` +
+      `${emojiHtml('fire')} ${lang === 'en' ? 'Or hit PLAY NOW below' : 'أو اضغط PLAY NOW تحت'}`,
+      {
+        parse_mode: 'HTML',
+        ...Markup.inlineKeyboard([[
+          {
+            text: buttonLabel('rocket', lang === 'en' ? 'PLAY NOW 🚀' : 'افتح المتجر 🚀'),
+            web_app: { url },
+            style: 'primary',
+            icon_custom_emoji_id: buttonEmojiId('rocket')
+          }
+        ]])
+      }
+    );
+  });
+
+  // /id — show user ID (useful for support tickets & admin lookups)
+  bot.command('id', (ctx) => {
+    const user = ctx.dbUser;
+    return ctx.reply(
+      `${emojiHtml('target')} <b>${user?.fullName || 'Yo'}</b>\n` +
+      `${emojiHtml('tag')} ID: <code>${ctx.from.id}</code>\n` +
+      `${user?.role && ['admin', 'superadmin'].includes(user.role) ? `${emojiHtml('crown')} ${user.role === 'superadmin' ? 'SUPER ADMIN' : 'ADMIN'}\n` : ''}` +
+      `${emojiHtml('calendar')} ${new Date(user?.createdAt || Date.now()).toLocaleString()}`,
+      { parse_mode: 'HTML' }
+    );
+  });
+
+  // /panel — alias for /admin
+  bot.command('panel', (ctx) => openAdminPortal(ctx, 'dashboard'));
+
+  // /maintenance [on|off] — quick admin toggle from chat
+  bot.command('maintenance', async (ctx) => {
+    if (!ctx.isAdmin) return ctx.reply(`${emojiHtml('skull')} غير مصرح / Unauthorized`);
+    const arg = (ctx.message.text.split(' ')[1] || '').toLowerCase();
+    const current = await Settings.get('maintenance_mode', false);
+    const next = arg === 'on' ? true : arg === 'off' ? false : !current;
+    await Settings.set('maintenance_mode', next, ctx.from.id, 'Toggled from bot');
+    const lang = ctx.dbUser?.preferredLanguage || 'ar';
+    return ctx.reply(
+      `${next ? emojiHtml('gear') : emojiHtml('checkmark')} <b>${lang === 'en' ? `Maintenance ${next ? 'ENABLED' : 'DISABLED'}` : `الصيانة ${next ? 'مفعّلة' : 'معطّلة'}`}</b>`,
+      { parse_mode: 'HTML' }
+    );
+  });
 
   bot.command('stats', async (ctx) => {
     if (!ctx.isAdmin) return ctx.reply(`${emojiHtml('skull')} غير مصرح / Unauthorized`);

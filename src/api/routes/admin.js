@@ -239,6 +239,60 @@ router.delete('/keys/:id', async (req, res) => {
   res.json({ success: true });
 });
 
+// ── NEW: change a single key's status (mark invalid / back to available / expired / reserved) ──
+router.post('/keys/:id/status', async (req, res) => {
+  try {
+    const { status } = req.body;
+    const validStatuses = ['available', 'sold', 'reserved', 'expired', 'invalid'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ success: false, error: `Status must be one of: ${validStatuses.join(', ')}` });
+    }
+
+    const key = await Key.findById(req.params.id);
+    if (!key) return res.status(404).json({ success: false, error: 'Key not found' });
+
+    const prevStatus = key.status;
+
+    // If returning a sold/reserved key to stock, clear the ownership fields
+    if (status === 'available') {
+      key.soldTo = null;
+      key.soldToUsername = null;
+      key.soldAt = null;
+      key.orderId = null;
+      key.reservedAt = null;
+      key.reservedUntil = null;
+    }
+    key.status = status;
+    await key.save();
+
+    // Keep the product's duration stock count in sync (available → other = -1, other → available = +1)
+    if (prevStatus !== status) {
+      const delta = status === 'available' ? 1 : (prevStatus === 'available' ? -1 : 0);
+      if (delta !== 0) {
+        await Product.findOneAndUpdate(
+          { _id: key.product, 'durations._id': key.durationId },
+          { $inc: { 'durations.$.stockCount': delta } }
+        );
+      }
+    }
+    res.json({ success: true, data: key });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// ── NEW: update a key's notes / metadata ──
+router.put('/keys/:id', async (req, res) => {
+  try {
+    const { notes } = req.body;
+    const key = await Key.findByIdAndUpdate(req.params.id, { notes: notes || '' }, { new: true });
+    if (!key) return res.status(404).json({ success: false, error: 'Key not found' });
+    res.json({ success: true, data: key });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
 // ── USERS ──
 router.get('/users', async (req, res) => {
   try {
@@ -282,10 +336,18 @@ router.post('/users/:id/balance', async (req, res) => {
     const user = await User.findOne({ telegramId: parseInt(req.params.id) });
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
 
+    const value = parseFloat(amount);
+    if (isNaN(value) || value <= 0) return res.status(400).json({ success: false, error: 'Invalid amount' });
+    if (!['add', 'deduct'].includes(type)) return res.status(400).json({ success: false, error: 'Type must be add or deduct' });
+
     if (type === 'add') {
-      await user.addBalance(parseFloat(amount), description || 'Admin balance addition', req.telegramId);
+      await user.addBalance(value, description || 'Admin balance addition', req.telegramId);
     } else {
-      await user.deductBalance(parseFloat(amount), description || 'Admin balance deduction', req.telegramId);
+      try {
+        await user.deductBalance(value, description || 'Admin balance deduction', req.telegramId);
+      } catch (e) {
+        return res.status(400).json({ success: false, error: 'User balance is not enough to deduct that amount' });
+      }
     }
 
     // Notify user via bot
@@ -293,7 +355,7 @@ router.post('/users/:id/balance', async (req, res) => {
       const bot = req.app.get('bot');
       if (bot) {
         await bot.telegram.sendMessage(user.telegramId,
-          `${type === 'add' ? '✅ تم إضافة' : '➖ تم خصم'} <b>$${parseFloat(amount).toFixed(2)}</b> ${type === 'add' ? 'إلى' : 'من'} رصيدك\n\n💰 رصيدك الحالي: <b>$${user.balance.toFixed(2)}</b>`,
+          `${type === 'add' ? '✅ تم إضافة' : '➖ تم خصم'} <b>$${value.toFixed(2)}</b> ${type === 'add' ? 'إلى' : 'من'} رصيدك\n\n💰 رصيدك الحالي: <b>$${user.balance.toFixed(2)}</b>`,
           { parse_mode: 'HTML' }
         ).catch(() => {});
       }
@@ -308,9 +370,11 @@ router.post('/users/:id/balance', async (req, res) => {
 router.post('/users/:id/ban', async (req, res) => {
   try {
     const { reason, ban } = req.body;
+    // Strict boolean check: missing `ban` must never silently ban a user.
+    const shouldBan = ban === true;
     const user = await User.findOneAndUpdate(
       { telegramId: parseInt(req.params.id) },
-      { isBanned: ban !== false, banReason: reason || 'مخالفة القوانين' },
+      { isBanned: shouldBan, banReason: shouldBan ? (reason || 'مخالفة القوانين') : null },
       { new: true }
     );
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
@@ -318,7 +382,7 @@ router.post('/users/:id/ban', async (req, res) => {
     // Notify user
     try {
       const bot = req.app.get('bot');
-      if (bot && ban !== false) {
+      if (bot && shouldBan) {
         await bot.telegram.sendMessage(user.telegramId,
           `🚫 تم حظر حسابك\nالسبب: ${reason || 'مخالفة القوانين'}`,
           { parse_mode: 'HTML' }
@@ -329,6 +393,52 @@ router.post('/users/:id/ban', async (req, res) => {
     res.json({ success: true, data: user });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// ── NEW: role management (promote / demote admin) ──
+router.post('/users/:id/role', async (req, res) => {
+  try {
+    const { role } = req.body;
+    if (!['customer', 'admin'].includes(role)) {
+      return res.status(400).json({ success: false, error: 'Role must be customer or admin' });
+    }
+    const target = await User.findOne({ telegramId: parseInt(req.params.id) });
+    if (!target) return res.status(404).json({ success: false, error: 'User not found' });
+
+    // Protect the owner's superadmin account from demotion
+    const ownerIds = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim())).filter(Boolean);
+    if (target.role === 'superadmin' || ownerIds.includes(target.telegramId)) {
+      return res.status(400).json({ success: false, error: 'لا يمكن تغيير صلاحية المالك الأساسي' });
+    }
+
+    target.role = role;
+    await target.save();
+
+    const bot = req.app.get('bot');
+    if (bot) {
+      await bot.telegram.sendMessage(target.telegramId,
+        `👑 <b>${role === 'admin' ? 'مبروك! صرت أدمن في المتجر 🎉' : 'تم إلغاء صلاحية الأدمن'}</b>\n\n` +
+        `${role === 'admin' ? 'من الآن تقدر تدخل لوحة التحكم وتدير المتجر' : 'إذا كان عندك سؤال تواصل مع الدعم'}`,
+        { parse_mode: 'HTML' }
+      ).catch(() => {});
+    }
+
+    res.json({ success: true, data: { telegramId: target.telegramId, role: target.role } });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// ── NEW: full balance history for a user (admin view) ──
+router.get('/users/:id/balance-history', async (req, res) => {
+  try {
+    const user = await User.findOne({ telegramId: parseInt(req.params.id) }).select('balance balanceHistory');
+    if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+    const history = (user.balanceHistory || []).slice().reverse().slice(0, 100);
+    res.json({ success: true, data: { balance: user.balance, history } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -371,40 +481,93 @@ router.delete('/coupons/:id', async (req, res) => {
 });
 
 // ── BROADCAST ──
+
+// Build the target query for a broadcast audience
+const buildBroadcastQuery = (targetAudience, specificUserIds = []) => {
+  const query = { isBanned: false, notificationsEnabled: { $ne: false } };
+  if (targetAudience === 'buyers') query.totalOrders = { $gt: 0 };
+  if (targetAudience === 'with_balance') query.balance = { $gt: 0 };
+  if (targetAudience === 'specific') {
+    const ids = (Array.isArray(specificUserIds) ? specificUserIds : [])
+      .map(id => parseInt(id)).filter(id => !isNaN(id) && id > 0);
+    query.telegramId = { $in: ids };
+  }
+  return query;
+};
+
+// NEW: preview how many users a broadcast would reach (no sending)
+router.post('/broadcast/target-count', async (req, res) => {
+  try {
+    const { targetAudience, specificUserIds } = req.body;
+    const query = buildBroadcastQuery(targetAudience || 'all', specificUserIds);
+    const count = await User.countDocuments(query);
+    res.json({ success: true, data: { count } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// NEW: list previous broadcasts
+router.get('/broadcasts', async (req, res) => {
+  try {
+    const broadcasts = await Broadcast.find().sort({ createdAt: -1 }).limit(30);
+    res.json({ success: true, data: broadcasts });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 router.post('/broadcast', async (req, res) => {
   try {
     const { title, message, imageUrl, buttons, targetAudience, specificUserIds } = req.body;
     const bot = req.app.get('bot');
+    if (!bot) return res.status(500).json({ success: false, error: 'Bot not available' });
+
+    if (!message || !String(message).trim()) {
+      return res.status(400).json({ success: false, error: 'Message is required' });
+    }
+    const audience = ['all', 'buyers', 'with_balance', 'specific'].includes(targetAudience) ? targetAudience : 'all';
+    if (audience === 'specific' && (!Array.isArray(specificUserIds) || specificUserIds.length === 0)) {
+      return res.status(400).json({ success: false, error: 'Specific audience requires at least one user ID' });
+    }
 
     // Build target user list
-    let userQuery = { isBanned: false };
-    if (targetAudience === 'buyers') userQuery.totalOrders = { $gt: 0 };
-    if (targetAudience === 'with_balance') userQuery.balance = { $gt: 0 };
-    if (targetAudience === 'specific') userQuery.telegramId = { $in: specificUserIds };
-
+    const userQuery = buildBroadcastQuery(audience, specificUserIds);
     const users = await User.find(userQuery).select('telegramId');
+    if (users.length === 0) {
+      return res.status(400).json({ success: false, error: 'No users match this audience' });
+    }
+
+    const safeButtons = (Array.isArray(buttons) ? buttons : []).slice(0, 8)
+      .filter(b => b && String(b.text || '').trim() && String(b.url || '').startsWith('http'))
+      .map(b => ({ text: String(b.text).trim(), url: String(b.url).trim() }));
 
     const broadcast = await Broadcast.create({
-      title, message, imageUrl, buttons, targetAudience,
-      specificUserIds, totalTargets: users.length,
+      title: String(title || message.slice(0, 60)).trim(),
+      message: String(message),
+      imageUrl: imageUrl || null,
+      buttons: safeButtons,
+      targetAudience: audience,
+      specificUserIds: audience === 'specific' ? users.map(u => u.telegramId) : [],
+      totalTargets: users.length,
       status: 'sending', createdBy: req.telegramId
     });
 
     // Send async
     res.json({ success: true, data: broadcast, totalTargets: users.length });
 
-    // Fire and forget
+    // Fire and forget (with a cap so a runaway loop can't freeze the process)
     let sentCount = 0, failedCount = 0;
     for (const u of users) {
       try {
-        const tgButtons = buttons?.length
-          ? { reply_markup: { inline_keyboard: [buttons.map(b => ({ text: b.text, url: b.url }))] } }
+        const tgButtons = safeButtons.length
+          ? { reply_markup: { inline_keyboard: [safeButtons.map(b => ({ text: b.text, url: b.url }))] } }
           : {};
 
         if (imageUrl) {
-          await bot.telegram.sendPhoto(u.telegramId, imageUrl, { caption: message, parse_mode: 'HTML', ...tgButtons });
+          await bot.telegram.sendPhoto(u.telegramId, imageUrl, { caption: String(message), parse_mode: 'HTML', ...tgButtons });
         } else {
-          await bot.telegram.sendMessage(u.telegramId, message, { parse_mode: 'HTML', ...tgButtons });
+          await bot.telegram.sendMessage(u.telegramId, String(message), { parse_mode: 'HTML', ...tgButtons });
         }
         sentCount++;
       } catch (e) { failedCount++; }
@@ -453,14 +616,55 @@ router.post('/orders/:id/verify-payment', async (req, res) => {
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
 
+    // Guard: never fulfill twice (keys would be delivered twice)
+    if (order.status === 'completed') {
+      return res.status(400).json({ success: false, error: 'Order is already completed' });
+    }
+    if (!['pending', 'processing'].includes(order.status)) {
+      return res.status(400).json({ success: false, error: `Cannot verify an order with status "${order.status}"` });
+    }
+
     const user = await User.findOne({ telegramId: order.user });
-    const { fulfilled } = await orderService.fulfillOrder(order, user);
+    if (!user) return res.status(404).json({ success: false, error: 'User not found - cannot deliver' });
+
+    const result = await orderService.fulfillOrder(order, user);
 
     const bot = req.app.get('bot');
     if (bot) {
-      const keysText = order.keyValues.map(k => `<code>${k}</code>`).join('\n');
+      const keysText = result.keys.map(k => `<code>${k.keyValue}</code>`).join('\n');
       await bot.telegram.sendMessage(order.user,
-        `✅ <b>تم تأكيد دفعتك!</b>\n\n📦 ${order.productName} - ${order.durationName}\n\n🔑 مفتاحك:\n${keysText}`,
+        `✅ <b>تم تأكيد دفعتك يا أسطورة!</b>\n\n` +
+        `📦 ${order.productName} - ${order.durationName}\n` +
+        `📋 رقم الطلب: <code>${order.orderNumber}</code>\n\n` +
+        `🔑 <b>مفتاحك:</b>\n${keysText}\n\n` +
+        `🔥 GG WP - استمتع! 🏆`,
+        { parse_mode: 'HTML' }
+      ).catch(() => {});
+    }
+
+    res.json({ success: true, data: { order } });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/orders/:id/reject-payment', async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
+    if (order.status === 'completed') {
+      return res.status(400).json({ success: false, error: 'Completed orders cannot be rejected - use refund instead' });
+    }
+
+    order.status = 'failed';
+    order.adminNotes = reason || 'الدفعة غير مؤكدة';
+    await order.save();
+
+    const bot = req.app.get('bot');
+    if (bot) {
+      await bot.telegram.sendMessage(order.user,
+        `❌ <b>تم رفض دفعتك</b>\n\nالسبب: ${reason || 'الدفعة غير مؤكدة'}\n\nيرجى التواصل مع الدعم`,
         { parse_mode: 'HTML' }
       ).catch(() => {});
     }
@@ -471,15 +675,61 @@ router.post('/orders/:id/verify-payment', async (req, res) => {
   }
 });
 
-router.post('/orders/:id/reject-payment', async (req, res) => {
+// ── NEW: refund a completed order back to the user's wallet ──
+router.post('/orders/:id/refund', async (req, res) => {
   try {
     const { reason } = req.body;
-    const order = await Order.findByIdAndUpdate(req.params.id, { status: 'failed', adminNotes: reason }, { new: true });
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
+    if (order.status !== 'completed') {
+      return res.status(400).json({ success: false, error: 'Only completed orders can be refunded' });
+    }
+    if (order.paymentMethod === 'wallet' && !order.keyValues?.length) {
+      return res.status(400).json({ success: false, error: 'Order has no delivered keys' });
+    }
+
+    const user = await User.findOne({ telegramId: order.user });
+    if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+
+    const { refundedOrder } = await orderService.refundOrder(order, user, reason || 'استرجاع من الإدارة', req.telegramId);
 
     const bot = req.app.get('bot');
     if (bot) {
       await bot.telegram.sendMessage(order.user,
-        `❌ <b>تم رفض دفعتك</b>\n\nالسبب: ${reason || 'الدفعة غير مؤكدة'}\n\nيرجى التواصل مع الدعم`,
+        `💰 <b>تم استرجاع مبلغ طلبك</b>\n\n` +
+        `📦 ${order.productName} - ${order.durationName}\n` +
+        `📋 رقم الطلب: <code>${order.orderNumber}</code>\n` +
+        `💵 المبلغ المسترجع: <b>$${order.finalPrice.toFixed(2)}</b>\n` +
+        `📝 السبب: ${reason || 'استرجاع من الإدارة'}\n\n` +
+        `✅ رصيدك الحالي: <b>$${user.balance.toFixed(2)}</b>`,
+        { parse_mode: 'HTML' }
+      ).catch(() => {});
+    }
+
+    res.json({ success: true, data: { order: refundedOrder } });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// ── NEW: cancel a pending order (no payment delivered yet) ──
+router.post('/orders/:id/cancel', async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
+    if (!['pending', 'processing'].includes(order.status)) {
+      return res.status(400).json({ success: false, error: `Cannot cancel an order with status "${order.status}"` });
+    }
+
+    order.status = 'cancelled';
+    order.adminNotes = reason || 'ألغي من الإدارة';
+    await order.save();
+
+    const bot = req.app.get('bot');
+    if (bot) {
+      await bot.telegram.sendMessage(order.user,
+        `🚫 <b>تم إلغاء طلبك</b>\n\n📦 ${order.productName} - ${order.durationName}\n📋 رقم الطلب: <code>${order.orderNumber}</code>\n📝 السبب: ${reason || 'ألغي من الإدارة'}`,
         { parse_mode: 'HTML' }
       ).catch(() => {});
     }

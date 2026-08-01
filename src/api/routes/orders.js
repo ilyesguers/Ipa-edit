@@ -31,7 +31,13 @@ router.get('/', async (req, res) => {
 router.post('/validate-coupon', async (req, res) => {
   try {
     const { code, amount } = req.body;
-    const coupon = await Coupon.findOne({ code: code.toUpperCase() });
+    if (!code || typeof code !== 'string' || !code.trim()) {
+      return res.status(400).json({ success: false, error: 'أدخل كود الخصم / Enter a coupon code' });
+    }
+    if (amount === undefined || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      return res.status(400).json({ success: false, error: 'مبلغ غير صالح / Invalid amount' });
+    }
+    const coupon = await Coupon.findOne({ code: code.trim().toUpperCase() });
     if (!coupon) return res.status(404).json({ success: false, error: 'الكود غير موجود' });
 
     const validity = coupon.isValid();
