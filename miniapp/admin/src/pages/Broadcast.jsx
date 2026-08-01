@@ -48,6 +48,22 @@ export default function Broadcast() {
       const r = await api.post('/admin/broadcast', form);
       setResult(r.data);
       toast.success(`📢 جاري الإرسال إلى ${r.data.totalTargets} مستخدم`);
+      // Poll until the broadcast finishes so the admin sees live sent/failed counts
+      const broadcastId = r.data.data?._id;
+      if (broadcastId) {
+        const timer = setInterval(async () => {
+          try {
+            const list = await api.get('/admin/broadcasts');
+            const b = list.data.data?.find(x => x._id === broadcastId);
+            if (!b) return clearInterval(timer);
+            setResult(prev => ({ ...prev, data: b }));
+            if (b.status === 'completed') {
+              clearInterval(timer);
+              toast.success(`✅ اكتمل الإرسال: ${b.sentCount} نجح / ${b.failedCount} فشل`);
+            }
+          } catch (_) {}
+        }, 5000);
+      }
     } catch (err) {
       toast.error(err.response?.data?.error || 'فشل في الإرسال');
     }
@@ -74,10 +90,12 @@ export default function Broadcast() {
           className="bg-green/10 border border-green/30 rounded-2xl p-4 text-green">
           <p className="font-bold">✅ تم إرسال الإذاعة!</p>
           <p className="text-sm mt-1">إجمالي المستهدفين: {result.totalTargets}</p>
-          {result.data && (
-            <p className="text-xs mt-1 text-muted">
-              سيتم التحديث تلقائياً... (المُرسل: {result.data.sentCount || 0} / الفاشل: {result.data.failedCount || 0})
+          {result.data?.status === 'completed' ? (
+            <p className="text-xs mt-1 text-white/80">
+              📨 المُرسل: <b>{result.data.sentCount || 0}</b> · ❌ الفاشل: <b>{result.data.failedCount || 0}</b>
             </p>
+          ) : (
+            <p className="text-xs mt-1 text-muted">⏳ جاري الإرسال... يتم التحديث تلقائياً</p>
           )}
         </motion.div>
       )}
