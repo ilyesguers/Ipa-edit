@@ -28,8 +28,11 @@ const connectDB = async () => {
     });
 
   } catch (error) {
+    // IMPORTANT: do NOT process.exit here — src/index.js wraps this call in a
+    // retry loop and falls back to a degraded server (healthcheck still up) so
+    // Railway doesn't kill the container on a temporary DB hiccup.
     logger.error('❌ MongoDB connection failed:', error.message);
-    process.exit(1);
+    throw error;
   }
 };
 

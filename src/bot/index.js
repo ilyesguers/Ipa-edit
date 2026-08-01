@@ -14,9 +14,14 @@ const { openAdminPortal } = require('./handlers/admin');
 const { callbackHandler } = require('./handlers/callbacks');
 const { paymentHandler } = require('./handlers/payment');
 
-const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim())).filter(Boolean);
+  const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim())).filter(Boolean);
 
-const createBot = (io) => {
+  // Cache successful channel-membership checks (10 min) so we don't hammer the
+  // Telegram API with getChatMember on every single message. Failures are never
+  // cached, so a user who just joined passes on the very next message.
+  const forceJoinOkCache = new Map();
+
+  const createBot = (io) => {
   if (!process.env.BOT_TOKEN) {
     logger.warn('⚠️ BOT_TOKEN not set - bot will not start, but server will continue for Railway healthcheck');
     // Return dummy bot that doesn't crash server
@@ -131,6 +136,53 @@ const createBot = (io) => {
       if (maintenance && !ctx.isAdmin) {
         const maintenanceMsg = await Settings.get('maintenance_message', `${emojiHtml('gear')} المتجر تحت الصيانة السريعة - بنرجع بسرعة الصاروخ / Quick maintenance - coming back rocket fast`);
         return ctx.reply(maintenanceMsg);
+      }
+
+      // ── Optional force-join-channel gate (admin setting) ──
+      // Skipped for admins and for brand-new users who still need to pass the
+      // captcha first (otherwise they could never reach the captcha prompt).
+      if (!ctx.isAdmin && user.captchaPassed) {
+        const [forceJoin, channelId] = await Promise.all([
+          Settings.get('force_join_channel', false),
+          Settings.get('channel_id', '')
+        ]);
+        if (forceJoin && channelId) {
+          const cached = forceJoinOkCache.get(telegramId);
+          if (!cached || Date.now() - cached > 10 * 60 * 1000) {
+            let memberStatus = null;
+            try {
+              const member = await ctx.telegram.getChatMember(channelId, telegramId);
+              memberStatus = member?.status;
+            } catch (_) { /* channel unreachable — don't block users */ }
+            const isMember = ['member', 'administrator', 'creator'].includes(memberStatus);
+            if (isMember) {
+              forceJoinOkCache.set(telegramId, Date.now());
+            } else if (memberStatus && memberStatus !== 'restricted') {
+              const channelUsername = await Settings.get('channel_username', '');
+              const fallback = `https://t.me/${String(channelId).replace(/^-100/, '')}`;
+              const channelLink = channelUsername
+                ? `https://t.me/${channelUsername}`
+                : (memberStatus ? fallback : '');
+              const isEn = user.preferredLanguage === 'en';
+              return ctx.reply(
+                `${emojiHtml('lock')} <b>${isEn ? 'Join our channel first bro!' : 'اشترك في القناة أولاً يا بطل!'}</b>\n\n` +
+                `${emojiHtml('explosion')} ${isEn ? 'You must join the deals channel to keep playing:' : 'لازم تكون مشترك في قناة العروض عشان تكمل:'}\n\n` +
+                `${emojiHtml('rocket')} ${isEn ? 'Join, then hit /start - EZ!' : 'اشترك، وبعدها اضغط /start - سهلة!'}`,
+                {
+                  parse_mode: 'HTML',
+                  ...(channelLink ? Markup.inlineKeyboard([[
+                    {
+                      text: buttonLabel('megaphone', isEn ? 'JOIN CHANNEL' : 'اشترك في القناة'),
+                      url: channelLink,
+                      style: 'primary',
+                      icon_custom_emoji_id: buttonEmojiId('megaphone')
+                    }
+                  ]]) : {})
+                }
+              );
+            }
+          }
+        }
       }
 
       return next();

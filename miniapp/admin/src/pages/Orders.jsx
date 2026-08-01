@@ -225,7 +225,7 @@ export default function Orders({ routeQuery = {}, setRouteQuery }) {
               {detail.adminNotes && <InfoRow label="ملاحظة الإدارة" value={detail.adminNotes} />}
               <InfoRow label="التاريخ" value={new Date(detail.createdAt).toLocaleString('ar-SA')} />
               <div className="flex gap-2 pt-2">
-                <button onClick={() => { window.dispatchEvent(new CustomEvent('admin-navigate', { detail: { page: 'users', query: { search: detail.user } } })); }} className="flex-1 py-2.5 rounded-xl border border-neon/30 bg-neon/10 text-neon text-xs font-bold">👤 ملف المستخدم</button>
+                <button onClick={() => { setDetail(null); window.dispatchEvent(new CustomEvent('admin-navigate', { detail: { page: 'users', query: { search: detail.user } } })); }} className="flex-1 py-2.5 rounded-xl border border-neon/30 bg-neon/10 text-neon text-xs font-bold">👤 ملف المستخدم</button>
                 <button onClick={() => setDetail(null)} className="px-4 py-2.5 border border-border rounded-xl text-muted text-xs font-bold">إغلاق</button>
               </div>
             </motion.div>

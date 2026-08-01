@@ -10,6 +10,7 @@ export default {
     'card-2': '#1a1a2e',
     border: '#1e1e30',
     neon: '#00d4ff',
+    'neon-blue': '#00d4ff',
     'neon-2': '#7c3aed',
     green: '#00ff88',
     red: '#ff3b5c',

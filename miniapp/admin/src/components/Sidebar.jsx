@@ -13,7 +13,7 @@ const NAV = [
   { id: 'settings', icon: '🎛️', label: 'الإعدادات والتصميم', desc: 'هوية وأزرار' },
 ];
 
-export default function Sidebar({ activePage, setActivePage, setRouteQuery, user, sidebarOpen, setSidebarOpen }) {
+export default function Sidebar({ activePage, setActivePage, setRouteQuery, user, sidebarOpen, setSidebarOpen, unreadOrders = 0 }) {
   const goTo = (page) => {
     setActivePage(page);
     setRouteQuery?.({});
@@ -65,6 +65,11 @@ export default function Sidebar({ activePage, setActivePage, setRouteQuery, user
                 style={{ background: 'linear-gradient(180deg, #00ff88, #a855f7)', boxShadow: '0 0 10px #00ff88' }}
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               />
+            )}
+            {item.id === 'orders' && unreadOrders > 0 && (
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 min-w-[20px] h-5 px-1 rounded-full bg-red text-white text-[10px] font-black flex items-center justify-center shadow-lg shadow-red/40 animate-pulse">
+                {unreadOrders > 99 ? '99+' : unreadOrders}
+              </span>
             )}
           </button>
         ))}
