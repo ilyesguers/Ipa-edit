@@ -4,24 +4,24 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg: '#050508',
-        card: '#12121c',
-        'card-2': '#1e1e32',
-        border: '#2a2a45',
-        neon: '#00ff88',
-        'neon-blue': '#00d4ff',
-        'neon-purple': '#a855f7',
-        'neon-pink': '#ff00a0',
-        'neon-green': '#00ff88',
-        'neon-orange': '#ff8a00',
-        green: '#00ff88',
-        purple: '#a855f7',
-        red: '#ff3b5c',
-        'red-dark': '#cc2244',
-        gold: '#ffd700',
+        bg: '#0d0f12',
+        card: '#161922',
+        'card-2': '#1f2430',
+        border: '#2d3748',
+        neon: '#10b981',
+        'neon-blue': '#3b82f6',
+        'neon-purple': '#6366f1',
+        'neon-pink': '#ec4899',
+        'neon-green': '#10b981',
+        'neon-orange': '#f97316',
+        green: '#10b981',
+        purple: '#6366f1',
+        red: '#ef4444',
+        'red-dark': '#dc2626',
+        gold: '#fbbf24',
         warning: '#f59e0b',
         success: '#10b981',
-        muted: '#8b8ba7',
+        muted: '#6b7280',
       },
       fontFamily: {
         gamer: ['Orbitron', 'Cairo', 'monospace'],
@@ -40,12 +40,12 @@ export default {
       },
       keyframes: {
         'pulse-neon': {
-          '0%, 100%': { boxShadow: '0 0 5px #00ff88, 0 0 10px #00ff88, 0 0 20px #00ff88' },
-          '50%': { boxShadow: '0 0 20px #00ff88, 0 0 40px #00ff88, 0 0 60px #00ff88' },
+          '0%, 100%': { boxShadow: '0 0 5px #10b981, 0 0 10px #10b981, 0 0 20px #10b981' },
+          '50%': { boxShadow: '0 0 20px #10b981, 0 0 40px #10b981, 0 0 60px #10b981' },
         },
         'glow': {
-          '0%': { textShadow: '0 0 10px #00ff88, 0 0 20px #00ff88' },
-          '100%': { textShadow: '0 0 20px #00ff88, 0 0 30px #00ff88, 0 0 40px #00ff88' },
+          '0%': { textShadow: '0 0 10px #10b981, 0 0 20px #10b981' },
+          '100%': { textShadow: '0 0 20px #10b981, 0 0 30px #10b981, 0 0 40px #10b981' },
         },
         'rocket': {
           '0%': { transform: 'translateY(20px) scale(0.8)', opacity: '0' },
@@ -77,9 +77,9 @@ export default {
         }
       },
       backgroundImage: {
-        'gamer-gradient': 'linear-gradient(135deg, #00ff88 0%, #00d4ff 50%, #a855f7 100%)',
-        'fire-gradient': 'linear-gradient(135deg, #ff8a00 0%, #ff3b5c 50%, #ff00a0 100%)',
-        'dark-gradient': 'linear-gradient(135deg, #050508 0%, #12121c 50%, #1e1e32 100%)',
+        'gamer-gradient': 'linear-gradient(135deg, #10b981 0%, #3b82f6 50%, #6366f1 100%)',
+        'fire-gradient': 'linear-gradient(135deg, #f97316 0%, #ef4444 50%, #ec4899 100%)',
+        'dark-gradient': 'linear-gradient(135deg, #0d0f12 0%, #161922 50%, #1f2430 100%)',
       }
     }
   },

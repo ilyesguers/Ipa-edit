@@ -80,7 +80,7 @@ export default function Dashboard() {
             <h3 className="font-bold text-white text-sm">
               📈 {chartType === 'revenue' ? 'الأرباح' : 'الطلبات'} - آخر 7 أيام
             </h3>
-            <div className="flex gap-1 bg-[#0a0a12] rounded-lg p-0.5 border border-border">
+            <div className="flex gap-1 bg-[#0d0f12] rounded-lg p-0.5 border border-border">
               <button
                 onClick={() => setChartType('revenue')}
                 className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${chartType === 'revenue' ? 'bg-neon/20 text-neon' : 'text-muted'}`}
@@ -98,19 +98,19 @@ export default function Dashboard() {
           <ResponsiveContainer width="100%" height={160}>
             {chartType === 'revenue' ? (
               <BarChart data={stats.revenueChart}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e1e30" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#1f2430" />
                 <XAxis dataKey="date" tick={{ fill: '#6b7280', fontSize: 10 }} tickFormatter={d => d.slice(5)} />
                 <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} />
-                <Tooltip contentStyle={{ background: '#12121c', border: '1px solid #1e1e30', borderRadius: '10px', color: '#fff' }} formatter={(v) => [`$${v}`, 'الأرباح']} />
-                <Bar dataKey="revenue" fill="#00d4ff" radius={[4, 4, 0, 0]} />
+                <Tooltip contentStyle={{ background: '#161922', border: '1px solid #1f2430', borderRadius: '10px', color: '#fff' }} formatter={(v) => [`$${v}`, 'الأرباح']} />
+                <Bar dataKey="revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} />
               </BarChart>
             ) : (
               <LineChart data={stats.revenueChart}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e1e30" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#1f2430" />
                 <XAxis dataKey="date" tick={{ fill: '#6b7280', fontSize: 10 }} tickFormatter={d => d.slice(5)} />
                 <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} />
-                <Tooltip contentStyle={{ background: '#12121c', border: '1px solid #1e1e30', borderRadius: '10px', color: '#fff' }} formatter={(v) => [v, 'الطلبات']} />
-                <Line type="monotone" dataKey="orders" stroke="#a855f7" strokeWidth={2} dot={{ fill: '#a855f7', r: 3 }} />
+                <Tooltip contentStyle={{ background: '#161922', border: '1px solid #1f2430', borderRadius: '10px', color: '#fff' }} formatter={(v) => [v, 'الطلبات']} />
+                <Line type="monotone" dataKey="orders" stroke="#6366f1" strokeWidth={2} dot={{ fill: '#6366f1', r: 3 }} />
               </LineChart>
             )}
           </ResponsiveContainer>

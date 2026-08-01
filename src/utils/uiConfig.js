@@ -54,12 +54,12 @@ const THEME_PRESETS = {
   }
 };
 
-// Gaming teen focused highlights - no more boring corporate text
+// Clean, minimal highlights — no emoji spam
 const DEFAULT_HIGHLIGHTS = [
-  { id: 'rocket', emojiKey: 'rocket', textAr: 'تسليم فوري بسرعة الصاروخ 🚀', textEn: 'Rocket-fast instant delivery 🚀' },
-  { id: 'fire', emojiKey: 'fire', textAr: 'أقوى العروض للجيمرز الحقيقيين 🔥', textEn: 'Hottest deals for real gamers 🔥' },
-  { id: 'crown', emojiKey: 'crown', textAr: 'كن محترف 👑 مفاتيح أصلية 100%', textEn: 'Be pro 👑 100% legit keys' },
-  { id: 'shield', emojiKey: 'shield', textAr: 'آمن ومضمون مع دعم 24/7 ⚡', textEn: 'Safe & secured + 24/7 hype support ⚡' }
+  { id: 'rocket', emojiKey: 'rocket', textAr: 'تسليم فوري', textEn: 'Instant delivery' },
+  { id: 'shield', emojiKey: 'shield', textAr: 'مفاتيح أصلية 100%', textEn: '100% legit keys' },
+  { id: 'fire', emojiKey: 'fire', textAr: 'أقوى العروض', textEn: 'Best deals' },
+  { id: 'support', emojiKey: 'support', textAr: 'دعم 24/7', textEn: 'Support 24/7' }
 ];
 
 // MINIMAL WEB-FOCUSED KEYBOARD - Bot focuses on website, not old shop callbacks

@@ -3,7 +3,7 @@
  * No external dependencies - pure canvas animation
  */
 
-const COLORS = ['#00ff88', '#00cfff', '#ff3b5c', '#f0b90b', '#a855f7', '#ff6b6b', '#4ecdc4'];
+const COLORS = ['#10b981', '#3b82f6', '#ef4444', '#f0b90b', '#6366f1', '#ef4444', '#4ecdc4'];
 const PARTICLE_COUNT = 80;
 const ANIMATION_DURATION = 2500;
 

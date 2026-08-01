@@ -542,9 +542,18 @@ router.post('/broadcast', async (req, res) => {
       .filter(b => b && String(b.text || '').trim() && String(b.url || '').startsWith('http'))
       .map(b => ({ text: String(b.text).trim(), url: String(b.url).trim() }));
 
+    // Title is always present: explicit title, else auto-generated from message.
+    // This eliminates the old "Broadcast validation failed: Path 'title' is required".
+    const rawMessage = String(message);
+    const finalTitle = String(title || '').trim() || rawMessage.replace(/\*\*(.+?)\*\*/g, '$1').slice(0, 60);
+
+    // Convert admin **markdown** to Telegram HTML so users never see raw asterisks
+    const { mdToHtml } = require('../../utils/mdToHtml');
+    const htmlMessage = mdToHtml(rawMessage);
+
     const broadcast = await Broadcast.create({
-      title: String(title || message.slice(0, 60)).trim(),
-      message: String(message),
+      title: finalTitle,
+      message: rawMessage,
       imageUrl: imageUrl || null,
       buttons: safeButtons,
       targetAudience: audience,
@@ -565,9 +574,9 @@ router.post('/broadcast', async (req, res) => {
           : {};
 
         if (imageUrl) {
-          await bot.telegram.sendPhoto(u.telegramId, imageUrl, { caption: String(message), parse_mode: 'HTML', ...tgButtons });
+          await bot.telegram.sendPhoto(u.telegramId, imageUrl, { caption: htmlMessage, parse_mode: 'HTML', ...tgButtons });
         } else {
-          await bot.telegram.sendMessage(u.telegramId, String(message), { parse_mode: 'HTML', ...tgButtons });
+          await bot.telegram.sendMessage(u.telegramId, htmlMessage, { parse_mode: 'HTML', ...tgButtons });
         }
         sentCount++;
       } catch (e) { failedCount++; }

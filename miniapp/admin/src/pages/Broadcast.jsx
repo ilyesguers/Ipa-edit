@@ -196,7 +196,7 @@ export default function Broadcast() {
           onClick={handleSend}
           disabled={sending || !form.message.trim()}
           className="w-full py-4 rounded-2xl font-black text-base transition-all disabled:opacity-40"
-          style={{ background: 'linear-gradient(135deg, #00d4ff20, #00d4ff10)', border: '1px solid rgba(0,212,255,0.4)', color: '#00d4ff', boxShadow: '0 0 20px rgba(0,212,255,0.1)' }}
+          style={{ background: 'linear-gradient(135deg, #3b82f620, #3b82f610)', border: '1px solid rgba(59,130,246,0.4)', color: '#3b82f6', boxShadow: '0 0 20px rgba(59,130,246,0.1)' }}
         >
           {sending ? '⏳ جاري الإرسال...' : `📢 إرسال إلى ${AUDIENCE_LABELS[form.targetAudience]}`}
         </motion.button>

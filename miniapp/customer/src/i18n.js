@@ -91,3 +91,13 @@ export const localizedName = (item, locale) => {
     ? (item.name || item.nameAr || '')
     : (item.nameAr || item.name || '');
 };
+
+/**
+ * Strip raw Markdown markers (**bold**, *italic*, `code`) from admin-configured
+ * strings before rendering them as plain text — otherwise users see literal
+ * asterisks like `**PANEL RESELLER**` in headers and titles.
+ */
+export const cleanMarkdown = (text = '') => String(text)
+  .replace(/\*\*(.+?)\*\*/g, '$1')
+  .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1$2')
+  .replace(/`([^`\n]+)`/g, '$1');

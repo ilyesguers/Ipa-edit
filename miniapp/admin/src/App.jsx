@@ -1,19 +1,22 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Toaster, toast } from 'react-hot-toast';
 import { io } from 'socket.io-client';
 import api from './utils/api';
 import Sidebar from './components/Sidebar';
-import Dashboard from './pages/Dashboard';
-import Categories from './pages/Categories';
-import Products from './pages/Products';
-import Inventory from './pages/Inventory';
-import Users from './pages/Users';
-import Orders from './pages/Orders';
-import Coupons from './pages/Coupons';
-import Settings from './pages/Settings';
-import Broadcast from './pages/Broadcast';
 import LoadingScreen from './components/LoadingScreen';
+
+// Code-split every page — only the visited page is downloaded & mounted,
+// so the admin portal opens fast and switching pages doesn't jank.
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Categories = lazy(() => import('./pages/Categories'));
+const Products = lazy(() => import('./pages/Products'));
+const Inventory = lazy(() => import('./pages/Inventory'));
+const Users = lazy(() => import('./pages/Users'));
+const Orders = lazy(() => import('./pages/Orders'));
+const Coupons = lazy(() => import('./pages/Coupons'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Broadcast = lazy(() => import('./pages/Broadcast'));
 
 const PAGES = {
   dashboard: { component: Dashboard, title: 'لوحة التحكم', subtitle: 'نظرة سريعة على الأداء والاختصارات المهمة', icon: '🪄' },
@@ -160,7 +163,7 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-bg overflow-hidden">
-      <Toaster position="top-left" toastOptions={{ style: { background: '#12121c', color: '#fff', border: '1px solid #1e1e30', fontFamily: 'Cairo' } }} />
+      <Toaster position="top-left" toastOptions={{ style: { background: '#161922', color: '#fff', border: '1px solid #1f2430', fontFamily: 'Cairo' } }} />
 
       <Sidebar activePage={activePage} setActivePage={setActivePage} setRouteQuery={setRouteQuery} user={user} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} unreadOrders={unreadOrders} />
 
@@ -177,7 +180,7 @@ export default function App() {
       </AnimatePresence>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-panel/95 backdrop-blur sticky top-0 z-20">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-panel sticky top-0 z-20">
           <div className="flex items-center gap-3 min-w-0">
             <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg bg-card border border-border text-neon">☰</button>
             <div className="w-11 h-11 rounded-2xl border border-neon/20 bg-neon/10 flex items-center justify-center text-xl shrink-0">{pageMeta.icon}</div>
@@ -212,13 +215,15 @@ export default function App() {
           <AnimatePresence mode="wait">
             <motion.div
               key={`${activePage}-${JSON.stringify(routeQuery)}`}
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -5 }}
-              transition={{ duration: 0.2 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
               className="p-4 max-w-6xl mx-auto"
             >
-              <ActivePage setActivePage={setActivePage} routeQuery={routeQuery} setRouteQuery={setRouteQuery} currentUser={user} />
+              <Suspense fallback={<div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-24 rounded-2xl skeleton" />)}</div>}>
+                <ActivePage setActivePage={setActivePage} routeQuery={routeQuery} setRouteQuery={setRouteQuery} currentUser={user} />
+              </Suspense>
             </motion.div>
           </AnimatePresence>
         </div>

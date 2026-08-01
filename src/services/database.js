@@ -79,10 +79,10 @@ const seedDefaults = async () => {
     {
       key: 'ui_home_highlights',
       value: [
-        { id: 'rocket', emojiKey: 'rocket', textAr: 'تسليم فوري بسرعة الصاروخ 🚀', textEn: 'Rocket-fast instant delivery 🚀' },
-        { id: 'fire', emojiKey: 'fire', textAr: 'أقوى العروض للجيمرز الحقيقيين 🔥', textEn: 'Hottest deals for real gamers 🔥' },
-        { id: 'crown', emojiKey: 'crown', textAr: 'كن محترف 👑 مفاتيح أصلية 100%', textEn: 'Be pro 👑 100% legit keys' },
-        { id: 'shield', emojiKey: 'shield', textAr: 'آمن ومضمون مع دعم 24/7 ⚡', textEn: 'Safe & secured + 24/7 hype support ⚡' }
+        { id: 'rocket', emojiKey: 'rocket', textAr: 'تسليم فوري', textEn: 'Instant delivery' },
+        { id: 'shield', emojiKey: 'shield', textAr: 'مفاتيح أصلية 100%', textEn: '100% legit keys' },
+        { id: 'fire', emojiKey: 'fire', textAr: 'أقوى العروض', textEn: 'Best deals' },
+        { id: 'support', emojiKey: 'support', textAr: 'دعم 24/7', textEn: 'Support 24/7' }
       ],
       description: 'Highlights shown across bot and mini app'
     },
@@ -110,6 +110,7 @@ const seedDefaults = async () => {
   // store owner who customized values keeps their customization.
   const legacyBranding = [
     { key: 'bot_name', old: 'Digital Keys Store', value: 'GAMER STORE 🔥' },
+    { key: 'welcome_message', old: 'أهلاً {name}!\n\nمتجر ألعاب رقمي بمخزون حي وتسليم فوري.', value: '🔥 للجيمرز المحترفين فقط\n\nهلا والله يا أسطورة 👑\nأسرع متجر للألعاب والشحنات - تسليم فوري 🚀' },
     { key: 'ui_welcome_badge_ar', old: 'واجهة جديدة • بوت أذكى', value: '🔥 للجيمرز المحترفين فقط' },
     { key: 'ui_welcome_badge_en', old: 'Fresh look • Smarter bot', value: '🔥 For Pro Gamers Only' },
     { key: 'ui_welcome_title_ar', old: 'متجر رقمي منظم وسريع', value: 'متجر الجيمرز الأسطوري 🎮' },
