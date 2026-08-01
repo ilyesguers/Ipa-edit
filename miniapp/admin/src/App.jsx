@@ -55,15 +55,12 @@ export default function App() {
     socket.on('new_order', (data) => {
       setUnreadOrders((n) => n + 1);
       toast(
-        <div dir="rtl" className="space-y-0.5">
+        <div dir="rtl" className="space-y-0.5 cursor-pointer" onClick={() => window.dispatchEvent(new CustomEvent('admin-navigate', { detail: 'orders' }))}>
           <p className="font-black text-white text-[13px]">{data.type === 'payment_proof' ? '💳 إثبات دفع جديد!' : '🛒 طلب جديد وصل!'}</p>
           <p className="text-xs text-muted">{data.productName}{data.durationName ? ` - ${data.durationName}` : ''}</p>
           <p className="text-[11px] text-neon font-bold">💰 ${Number(data.amount || 0).toFixed(2)} · @{data.username || data.telegramId}</p>
         </div>,
-        {
-          duration: 8000,
-          onClick: () => window.dispatchEvent(new CustomEvent('admin-navigate', { detail: 'orders' }))
-        }
+        { duration: 8000 }
       );
     });
     return () => socket.close();
