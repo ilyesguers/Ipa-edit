@@ -236,3 +236,17 @@
 .hero-emoji-2 { top: 18%; right: 8%; animation: float 5s ease-in-out infinite .6s; font-size: 1.8rem; }
 .hero-emoji-3 { bottom: 10%; left: 16%; animation: float 4.5s ease-in-out infinite 1.2s; font-size: 2rem; }
 .hero-emoji-4 { bottom: 16%; right: 14%; animation: float 5.5s ease-in-out infinite .9s; font-size: 1.7rem; }
+
+/* Four low-cost background scenes rotate every 2s.  They are CSS-only so the
+   animation remains smooth inside Telegram's WebView. */
+.store-background { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: #0d0f12; transition: background 900ms ease; }
+.store-background::before { content: ''; position: absolute; inset: 0; opacity: .7; background-image: linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px); background-size: 28px 28px; mask-image: linear-gradient(to bottom, black, transparent); }
+.store-background--0 { background: radial-gradient(circle at 15% 18%, rgba(16,185,129,.18), transparent 30%), radial-gradient(circle at 85% 72%, rgba(59,130,246,.14), transparent 32%), #0d0f12; }
+.store-background--1 { background: radial-gradient(circle at 82% 16%, rgba(124,58,237,.2), transparent 32%), radial-gradient(circle at 15% 82%, rgba(16,185,129,.13), transparent 34%), #0d0f12; }
+.store-background--2 { background: radial-gradient(circle at 50% 5%, rgba(14,165,233,.17), transparent 35%), radial-gradient(circle at 50% 95%, rgba(99,102,241,.14), transparent 36%), #0d0f12; }
+.store-background--3 { background: radial-gradient(circle at 12% 55%, rgba(249,115,22,.13), transparent 30%), radial-gradient(circle at 88% 43%, rgba(236,72,153,.12), transparent 35%), #0d0f12; }
+.store-orb { position: absolute; width: 19rem; height: 19rem; border-radius: 999px; filter: blur(45px); opacity: .13; animation: ambientDrift 8s ease-in-out infinite; }
+.store-orb--one { top: 10%; left: -6rem; background: #10b981; }.store-orb--two { right: -7rem; bottom: 10%; background: #6366f1; animation-delay: -4s; }
+.store-symbol { position:absolute; right: 10%; top: 22%; color: rgba(255,255,255,.08); font-size: 5rem; line-height: 1; transition: opacity 500ms ease, transform 900ms ease; animation: symbolFloat 4s ease-in-out infinite; }
+@keyframes ambientDrift { 0%,100% { transform: translate3d(0,0,0) scale(1); } 50% { transform: translate3d(35px,-20px,0) scale(1.15); } }
+@keyframes symbolFloat { 0%,100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-12px) rotate(12deg); } }
