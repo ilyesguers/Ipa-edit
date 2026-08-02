@@ -96,24 +96,29 @@ export default function ProductsTab() {
       {/* COMPACT HERO — short so products stay above the fold */}
       <section className="rounded-[22px] border border-[#10b981]/20 overflow-hidden relative bg-gradient-to-br from-[#161922] to-[#1f2430]">
         <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#10b981]/40 to-transparent" />
+        {/* Floating gaming emojis — adds life without slowing the UI */}
+        <span className="hero-emoji hero-emoji-1">🎮</span>
+        <span className="hero-emoji hero-emoji-2">⚡</span>
+        <span className="hero-emoji hero-emoji-3">🏆</span>
+        <span className="hero-emoji hero-emoji-4">💎</span>
         <div className="px-4 py-4 relative">
           <div className="flex items-center gap-2 mb-2">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-[#10b981]/25 bg-[#10b981]/10 text-[10px] text-[#10b981] font-black tracking-wide">
               <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
-              {locale === 'en' ? (publicSettings?.ui_welcome_badge_en || t(locale, 'welcomeBadge')) : (publicSettings?.ui_welcome_badge_ar || t(locale, 'welcomeBadge'))}
+              {cleanMarkdown(locale !== 'ar' ? (publicSettings?.ui_welcome_badge_en || t(locale, 'welcomeBadge')) : (publicSettings?.ui_welcome_badge_ar || t(locale, 'welcomeBadge')))}
             </span>
           </div>
           <h2 className="text-white text-[19px] font-black leading-snug font-[Orbitron]">
-            <span className="gradient-text">{cleanMarkdown(locale === 'en' ? (publicSettings?.ui_welcome_title_en || t(locale, 'welcomeTitle')) : (publicSettings?.ui_welcome_title_ar || t(locale, 'welcomeTitle')))}</span>
+            <span className="gradient-text">{cleanMarkdown(locale !== 'ar' ? (publicSettings?.ui_welcome_title_en || t(locale, 'welcomeTitle')) : (publicSettings?.ui_welcome_title_ar || t(locale, 'welcomeTitle')))}</span>
           </h2>
           <p className="text-[#9ca3af] text-[12px] mt-1.5 leading-6 line-clamp-2">
-            {cleanMarkdown(locale === 'en' ? (publicSettings?.ui_welcome_subtitle_en || t(locale, 'welcomeSubtitle')) : (publicSettings?.ui_welcome_subtitle_ar || t(locale, 'welcomeSubtitle')))}
+            {cleanMarkdown(locale !== 'ar' ? (publicSettings?.ui_welcome_subtitle_en || t(locale, 'welcomeSubtitle')) : (publicSettings?.ui_welcome_subtitle_ar || t(locale, 'welcomeSubtitle')))}
           </p>
           <div className="flex flex-wrap gap-1.5 mt-3">
             {highlights.slice(0, 3).map((item, index) => (
               <span key={item.id || index} className="inline-flex items-center gap-1 text-[10px] font-bold rounded-full border border-[#2d3748] bg-[#0d0f12]/60 px-2.5 py-1 text-white">
                 <PremiumIcon name={item.emojiKey || 'rocket'} className="text-[#10b981]" />
-                {cleanMarkdown(locale === 'en' ? (item.textEn || item.textAr) : (item.textAr || item.textEn))}
+                {cleanMarkdown(locale !== 'ar' ? (item.textEn || item.textAr) : (item.textAr || item.textEn))}
               </span>
             ))}
           </div>

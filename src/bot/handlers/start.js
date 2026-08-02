@@ -23,36 +23,36 @@ const buildWelcomeMessage = async (user, lang = 'ar') => {
     .replace(/\{balance\}/g, balance)
     .replace(/\{orders\}/g, orders);
 
+  // Two strongest highlights only — short, scannable, no clutter.
   const highlightLines = highlights
-    .map((item) => `✓ ${locale === 'en' ? item.textEn : item.textAr}`)
+    .slice(0, 2)
+    .map((item) => `• ${locale === 'en' ? item.textEn : item.textAr}`)
     .join('\n');
 
   if (locale === 'en') {
     return {
       ui,
       caption:
-        `<b>${welcome.badge}</b>\n\n` +
-        `Yo <b>${name}</b> 👋\n` +
-        `<b>${ui.botName}</b> — ${welcome.title}\n\n` +
+        `${emojiHtml('rocket')} <b>${welcome.badge}</b>\n\n` +
+        `Hey <b>${name}</b> 👋\n\n` +
+        `${welcome.subtitle}\n\n` +
         `${highlightLines}\n\n` +
         `💰 <b>$${balance}</b> • 🏆 <b>${orders}</b> orders\n\n` +
         `${customMessage ? `${customMessage}\n\n` : ''}` +
-        `<i>${welcome.footer}</i>\n` +
-        `${emojiHtml('rocket')} <b>PLAY NOW</b> and level up!`
+        `<b>Ready? Hit PLAY NOW 👇</b>`
     };
   }
 
   return {
     ui,
     caption:
-      `<b>${welcome.badge}</b>\n\n` +
-      `هلا <b>${name}</b> 👋\n` +
-      `<b>${ui.botName}</b> — ${welcome.title}\n\n` +
+      `${emojiHtml('rocket')} <b>${welcome.badge}</b>\n\n` +
+      `هلا <b>${name}</b> 👋\n\n` +
+      `${welcome.subtitle}\n\n` +
       `${highlightLines}\n\n` +
       `💰 <b>$${balance}</b> • 🏆 <b>${orders}</b> طلب\n\n` +
       `${customMessage ? `${customMessage}\n\n` : ''}` +
-      `<i>${welcome.footer}</i>\n` +
-      `${emojiHtml('rocket')} <b>اضغط PLAY NOW</b> وابدأ فوراً`
+      `<b>جاهز؟ اضغط PLAY NOW 👇</b>`
   };
 };
 
@@ -140,7 +140,12 @@ const startHandler = async (ctx) => {
     await removeRememberedMenu(ctx);
     let menuMessage;
     try {
-      const bannerUrl = `${process.env.BASE_URL}/public/banner.png`;
+      // Custom banner image (set from the Media Manager) falls back to the
+      // default public/banner.png so the welcome always has a hero image.
+      const customBanner = await Settings.get('banner_image_url', '');
+      const bannerUrl = customBanner && !/^https?:/i.test(customBanner)
+        ? `${process.env.BASE_URL}${customBanner.startsWith('/') ? '' : '/'}${customBanner}`
+        : (customBanner || `${process.env.BASE_URL}/public/banner.png`);
       menuMessage = await ctx.replyWithPhoto(
         { url: bannerUrl },
         {

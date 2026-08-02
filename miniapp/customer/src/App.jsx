@@ -5,6 +5,8 @@ import useStore from './store/useStore';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import LoadingScreen from './components/LoadingScreen';
+import LanguagePicker from './components/LanguagePicker';
+import { isRTL } from './i18n';
 
 // Lazy-loaded tabs & sheets — only loaded when actually opened,
 // so the initial bundle stays small and first paint is fast.
@@ -27,7 +29,7 @@ const TAB_COMPONENTS = {
 };
 
 export default function App() {
-  const { login, fetchPublicSettings, isLoading, isAuthenticated, activeTab, locale, showDurationSheet, showCheckout, showBinanceSheet, currentOrder } = useStore();
+  const { login, fetchPublicSettings, isLoading, isAuthenticated, activeTab, locale, showDurationSheet, showCheckout, showBinanceSheet, currentOrder, needsLanguageSelect, showLanguagePicker } = useStore();
   const [showSuccess, setShowSuccess] = useState(false);
   const [successData, setSuccessData] = useState(null);
 
@@ -46,6 +48,20 @@ export default function App() {
       });
     });
 
+    // Anti-black-screen safety: if auth hangs (slow/flaky network), drop the
+    // loading screen and show the store as a guest so the page is never blank.
+    const authTimeout = setTimeout(() => {
+      if (useStore.getState().isLoading) {
+        useStore.setState({
+          user: { firstName: 'Pro Gamer 😎', username: 'gamer', balance: 0, role: 'customer', totalOrders: 0 },
+          isAuthenticated: true,
+          isLoading: false
+        });
+      }
+    }, 8000);
+
+    return () => clearTimeout(authTimeout);
+
     // Telegram theme
     if (tg) {
       try {
@@ -58,9 +74,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const rtl = isRTL(locale);
     document.documentElement.lang = locale;
-    document.documentElement.dir = locale === 'ar' ? 'rtl' : 'ltr';
-    document.body.dir = locale === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.dir = rtl ? 'rtl' : 'ltr';
+    document.body.dir = rtl ? 'rtl' : 'ltr';
   }, [locale]);
 
   useEffect(() => {
@@ -75,7 +92,7 @@ export default function App() {
   const ActiveTab = TAB_COMPONENTS[activeTab] || ProductsTab;
 
   return (
-    <div dir={locale === 'ar' ? 'rtl' : 'ltr'} className="app-shell flex flex-col min-h-screen bg-bg text-white overflow-hidden relative">
+    <div dir={isRTL(locale) ? 'rtl' : 'ltr'} className="app-shell flex flex-col min-h-screen bg-bg text-white overflow-hidden relative">
       {/* Static gradient background — no heavy blur filters (iOS WebKit friendly) */}
       <div className="fixed inset-0 pointer-events-none z-0 bg-gradient-to-b from-[#0d0f12] via-[#11141a] to-[#0d0f12]" />
 
@@ -128,6 +145,11 @@ export default function App() {
           <Suspense fallback={null}><OrderSuccessModal data={successData} onClose={() => { setShowSuccess(false); setSuccessData(null); useStore.setState({ currentOrder: null }); }} /></Suspense>
         )}
       </AnimatePresence>
+
+      {/* Language picker — blocking on the very first visit, re-openable anytime */}
+      {(needsLanguageSelect || showLanguagePicker) && (
+        <LanguagePicker blocking={needsLanguageSelect} />
+      )}
     </div>
   );
 }

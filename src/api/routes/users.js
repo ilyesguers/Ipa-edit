@@ -35,8 +35,9 @@ router.put('/me', async (req, res) => {
   try {
     const updates = {};
     if (req.body.preferredLanguage !== undefined) {
-      const language = String(req.body.preferredLanguage).toLowerCase();
-      if (!['ar', 'en'].includes(language)) {
+      const language = String(req.body.preferredLanguage).toLowerCase().split('-')[0];
+      const { isSupportedLanguage } = require('../../utils/languages');
+      if (!isSupportedLanguage(language)) {
         return res.status(400).json({ success: false, error: 'Unsupported language' });
       }
       updates.preferredLanguage = language;

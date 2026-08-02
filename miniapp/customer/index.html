@@ -20,9 +20,40 @@
     /* Smooth page transitions */
     @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
     .animate-in { animation: fadeInUp 0.4s ease-out; }
+
+    /* ── Anti-black-screen splash ─────────────────────────────────────
+       Shown instantly in the raw HTML (before any JS loads) so Telegram
+       users never see a blank/black page while the bundle downloads.   */
+    #splash {
+      position: fixed; inset: 0; z-index: 9999;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 14px; text-align: center;
+      background: radial-gradient(120% 100% at 50% 0%, #131720 0%, #0b0d12 60%, #07080c 100%);
+      color: #fff; font-family: 'Cairo', 'Inter', sans-serif;
+      padding: 24px;
+    }
+    #splash .logo {
+      font-family: 'Orbitron', 'Cairo', sans-serif; font-weight: 900; font-size: 26px;
+      background: linear-gradient(135deg, #10b981, #3b82f6, #6366f1);
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+      letter-spacing: 1px;
+    }
+    #splash .rocket { font-size: 46px; animation: splashFloat 1.4s ease-in-out infinite; }
+    #splash .bar { width: 140px; height: 4px; border-radius: 99px; background: #1c2230; overflow: hidden; }
+    #splash .bar i { display: block; height: 100%; width: 40%; border-radius: 99px; background: linear-gradient(90deg,#10b981,#3b82f6); animation: splashLoad 1.1s ease-in-out infinite; }
+    #splash p { font-size: 12px; color: #8b93a7; font-weight: 700; }
+    #splash.hidden { opacity: 0; visibility: hidden; transition: opacity .3s ease; }
+    @keyframes splashFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+    @keyframes splashLoad { 0% { transform: translateX(-110%); } 100% { transform: translateX(260%); } }
   </style>
 </head>
 <body>
+  <div id="splash">
+    <div class="rocket">🚀</div>
+    <div class="logo">GAMER STORE</div>
+    <div class="bar"><i></i></div>
+    <p>LOADING LEGEND ZONE...</p>
+  </div>
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
 

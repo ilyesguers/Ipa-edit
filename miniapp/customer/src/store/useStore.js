@@ -3,13 +3,20 @@ import api from '../utils/api';
 import { cachedFetch, invalidateCache } from '../utils/cache';
 import { normalizeLocale } from '../i18n';
 
+// First visit = no saved locale yet → the language picker must appear.
+const SAVED_LOCALE = localStorage.getItem('locale');
+
 const useStore = create((set, get) => ({
   // User
   user: null,
   token: null,
   isLoading: true,
   isAuthenticated: false,
-  locale: normalizeLocale(localStorage.getItem('locale') || 'ar'),
+  locale: normalizeLocale(SAVED_LOCALE || 'ar'),
+
+  // Language selection — appears on the very first visit & via the header.
+  needsLanguageSelect: !SAVED_LOCALE,
+  showLanguagePicker: false,
 
   // Navigation
   activeTab: 'products',
@@ -44,10 +51,12 @@ const useStore = create((set, get) => ({
     set({ token });
   },
   setActiveTab: (tab) => set({ activeTab: tab }),
+  openLanguagePicker: () => set({ showLanguagePicker: true }),
+  closeLanguagePicker: () => set({ showLanguagePicker: false, needsLanguageSelect: false }),
   setLocale: async (nextLocale) => {
     const locale = normalizeLocale(nextLocale);
     localStorage.setItem('locale', locale);
-    set({ locale });
+    set({ locale, needsLanguageSelect: false });
     // Keep bot and mini-app language in sync. This is intentionally best effort
     // so the UI still switches when the API is temporarily unavailable.
     try {
@@ -56,7 +65,7 @@ const useStore = create((set, get) => ({
     } catch (_) {}
     return locale;
   },
-  toggleLocale: () => get().setLocale(get().locale === 'ar' ? 'en' : 'ar'),
+  toggleLocale: () => get().openLanguagePicker(),
 
   fetchPublicSettings: async () => {
     try {

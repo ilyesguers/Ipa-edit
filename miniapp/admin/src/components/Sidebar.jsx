@@ -11,6 +11,7 @@ const NAV = [
   { id: 'users', icon: '👥', label: 'المستخدمون', desc: 'أرصدة ورسائل' },
   { id: 'coupons', icon: '🎟️', label: 'الكوبونات', desc: 'عروض وخصومات' },
   { id: 'broadcast', icon: '📢', label: 'الإذاعة', desc: 'حملات ورسائل' },
+  { id: 'media', icon: '🖼️', label: 'الصور والوسائط', desc: 'تحكم بكل الصور' },
   { id: 'settings', icon: '🎛️', label: 'الإعدادات والتصميم', desc: 'هوية وأزرار' },
 ];
 
