@@ -25,6 +25,7 @@ export const PAGE_PERMISSIONS = {
   users: 'users',
   coupons: 'coupons',
   broadcast: 'broadcast',
+  media: 'settings',
   settings: 'settings',
 };
 

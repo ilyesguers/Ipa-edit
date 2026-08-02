@@ -18,6 +18,7 @@ const Orders = lazy(() => import('./pages/Orders'));
 const Coupons = lazy(() => import('./pages/Coupons'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Broadcast = lazy(() => import('./pages/Broadcast'));
+const Media = lazy(() => import('./pages/Media'));
 
 const PAGES = {
   dashboard: { component: Dashboard, title: 'لوحة التحكم', subtitle: 'نظرة سريعة على الأداء والاختصارات المهمة', icon: '🪄' },
@@ -28,6 +29,7 @@ const PAGES = {
   users: { component: Users, title: 'المستخدمون', subtitle: 'بحث سريع، أرصدة، رسائل، وحظر/فك حظر', icon: '👥' },
   coupons: { component: Coupons, title: 'الكوبونات', subtitle: 'إطلاق خصومات مرنة وعروض مستهدفة', icon: '🎟️' },
   broadcast: { component: Broadcast, title: 'الإذاعة', subtitle: 'إرسال رسائل منسقة للجمهور المناسب', icon: '📢' },
+  media: { component: Media, title: 'الصور والوسائط', subtitle: 'رفع وإدارة والتحكم بكل صور الموقع', icon: '🖼️' },
   settings: { component: Settings, title: 'الإعدادات والتصميم', subtitle: 'إدارة الهوية البصرية والأزرار والنصوص والإعدادات العامة', icon: '🎛️' },
 };
 

@@ -38,4 +38,46 @@ router.post('/keys-file', authMiddleware, adminOnly, multer({ storage: multer.me
   res.json({ success: true, keys, count: keys.length });
 });
 
+// ── Media Library ───────────────────────────────────────────────────────────
+// List every uploaded image (admin only) — used by the Media Manager page.
+// Sorted newest-first so the most recent uploads are always visible on top.
+router.get('/list', authMiddleware, adminOnly, (req, res) => {
+  try {
+    const base = (process.env.BASE_URL || '').replace(/\/$/, '');
+    const files = fs.readdirSync(uploadDir)
+      .filter((name) => /\.(png|jpe?g|webp|gif)$/i.test(name))
+      .map((filename) => {
+        const stat = fs.statSync(path.join(uploadDir, filename));
+        return {
+          filename,
+          url: `${base}/uploads/${filename}`,
+          size: stat.size,
+          modified: stat.mtime
+        };
+      })
+      .sort((a, b) => new Date(b.modified) - new Date(a.modified));
+    res.json({ success: true, data: files });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Delete an uploaded image (admin only). Basename guards against path traversal.
+router.delete('/:filename', authMiddleware, adminOnly, (req, res) => {
+  try {
+    const filename = path.basename(req.params.filename);
+    if (!filename || filename.includes('..') || !/\.(png|jpe?g|webp|gif)$/i.test(filename)) {
+      return res.status(400).json({ success: false, error: 'Invalid filename' });
+    }
+    const file = path.join(uploadDir, filename);
+    if (!fs.existsSync(file)) {
+      return res.status(404).json({ success: false, error: 'File not found' });
+    }
+    fs.unlinkSync(file);
+    res.json({ success: true, message: 'Deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;
