@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
@@ -18,6 +18,8 @@ export default function Products() {
   const [showDurationForm, setShowDurationForm] = useState(false);
   const [featureInput, setFeatureInput] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [media, setMedia] = useState([]);
+  const fileInputRef = useRef(null);
 
   const load = async () => {
     const [pr, gr, cr] = await Promise.all([
@@ -28,6 +30,7 @@ export default function Products() {
     setProducts(pr.data.data || []);
     setGames(gr.data.data || []);
     setCategories(cr.data.data || []);
+    api.get('/upload/list').then((response) => setMedia(response.data.data || [])).catch(() => setMedia([]));
   };
 
   useEffect(() => { load(); }, [filterGame]);
@@ -79,15 +82,24 @@ export default function Products() {
     setShowDurationForm(false);
   };
 
-  const handleLogoUpload = async (e) => {
-    const file = e.target.files?.[0]; if (!file) return;
+  const uploadProductImage = async (file) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return toast.error('اختر ملف صورة فقط');
+    if (file.size > 5 * 1024 * 1024) return toast.error('الحد الأقصى للصورة 5MB');
     setUploading(true);
-    const fd = new FormData(); fd.append('image', file);
-    const r = await api.post('/upload/image', fd);
-    setForm(f => ({ ...f, logo: r.data.url }));
-    setUploading(false);
-    toast.success('✅ تم رفع الصورة');
+    try {
+      const fd = new FormData(); fd.append('image', file);
+      const response = await api.post('/upload/image', fd);
+      const url = response.data.url;
+      setForm((current) => ({ ...current, logo: url }));
+      setMedia((current) => [{ url, filename: url.split('/').pop() }, ...current]);
+      toast.success('✅ تم رفع صورة المنتج واختيارها');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'تعذر رفع الصورة');
+    } finally { setUploading(false); }
   };
+
+  const handleLogoUpload = (e) => uploadProductImage(e.target.files?.[0]);
 
   return (
     <div className="space-y-4">
@@ -170,16 +182,19 @@ export default function Products() {
                   </div>
                 </div>
 
-                {/* Logo Upload */}
-                <div>
-                  <label className="label-admin">صورة المنتج</label>
-                  <div className="flex items-center gap-3 mt-1">
-                    {form.logo && <img src={form.logo} alt="logo" className="w-12 h-12 rounded-xl object-cover" />}
-                    <label className="neon-btn cursor-pointer text-sm">
-                      {uploading ? '⏳ جاري الرفع...' : '📁 رفع صورة'}
-                      <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
-                    </label>
+                {/* Product image control: upload, pick from the media library, or remove. */}
+                <div className="rounded-2xl border border-neon/20 bg-neon/5 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div><label className="label-admin text-white">🖼️ صورة المنتج</label><p className="text-[10px] text-muted mt-0.5">ارفع صورة أو اختر صورة سابقة — تظهر مباشرة للعميل.</p></div>
+                    {form.logo && <button type="button" onClick={() => setForm((current) => ({ ...current, logo: null }))} className="text-xs text-red border border-red/25 rounded-lg px-2 py-1">إزالة</button>}
                   </div>
+                  <div onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); uploadProductImage(e.dataTransfer.files?.[0]); }} className="mt-3 flex items-center gap-3 rounded-xl border border-dashed border-neon/30 bg-bg/60 p-3">
+                    {form.logo ? <img src={form.logo} alt="معاينة صورة المنتج" className="w-16 h-16 rounded-xl object-cover ring-2 ring-neon/40" /> : <div className="w-16 h-16 rounded-xl bg-panel flex items-center justify-center text-2xl">🎮</div>}
+                    <div className="flex-1"><p className="text-xs text-white font-bold">{form.logo ? 'الصورة الحالية جاهزة' : 'لا توجد صورة بعد'}</p><p className="text-[10px] text-muted mt-1">اسحب الصورة هنا أو اضغط زر الرفع · PNG / JPG / WEBP حتى 5MB</p></div>
+                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="neon-btn text-xs px-3 py-2 disabled:opacity-60">{uploading ? '⏳' : '📤 رفع'}</button>
+                    <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleLogoUpload} className="hidden" />
+                  </div>
+                  {media.length > 0 && <div className="mt-3"><p className="text-[10px] text-muted mb-2">أو اختر من الصور المرفوعة</p><div className="flex gap-2 overflow-x-auto pb-1">{media.slice(0, 12).map((image) => <button type="button" key={image.filename} onClick={() => setForm((current) => ({ ...current, logo: image.url }))} className={`shrink-0 w-12 h-12 rounded-xl overflow-hidden border-2 ${form.logo === image.url ? 'border-neon' : 'border-transparent'}`}><img src={image.url} alt="صورة محفوظة" className="w-full h-full object-cover" /></button>)}</div></div>}
                 </div>
 
                 {/* Description */}

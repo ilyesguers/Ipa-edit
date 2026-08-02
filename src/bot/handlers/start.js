@@ -3,7 +3,6 @@ const Settings = require('../../models/Settings');
 const User = require('../../models/User');
 const logger = require('../../utils/logger');
 const { Markup } = require('telegraf');
-const { createCaptcha } = require('../../utils/captcha');
 const { emojiHtml, buttonEmojiId, buttonLabel } = require('../../utils/customEmoji');
 const { removeRememberedMenu, rememberMenu } = require('../../utils/menuMessage');
 const { sendGamerError } = require('../../utils/gamerErrors');
@@ -79,27 +78,7 @@ const startHandler = async (ctx) => {
     }
     const lang = user.preferredLanguage || 'ar';
 
-    // CAPTCHA for new users
-    const isBrandNew = (Date.now() - new Date(user.createdAt).getTime()) < 120000;
-    if (!user.captchaPassed && isBrandNew) {
-      const captcha = createCaptcha(user.telegramId);
-
-      await ctx.reply(
-        `${emojiHtml('shield')} <b>${lang === 'en' ? 'Anti-Bot Check' : 'تحقق سريع - انت انسان؟'}</b>\n\n` +
-        `${lang === 'en'
-          ? `${emojiHtml('target')} Solve this quick math to enter the LEGEND ZONE:`
-          : `${emojiHtml('target')} حل هذي المسألة السريعة عشان تدخل منطقة الأساطير:`}\n\n` +
-        `${emojiHtml('explosion')} <b>${captcha.question}</b> = ?\n\n` +
-        `${lang === 'en'
-          ? `${emojiHtml('rocket')} Just type the number (e.g., 42)`
-          : `${emojiHtml('rocket')} بس اكتب الرقم (مثال: 42)`}\n\n` +
-        `${lang === 'en'
-          ? `${emojiHtml('fire')} You have 3 tries - EZ!`
-          : `${emojiHtml('fire')} عندك 3 محاولات - سهلة!`}`,
-        { parse_mode: 'HTML' }
-      );
-      return;
-    }
+    // Open the main menu immediately: no challenge is placed before navigation.
 
     // Handle referral
     if (ctx.startPayload && ctx.startPayload !== '' && !user.referredBy) {

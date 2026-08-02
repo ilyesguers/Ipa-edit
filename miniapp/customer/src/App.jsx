@@ -32,6 +32,8 @@ export default function App() {
   const { login, fetchPublicSettings, isLoading, isAuthenticated, activeTab, locale, showDurationSheet, showCheckout, showBinanceSheet, currentOrder, needsLanguageSelect, showLanguagePicker } = useStore();
   const [showSuccess, setShowSuccess] = useState(false);
   const [successData, setSuccessData] = useState(null);
+  // A calm, lightweight scene changes every two seconds to make the store feel alive.
+  const [backgroundScene, setBackgroundScene] = useState(0);
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
@@ -81,6 +83,11 @@ export default function App() {
   }, [locale]);
 
   useEffect(() => {
+    const timer = setInterval(() => setBackgroundScene((scene) => (scene + 1) % 4), 2000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
     if (currentOrder && !showBinanceSheet) {
       setSuccessData(currentOrder);
       setShowSuccess(true);
@@ -93,8 +100,12 @@ export default function App() {
 
   return (
     <div dir={isRTL(locale) ? 'rtl' : 'ltr'} className="app-shell flex flex-col min-h-screen bg-bg text-white overflow-hidden relative">
-      {/* Static gradient background — no heavy blur filters (iOS WebKit friendly) */}
-      <div className="fixed inset-0 pointer-events-none z-0 bg-gradient-to-b from-[#0d0f12] via-[#11141a] to-[#0d0f12]" />
+      {/* Decorative background deliberately stays behind all controls and does not block taps. */}
+      <div className={`store-background store-background--${backgroundScene}`} aria-hidden="true">
+        <span className="store-orb store-orb--one" />
+        <span className="store-orb store-orb--two" />
+        <span className="store-symbol">{['✦', '◈', '⚡', '✦'][backgroundScene]}</span>
+      </div>
 
       <Toaster
         position="bottom-center"
