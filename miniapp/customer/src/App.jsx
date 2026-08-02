@@ -32,6 +32,9 @@ export default function App() {
   const { login, fetchPublicSettings, isLoading, isAuthenticated, activeTab, locale, showDurationSheet, showCheckout, showBinanceSheet, currentOrder, needsLanguageSelect, showLanguagePicker } = useStore();
   const [showSuccess, setShowSuccess] = useState(false);
   const [successData, setSuccessData] = useState(null);
+  // A gentle, low-cost color rotation keeps the storefront feeling alive
+  // without loading external background images or interrupting shopping.
+  const [backgroundIndex, setBackgroundIndex] = useState(0);
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
@@ -87,14 +90,21 @@ export default function App() {
     }
   }, [currentOrder]);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setBackgroundIndex((current) => (current + 1) % 4);
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   if (isLoading) return <LoadingScreen />;
 
   const ActiveTab = TAB_COMPONENTS[activeTab] || ProductsTab;
 
   return (
     <div dir={isRTL(locale) ? 'rtl' : 'ltr'} className="app-shell flex flex-col min-h-screen bg-bg text-white overflow-hidden relative">
-      {/* Static gradient background — no heavy blur filters (iOS WebKit friendly) */}
-      <div className="fixed inset-0 pointer-events-none z-0 bg-gradient-to-b from-[#0d0f12] via-[#11141a] to-[#0d0f12]" />
+      {/* Background palette rotates every two seconds; CSS transitions keep it smooth on mobile. */}
+      <div aria-hidden="true" className={`ambient-background ambient-background-${backgroundIndex}`} />
 
       <Toaster
         position="bottom-center"

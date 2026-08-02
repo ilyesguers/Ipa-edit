@@ -79,9 +79,12 @@ const startHandler = async (ctx) => {
     }
     const lang = user.preferredLanguage || 'ar';
 
-    // CAPTCHA for new users
+    // Keep the first bot interaction simple: visitors see the store menu first.
+    // CAPTCHA remains available as an opt-in anti-spam setting for stores that
+    // need it, rather than blocking every new customer before they can browse.
     const isBrandNew = (Date.now() - new Date(user.createdAt).getTime()) < 120000;
-    if (!user.captchaPassed && isBrandNew) {
+    const captchaEnabled = await Settings.get('captcha_enabled', false);
+    if (captchaEnabled && !user.captchaPassed && isBrandNew) {
       const captcha = createCaptcha(user.telegramId);
 
       await ctx.reply(
