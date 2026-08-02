@@ -25,6 +25,8 @@ export default function ProductCard({ product, index = 0, locale = 'ar', onSelec
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05, type: 'spring' }} className="relative group">
       <motion.button type="button" whileTap={{ scale: 0.97 }} whileHover={{ y: -3 }} onClick={selectWithHaptic(onSelect)} className="glow-card w-full gamer-card rounded-[22px] p-4 text-right overflow-hidden relative transition-all hover:shadow-2xl">
+        {product.banner && <img src={product.banner} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover opacity-[0.10] group-hover:opacity-[0.16] transition-opacity" />}
+        {product.banner && <div className="absolute inset-0 bg-gradient-to-r from-[#161922] via-[#161922]/90 to-[#161922]/65" />}
         {isFeatured && <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#10b981] via-[#3b82f6] to-[#6366f1] rounded-t-[22px]" />}
         {isFeatured && <div className="absolute top-2 right-2 bg-gradient-to-r from-[#fbbf24] to-[#f97316] text-black text-[8px] font-black px-2 py-1 rounded-full shadow-lg animate-pulse">FEATURED 🔥</div>}
         <div className="flex items-start gap-3.5">

@@ -64,6 +64,21 @@
   .card { @apply rounded-2xl p-4 border; background: #161922; border-color: #2d3748; }
 }
 
+/* Four lightweight animated backdrops. They deliberately use only gradients,
+   so the visual refresh every 2s is fast even in Telegram's WebView. */
+.ambient-background {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-color: #0d0f12;
+  transition: background 900ms ease-in-out, opacity 900ms ease-in-out;
+}
+.ambient-background-0 { background-image: radial-gradient(circle at 15% 20%, rgba(16,185,129,.16), transparent 42%), radial-gradient(circle at 85% 75%, rgba(59,130,246,.13), transparent 45%), linear-gradient(145deg, #0d0f12, #111827); }
+.ambient-background-1 { background-image: radial-gradient(circle at 84% 16%, rgba(139,92,246,.18), transparent 40%), radial-gradient(circle at 12% 84%, rgba(16,185,129,.11), transparent 45%), linear-gradient(145deg, #0d0f12, #17132a); }
+.ambient-background-2 { background-image: radial-gradient(circle at 50% 0%, rgba(245,158,11,.13), transparent 42%), radial-gradient(circle at 8% 65%, rgba(59,130,246,.15), transparent 45%), linear-gradient(145deg, #0d0f12, #121a2b); }
+.ambient-background-3 { background-image: radial-gradient(circle at 90% 45%, rgba(236,72,153,.13), transparent 42%), radial-gradient(circle at 28% 12%, rgba(16,185,129,.14), transparent 43%), linear-gradient(145deg, #0d0f12, #14201f); }
+
 .app-shell { 
   min-height: 100dvh; 
   position: relative;

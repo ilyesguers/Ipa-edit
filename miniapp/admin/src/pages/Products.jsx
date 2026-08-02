@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
 
-const emptyProduct = { name: '', nameAr: '', game: '', category: '', description: '', features: [], durations: [], isActive: true, isFeatured: false, productType: 'panel_key' };
+const emptyProduct = { name: '', nameAr: '', game: '', category: '', logo: '', banner: '', description: '', features: [], durations: [], isActive: true, isFeatured: false, productType: 'panel_key' };
 const emptyDuration = { name: '', nameAr: '', days: 1, price: '', isActive: true };
 
 export default function Products() {
@@ -79,15 +79,26 @@ export default function Products() {
     setShowDurationForm(false);
   };
 
-  const handleLogoUpload = async (e) => {
-    const file = e.target.files?.[0]; if (!file) return;
-    setUploading(true);
-    const fd = new FormData(); fd.append('image', file);
-    const r = await api.post('/upload/image', fd);
-    setForm(f => ({ ...f, logo: r.data.url }));
-    setUploading(false);
-    toast.success('✅ تم رفع الصورة');
+  const handleImageUpload = async (e, field) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(field);
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const response = await api.post('/upload/image', fd);
+      setForm((current) => ({ ...current, [field]: response.data.url }));
+      toast.success(field === 'banner' ? '✅ تم رفع غلاف المنتج' : '✅ تم رفع صورة المنتج');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'تعذر رفع الصورة');
+    } finally {
+      setUploading(false);
+      // Allows selecting the same file again after replacing/removing it.
+      e.target.value = '';
+    }
   };
+
+  const clearImage = (field) => setForm((current) => ({ ...current, [field]: '' }));
 
   return (
     <div className="space-y-4">
@@ -170,15 +181,35 @@ export default function Products() {
                   </div>
                 </div>
 
-                {/* Logo Upload */}
-                <div>
-                  <label className="label-admin">صورة المنتج</label>
-                  <div className="flex items-center gap-3 mt-1">
-                    {form.logo && <img src={form.logo} alt="logo" className="w-12 h-12 rounded-xl object-cover" />}
-                    <label className="neon-btn cursor-pointer text-sm">
-                      {uploading ? '⏳ جاري الرفع...' : '📁 رفع صورة'}
-                      <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
-                    </label>
+                {/* Image controls — upload, preview, replace, remove, or use an existing URL. */}
+                <div className="rounded-2xl border border-border bg-bg/40 p-3 space-y-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <label className="label-admin">صور المنتج</label>
+                      <p className="text-[11px] text-muted mt-0.5">ارفع صورة البطاقة وغلافًا اختياريًا، أو الصق رابط صورة.</p>
+                    </div>
+                    {(form.logo || form.banner) && <span className="text-[10px] text-green bg-green/10 border border-green/20 rounded-full px-2 py-1">✓ جاهزة للعرض</span>}
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {[['logo', 'صورة البطاقة', 'تظهر بجانب اسم المنتج'], ['banner', 'غلاف المنتج', 'صورة عريضة للعرض']].map(([field, title, hint]) => (
+                      <div key={field} className="rounded-xl border border-border bg-panel p-2.5">
+                        <div className="flex items-center gap-2.5">
+                          {form[field] ? <img src={form[field]} alt={title} className="w-14 h-14 rounded-lg object-cover border border-border" /> : <div className="w-14 h-14 rounded-lg bg-neon/10 border border-dashed border-neon/30 flex items-center justify-center text-xl">🖼️</div>}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-bold text-white">{title}</p>
+                            <p className="text-[10px] text-muted">{hint}</p>
+                            <div className="flex gap-1.5 mt-2">
+                              <label className="cursor-pointer text-xs font-bold text-black bg-neon px-2 py-1.5 rounded-lg">
+                                {uploading === field ? '⏳ رفع...' : form[field] ? '🔄 استبدال' : '📁 رفع'}
+                                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={(e) => handleImageUpload(e, field)} className="hidden" disabled={Boolean(uploading)} />
+                              </label>
+                              {form[field] && <button type="button" onClick={() => clearImage(field)} className="text-xs text-red border border-red/30 px-2 py-1 rounded-lg">إزالة</button>}
+                            </div>
+                          </div>
+                        </div>
+                        <input value={form[field] || ''} onChange={(e) => setForm((current) => ({ ...current, [field]: e.target.value }))} className="input-admin text-xs mt-2" placeholder="https://... رابط الصورة (اختياري)" />
+                      </div>
+                    ))}
                   </div>
                 </div>
 
