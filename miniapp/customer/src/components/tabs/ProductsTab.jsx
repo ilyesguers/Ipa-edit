@@ -134,6 +134,17 @@ export default function ProductsTab() {
   const subtitle = cleanMarkdown(locale === 'ar'
     ? (publicSettings?.ui_welcome_subtitle_ar || t(locale, 'welcomeSubtitle'))
     : (publicSettings?.ui_welcome_subtitle_en || t(locale, 'welcomeSubtitle')));
+  const guide = locale === 'ar'
+    ? [
+      { icon: 'gamepad', title: 'اختر القسم', text: 'ابدأ بالمنصة أو اللعبة المناسبة.' },
+      { icon: 'key', title: 'اختر المنتج', text: 'راجع السعر والخيارات المتاحة.' },
+      { icon: 'wallet', title: 'أكمل الدفع', text: 'ستصلك التفاصيل بعد تأكيد الطلب.' }
+    ]
+    : [
+      { icon: 'gamepad', title: 'Choose a category', text: 'Start with your platform or game.' },
+      { icon: 'key', title: 'Choose a product', text: 'Review the available price and options.' },
+      { icon: 'wallet', title: 'Complete payment', text: 'Your details arrive after confirmation.' }
+    ];
 
   return (
     <div className="store-page space-y-5">
@@ -149,9 +160,20 @@ export default function ProductsTab() {
         </a>
       </section>
 
-      <label className="store-search">
+      <details className="store-guide">
+        <summary><span><PremiumIcon name="help" /> {locale === 'ar' ? 'دليل شراء سريع' : 'Quick buying guide'}</span><PremiumIcon name="down" /></summary>
+        <div className="store-guide__steps">
+          {guide.map((step, index) => <div key={step.title}>
+            <span><b>{index + 1}</b><PremiumIcon name={step.icon} /></span>
+            <strong>{step.title}</strong>
+            <small>{step.text}</small>
+          </div>)}
+        </div>
+      </details>
+
+      <div className="store-search">
         <PremiumIcon name="target" />
-        <input
+        <input aria-label={t(locale, 'searchPlaceholder')}
           type="search"
           inputMode="search"
           enterKeyHint="search"
@@ -159,7 +181,8 @@ export default function ProductsTab() {
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
-      </label>
+        {search && <button type="button" onClick={() => setSearch('')} aria-label={locale === 'ar' ? 'مسح البحث' : 'Clear search'}>×</button>}
+      </div>
 
       {search.trim().length >= 2 && (
         <section className="space-y-3">

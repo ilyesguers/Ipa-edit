@@ -1,189 +1,152 @@
-import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import api from '../utils/api';
+import AdminIcon from '../components/AdminIcon';
+
+const formatMoney = (value) => `$${Number(value || 0).toFixed(2)}`;
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [recentOrders, setRecentOrders] = useState([]);
-  const [chartType, setChartType] = useState('revenue'); // 'revenue' | 'orders'
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
+  const [chartType, setChartType] = useState('revenue');
+  const [updatedAt, setUpdatedAt] = useState(null);
 
-  useEffect(() => {
-    Promise.all([
-      api.get('/admin/stats'),
-      api.get('/admin/recent-orders'),
-    ]).then(([statsRes, ordersRes]) => {
-      setStats(statsRes.data.data);
-      setRecentOrders(ordersRes.data.data?.slice(0, 8) || []);
+  const load = useCallback(async ({ silent = false } = {}) => {
+    if (silent) setRefreshing(true);
+    else setLoading(true);
+    setError('');
+    try {
+      const [statsResponse, ordersResponse] = await Promise.all([
+        api.get('/admin/stats'),
+        api.get('/admin/recent-orders')
+      ]);
+      setStats(statsResponse.data.data || {});
+      setRecentOrders((ordersResponse.data.data || []).slice(0, 6));
+      setUpdatedAt(new Date());
+    } catch (_) {
+      setError('تعذر تحميل الملخص الآن. يمكنك المحاولة مرة أخرى.');
+    } finally {
       setLoading(false);
-    }).catch(() => setLoading(false));
+      setRefreshing(false);
+    }
   }, []);
 
-  const pendingCount = (stats?.pendingOrders || 0) + (stats?.processingOrders || 0);
+  useEffect(() => { load(); }, [load]);
 
-  const STAT_CARDS = stats ? [
-    { title: 'إجمالي المستخدمين', value: stats.totalUsers?.toLocaleString(), icon: '👥', gradient: 'from-blue-500/10 to-blue-600/5', border: 'border-blue-500/20', textColor: 'text-blue-400', sub: `جديد هذا الشهر: ${stats.newUsers || 0}` },
-    { title: 'إجمالي الأرباح', value: `$${stats.totalRevenue?.toFixed(2)}`, icon: '💰', gradient: 'from-green-500/10 to-green-600/5', border: 'border-green-500/20', textColor: 'text-green-400', sub: `اليوم: $${stats.revenueToday?.toFixed(2)}` },
-    { title: 'إجمالي الطلبات', value: stats.totalOrders?.toLocaleString(), icon: '🛒', gradient: 'from-purple-500/10 to-purple-600/5', border: 'border-purple-400/20', textColor: 'text-purple-400', sub: `هذا الشهر: ${stats.ordersMonth || 0} · اليوم: ${stats.ordersToday || 0}` },
-    { title: 'متابعة مطلوبة', value: pendingCount, icon: '⏳', gradient: 'from-orange-500/10 to-red-500/5', border: 'border-orange-400/20', textColor: pendingCount > 0 ? 'text-orange-400' : 'text-green', sub: `${stats.pendingOrders || 0} انتظار · ${stats.processingOrders || 0} معالجة` },
-    { title: 'المخزون الحالي', value: `${stats.activeKeys} / ${stats.totalKeys}`, icon: '🔑', gradient: 'from-amber-500/10 to-amber-600/5', border: 'border-amber-400/20', textColor: 'text-amber-400', sub: 'متاح / إجمالي' },
-    { title: 'طلبات مسترجعة', value: stats.refundedOrders || 0, icon: '💰', gradient: 'from-gold/10 to-amber-500/5', border: 'border-gold/20', textColor: 'text-gold', sub: 'إجمالي الاسترجاعات' },
+  const navigate = (page, query = {}) => {
+    window.dispatchEvent(new CustomEvent('admin-navigate', { detail: { page, query } }));
+  };
+
+  const pendingCount = Number(stats?.pendingOrders || 0) + Number(stats?.processingOrders || 0);
+  const cards = stats ? [
+    { label: 'المستخدمون', value: Number(stats.totalUsers || 0).toLocaleString(), note: `جديد هذا الشهر: ${stats.newUsers || 0}`, icon: 'users', tone: 'blue' },
+    { label: 'إجمالي الأرباح', value: formatMoney(stats.totalRevenue), note: `اليوم: ${formatMoney(stats.revenueToday)}`, icon: 'wallet', tone: 'green' },
+    { label: 'إجمالي الطلبات', value: Number(stats.totalOrders || 0).toLocaleString(), note: `هذا الشهر: ${stats.ordersMonth || 0}`, icon: 'orders', tone: 'violet' },
+    { label: 'تحتاج متابعة', value: pendingCount, note: `${stats.pendingOrders || 0} انتظار · ${stats.processingOrders || 0} معالجة`, icon: 'clock', tone: pendingCount ? 'amber' : 'green', action: () => navigate('orders') },
+    { label: 'المفاتيح المتاحة', value: Number(stats.activeKeys || 0).toLocaleString(), note: `إجمالي المخزون: ${stats.totalKeys || 0}`, icon: 'inventory', tone: 'cyan', action: () => navigate('inventory') },
+    { label: 'الاسترجاعات', value: Number(stats.refundedOrders || 0).toLocaleString(), note: 'إجمالي الطلبات المسترجعة', icon: 'refresh', tone: 'muted', action: () => navigate('orders', { status: 'refunded' }) }
   ] : [];
 
-  // Quick actions
   const quickActions = [
-    { icon: '📦', label: 'إضافة مفاتيح', page: 'inventory', color: 'bg-neon/10 border-neon/20 text-neon' },
-    { icon: '📢', label: 'إذاعة', page: 'broadcast', color: 'bg-blue-500/10 border-blue-500/20 text-blue-400' },
-    { icon: '🎫', label: 'كوبونات', page: 'coupons', color: 'bg-purple-500/10 border-purple-500/20 text-purple-400' },
-    { icon: '⚙️', label: 'الإعدادات', page: 'settings', color: 'bg-amber-500/10 border-amber-500/20 text-amber-400' },
+    { label: 'إضافة مفاتيح', hint: 'تحديث المخزون', icon: 'inventory', page: 'inventory' },
+    { label: 'منتج جديد', hint: 'إضافة عرض', icon: 'product', page: 'products' },
+    { label: 'رسالة جديدة', hint: 'إذاعة للمستخدمين', icon: 'broadcast', page: 'broadcast' },
+    { label: 'إعدادات المتجر', hint: 'هوية وبوت', icon: 'settings', page: 'settings' }
   ];
 
   return (
-    <div className="space-y-5 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between">
+    <div className="admin-dashboard">
+      <section className="admin-dashboard__intro">
         <div>
-          <h2 className="text-xl font-black text-white">الإحصائيات 📊</h2>
-          <p className="text-muted text-xs mt-0.5">نظرة عامة على أداء المتجر</p>
+          <p>نظرة عامة</p>
+          <h2>مرحباً، {stats ? 'هذه أهم الأرقام الآن.' : 'جاري تجهيز الملخص.'}</h2>
+          <small>{updatedAt ? `آخر تحديث: ${updatedAt.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}` : 'يتم تحديث البيانات عند الطلب.'}</small>
         </div>
-        <motion.button whileTap={{ scale: 0.95 }} onClick={() => window.location.reload()} className="neon-btn">🔄 تحديث</motion.button>
-      </div>
+        <button type="button" onClick={() => load({ silent: true })} disabled={refreshing} className="neon-btn inline-flex items-center gap-2"><AdminIcon name="refresh" /> {refreshing ? 'جاري التحديث' : 'تحديث البيانات'}</button>
+      </section>
 
-      {/* Stat Cards with gradient cells */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-        {loading ? Array(6).fill(0).map((_, i) => <div key={i} className="h-28 rounded-2xl skeleton" />) :
-          STAT_CARDS.map((card, i) => <StatCard key={i} {...card} index={i} />)}
-      </div>
+      {error && <div className="admin-dashboard__error"><AdminIcon name="warning" /> <span>{error}</span><button type="button" onClick={() => load()}>إعادة المحاولة</button></div>}
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-4 gap-2">
-        {quickActions.map((action, i) => (
-          <motion.button
-            key={i}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 + i * 0.05 }}
-            whileTap={{ scale: 0.93 }}
-            onClick={() => window.dispatchEvent(new CustomEvent('admin-navigate', { detail: action.page }))}
-            className={`py-3 rounded-xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all ${action.color}`}
-          >
-            <span className="text-lg">{action.icon}</span>
-            <span>{action.label}</span>
-          </motion.button>
+      <section className="admin-stat-grid" aria-label="ملخص الأداء">
+        {loading ? [1, 2, 3, 4, 5, 6].map((item) => <div key={item} className="h-32 rounded-2xl skeleton" />) : cards.map((card) => (
+          <button key={card.label} type="button" onClick={card.action} disabled={!card.action} className={`admin-stat-card tone-${card.tone} ${card.action ? 'is-actionable' : ''}`}>
+            <span className="admin-stat-card__icon"><AdminIcon name={card.icon} /></span>
+            <strong>{card.value}</strong>
+            <span>{card.label}</span>
+            <small>{card.note}</small>
+          </button>
         ))}
-      </div>
+      </section>
 
-      {/* Revenue/Orders Chart with toggle */}
+      <section className="admin-quick-actions" aria-label="اختصارات الإدارة">
+        <div className="admin-section-heading"><div><h3>اختصارات سريعة</h3><p>ابدأ المهمة من مكان واحد.</p></div></div>
+        <div className="admin-quick-actions__grid">
+          {quickActions.map((action) => (
+            <button key={action.page} type="button" onClick={() => navigate(action.page)} className="admin-quick-action">
+              <span><AdminIcon name={action.icon} /></span>
+              <strong>{action.label}</strong>
+              <small>{action.hint}</small>
+              <AdminIcon name="chevronLeft" className="admin-quick-action__arrow" />
+            </button>
+          ))}
+        </div>
+      </section>
+
       {stats?.revenueChart && (
-        <div className="admin-card">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-white text-sm">
-              📈 {chartType === 'revenue' ? 'الأرباح' : 'الطلبات'} - آخر 7 أيام
-            </h3>
-            <div className="flex gap-1 bg-[#0d0f12] rounded-lg p-0.5 border border-border">
-              <button
-                onClick={() => setChartType('revenue')}
-                className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${chartType === 'revenue' ? 'bg-neon/20 text-neon' : 'text-muted'}`}
-              >
-                💰 أرباح
-              </button>
-              <button
-                onClick={() => setChartType('orders')}
-                className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${chartType === 'orders' ? 'bg-purple-500/20 text-purple-400' : 'text-muted'}`}
-              >
-                📦 طلبات
-              </button>
+        <section className="admin-dashboard__chart admin-card">
+          <div className="admin-chart-header">
+            <div><h3>أداء آخر 7 أيام</h3><p>{chartType === 'revenue' ? 'إجمالي الأرباح اليومية' : 'عدد الطلبات اليومية'}</p></div>
+            <div className="admin-segmented-control" role="tablist" aria-label="بيانات الرسم">
+              <button type="button" role="tab" aria-selected={chartType === 'revenue'} className={chartType === 'revenue' ? 'is-active' : ''} onClick={() => setChartType('revenue')}>الأرباح</button>
+              <button type="button" role="tab" aria-selected={chartType === 'orders'} className={chartType === 'orders' ? 'is-active' : ''} onClick={() => setChartType('orders')}>الطلبات</button>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={160}>
+          <ResponsiveContainer width="100%" height={220}>
             {chartType === 'revenue' ? (
               <BarChart data={stats.revenueChart}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1f2430" />
-                <XAxis dataKey="date" tick={{ fill: '#6b7280', fontSize: 10 }} tickFormatter={d => d.slice(5)} />
-                <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} />
-                <Tooltip contentStyle={{ background: '#161922', border: '1px solid #1f2430', borderRadius: '10px', color: '#fff' }} formatter={(v) => [`$${v}`, 'الأرباح']} />
-                <Bar dataKey="revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#252b38" vertical={false} />
+                <XAxis dataKey="date" tick={{ fill: '#8b93a7', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(date) => date.slice(5)} />
+                <YAxis tick={{ fill: '#8b93a7', fontSize: 10 }} axisLine={false} tickLine={false} width={35} />
+                <Tooltip contentStyle={{ background: '#161922', border: '1px solid #2d3748', borderRadius: '10px', color: '#fff' }} formatter={(value) => [formatMoney(value), 'الأرباح']} />
+                <Bar dataKey="revenue" fill="#10b981" radius={[5, 5, 0, 0]} maxBarSize={34} />
               </BarChart>
             ) : (
               <LineChart data={stats.revenueChart}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1f2430" />
-                <XAxis dataKey="date" tick={{ fill: '#6b7280', fontSize: 10 }} tickFormatter={d => d.slice(5)} />
-                <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} />
-                <Tooltip contentStyle={{ background: '#161922', border: '1px solid #1f2430', borderRadius: '10px', color: '#fff' }} formatter={(v) => [v, 'الطلبات']} />
-                <Line type="monotone" dataKey="orders" stroke="#6366f1" strokeWidth={2} dot={{ fill: '#6366f1', r: 3 }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#252b38" vertical={false} />
+                <XAxis dataKey="date" tick={{ fill: '#8b93a7', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(date) => date.slice(5)} />
+                <YAxis tick={{ fill: '#8b93a7', fontSize: 10 }} axisLine={false} tickLine={false} width={35} />
+                <Tooltip contentStyle={{ background: '#161922', border: '1px solid #2d3748', borderRadius: '10px', color: '#fff' }} formatter={(value) => [value, 'الطلبات']} />
+                <Line type="monotone" dataKey="orders" stroke="#60a5fa" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
               </LineChart>
             )}
           </ResponsiveContainer>
-        </div>
+        </section>
       )}
 
-      {/* Monthly Summary */}
-      {stats && (
-        <div className="admin-card">
-          <h3 className="font-bold text-white mb-3 text-sm">📅 ملخص هذا الشهر</h3>
-          <div className="grid grid-cols-3 gap-3 text-center">
-            <div>
-              <p className="text-2xl font-black text-neon">${stats.revenueMonth?.toFixed(2) || '0.00'}</p>
-              <p className="text-[10px] text-muted mt-1">الأرباح</p>
-            </div>
-            <div>
-              <p className="text-2xl font-black text-purple-400">{stats.ordersMonth || 0}</p>
-              <p className="text-[10px] text-muted mt-1">الطلبات</p>
-            </div>
-            <div>
-              <p className="text-2xl font-black text-amber-400">{stats.newUsers || 0}</p>
-              <p className="text-[10px] text-muted mt-1">مستخدم جديد</p>
-            </div>
+      <section className="admin-dashboard__lower-grid">
+        {stats && <div className="admin-month-summary admin-card">
+          <div className="admin-section-heading"><div><h3>ملخص هذا الشهر</h3><p>مؤشرات بسيطة للمراجعة السريعة.</p></div></div>
+          <div className="admin-month-summary__stats">
+            <div><strong>{formatMoney(stats.revenueMonth)}</strong><small>الأرباح</small></div>
+            <div><strong>{stats.ordersMonth || 0}</strong><small>الطلبات</small></div>
+            <div><strong>{stats.newUsers || 0}</strong><small>مستخدمون جدد</small></div>
           </div>
-        </div>
-      )}
+        </div>}
 
-      {/* Recent Orders */}
-      <div className="admin-card">
-        <h3 className="font-bold text-white mb-3 text-sm">🛒 آخر الطلبات</h3>
-        {recentOrders.length === 0 ? (
-          <p className="text-muted text-center py-4 text-sm">لا توجد طلبات</p>
-        ) : (
-          <div className="space-y-2">
-            {recentOrders.map((order, i) => (
-              <motion.div key={order._id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
-                className="flex items-center justify-between py-2 border-b border-border last:border-0 text-sm">
-                <div>
-                  <p className="text-white font-semibold text-xs">{order.productName}</p>
-                  <p className="text-muted text-[10px]">@{order.username || 'N/A'} · {order.durationName}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-neon font-bold text-xs">${order.finalPrice?.toFixed(2)}</p>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold
-                    ${order.status === 'completed' ? 'bg-green/10 text-green' : order.status === 'pending' ? 'bg-warning/10 text-warning' : order.status === 'processing' ? 'bg-neon-blue/10 text-neon-blue' : order.status === 'refunded' ? 'bg-gold/10 text-gold' : 'bg-red/10 text-red'}`}>
-                    {order.status === 'completed' ? 'مكتمل' : order.status === 'pending' ? 'انتظار' : order.status === 'processing' ? 'معالجة' : order.status === 'refunded' ? 'مسترجع' : order.status}
-                  </span>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </div>
+        <div className="admin-recent-orders admin-card">
+          <div className="admin-section-heading"><div><h3>آخر الطلبات</h3><p>أحدث العمليات المسجلة.</p></div><button type="button" onClick={() => navigate('orders')}>كل الطلبات <AdminIcon name="chevronLeft" /></button></div>
+          {recentOrders.length ? <div className="admin-recent-orders__list">
+            {recentOrders.map((order) => <button key={order._id} type="button" onClick={() => navigate('orders', { search: order.orderNumber })} className="admin-recent-order">
+              <span className={`admin-recent-order__status status-${order.status || 'pending'}`} />
+              <span className="min-w-0 flex-1"><strong>{order.productName}</strong><small>{order.username ? `@${order.username}` : order.orderNumber}</small></span>
+              <b>{formatMoney(order.finalPrice)}</b>
+            </button>)}
+          </div> : <div className="admin-empty-inline">لا توجد طلبات حديثة.</div>}
+        </div>
+      </section>
     </div>
-  );
-}
-
-function StatCard({ title, value, icon, gradient, border, textColor, sub, index }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1 }}
-      className={`stat-card border rounded-2xl p-4 relative overflow-hidden bg-gradient-to-br ${gradient} ${border}`}
-    >
-      <div>
-        <div className="flex items-start justify-between mb-2">
-          <span className="text-2xl">{icon}</span>
-        </div>
-        <p className={`text-2xl font-black ${textColor}`}>{value}</p>
-        <p className="text-muted text-xs mt-0.5">{title}</p>
-        <p className="text-[10px] text-muted/70 mt-0.5">{sub}</p>
-      </div>
-    </motion.div>
   );
 }

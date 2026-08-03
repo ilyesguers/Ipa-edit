@@ -5,15 +5,23 @@ import './index.css';
 
 const tg = window.Telegram?.WebApp;
 if (tg) {
-  try { tg.ready(); tg.expand(); tg.setHeaderColor('#0d0f12'); tg.setBackgroundColor('#0d0f12'); } catch (_) {}
+  try {
+    tg.ready();
+    tg.expand();
+    tg.setHeaderColor('#0d0f12');
+    tg.setBackgroundColor('#0d0f12');
+  } catch (_) {}
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>);
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
 
-// Remove the HTML splash once the admin panel owns the screen.
 const removeSplash = () => {
   const splash = document.getElementById('splash');
-  if (splash) { splash.classList.add('hidden'); setTimeout(() => splash.remove(), 350); }
+  if (splash) {
+    splash.classList.add('hidden');
+    window.setTimeout(() => splash.remove(), 180);
+  }
 };
-setTimeout(removeSplash, 600);
-window.addEventListener('load', removeSplash);
+
+window.setTimeout(removeSplash, 40);
+window.addEventListener('load', removeSplash, { once: true });
