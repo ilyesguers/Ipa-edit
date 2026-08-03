@@ -13,6 +13,7 @@ const { helpHandler } = require('./handlers/help');
 const { openAdminPortal } = require('./handlers/admin');
 const { callbackHandler } = require('./handlers/callbacks');
 const { paymentHandler } = require('./handlers/payment');
+const { showLanguagePicker, isLanguageChoiceCallback, botLocale } = require('./handlers/language');
 
   const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim())).filter(Boolean);
 
@@ -163,7 +164,7 @@ const { paymentHandler } = require('./handlers/payment');
               const channelLink = channelUsername
                 ? `https://t.me/${channelUsername}`
                 : (memberStatus ? fallback : '');
-              const isEn = user.preferredLanguage === 'en';
+              const isEn = botLocale(user.preferredLanguage) === 'en';
               return ctx.reply(
                 `${emojiHtml('lock')} <b>${isEn ? 'Join our channel first bro!' : 'اشترك في القناة أولاً يا بطل!'}</b>\n\n` +
                 `${emojiHtml('explosion')} ${isEn ? 'You must join the deals channel to keep playing:' : 'لازم تكون مشترك في قناة العروض عشان تكمل:'}\n\n` +
@@ -183,6 +184,17 @@ const { paymentHandler } = require('./handlers/payment');
             }
           }
         }
+      }
+
+      // First-run gate: until a language is chosen the bot deliberately shows
+      // only the language menu. This also prevents commands or old inline
+      // buttons from exposing a second, confusing interface before setup.
+      const messageText = ctx.message?.text || '';
+      const isStartCommand = /^\/start(?:@\w+)?(?:\s|$)/i.test(messageText);
+      const callbackData = ctx.callbackQuery?.data || '';
+      if (!user.languageSelected && !isStartCommand && !isLanguageChoiceCallback(callbackData)) {
+        if (ctx.callbackQuery) await ctx.answerCbQuery().catch(() => {});
+        return showLanguagePicker(ctx, { firstRun: true, edit: Boolean(ctx.callbackQuery) });
       }
 
       return next();
@@ -210,7 +222,7 @@ const { paymentHandler } = require('./handlers/payment');
   bot.command('admin', (ctx) => openAdminPortal(ctx, 'dashboard'));
   bot.command('shop', async (ctx) => {
     // Redirect to webapp instead of old inline shop
-    const lang = ctx.dbUser?.preferredLanguage || 'ar';
+    const lang = botLocale(ctx.dbUser?.preferredLanguage || 'ar');
     return ctx.reply(
       `${emojiHtml('rocket')} <b>${lang === 'en' ? 'Open the Store for fastest shopping' : 'افتح المتجر للتسوق السريع'}</b>\n\n` +
       `${emojiHtml('fire')} ${lang === 'en' ? 'All products inside the web app now!' : 'كل المنتجات صارت داخل المتجر الإلكتروني!'}`,
@@ -234,7 +246,7 @@ const { paymentHandler } = require('./handlers/payment');
   bot.command('help', helpHandler);
   // /store and /menu — quick webapp link (fixed: old version sent a broken https://{username} link)
   bot.command(['store', 'menu'], async (ctx) => {
-    const lang = ctx.dbUser?.preferredLanguage || 'ar';
+    const lang = botLocale(ctx.dbUser?.preferredLanguage || 'ar');
     const url = `${(process.env.BASE_URL || '').replace(/\/$/, '')}/customer`;
     return ctx.reply(
       `${emojiHtml('rocket')} <b>${lang === 'en' ? 'Open the store' : 'افتح المتجر'}</b>: <code>${url}</code>\n` +
@@ -275,7 +287,7 @@ const { paymentHandler } = require('./handlers/payment');
     const current = await Settings.get('maintenance_mode', false);
     const next = arg === 'on' ? true : arg === 'off' ? false : !current;
     await Settings.set('maintenance_mode', next, ctx.from.id, 'Toggled from bot');
-    const lang = ctx.dbUser?.preferredLanguage || 'ar';
+    const lang = botLocale(ctx.dbUser?.preferredLanguage || 'ar');
     return ctx.reply(
       `${next ? emojiHtml('gear') : emojiHtml('checkmark')} <b>${lang === 'en' ? `Maintenance ${next ? 'ENABLED' : 'DISABLED'}` : `الصيانة ${next ? 'مفعّلة' : 'معطّلة'}`}</b>`,
       { parse_mode: 'HTML' }
@@ -299,7 +311,7 @@ const { paymentHandler } = require('./handlers/payment');
     if (!user) return next();
 
     const { hasActiveCaptcha, verifyCaptcha } = require('../utils/captcha');
-    const lang = user.preferredLanguage || 'ar';
+    const lang = botLocale(user.preferredLanguage || 'ar');
 
     if (!user.captchaPassed && hasActiveCaptcha(user.telegramId)) {
       const text = ctx.message.text.trim();
@@ -336,8 +348,8 @@ const { paymentHandler } = require('./handlers/payment');
     
     // Try to send a gaming-themed error message
     const { sendGamerError, isDbError, notifyAdminsOfError } = require('../utils/gamerErrors');
-    const lang = ctx.dbUser?.preferredLanguage || 
-                 (ctx.from?.language_code?.toLowerCase().startsWith('en') ? 'en' : 'ar');
+    const lang = botLocale(ctx.dbUser?.preferredLanguage ||
+      (ctx.from?.language_code?.toLowerCase().startsWith('en') ? 'en' : 'ar'));
     
     // Determine error type based on the error
     const errorType = isDbError(err) ? 'dbError' : 'generic';

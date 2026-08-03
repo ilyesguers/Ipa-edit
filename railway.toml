@@ -1,6 +1,6 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "npm install && npm run build"
+buildCommand = "npm install --no-audit --no-fund && npm run build"
 watchPatterns = ["src/**", "miniapp/**", "public/**", "package.json"]
 
 [deploy]

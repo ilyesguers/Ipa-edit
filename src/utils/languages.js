@@ -1,7 +1,6 @@
 /**
- * 🌍 GAMER STORE — Supported Languages
- * Single source of truth for the languages available across the store & API.
- * The web store is fully translated; the bot falls back to ar/en for any other.
+ * Languages shared by the Telegram bot, API and customer mini app.
+ * Keep this module dependency-free so it can safely be used by Mongoose schemas.
  */
 const SUPPORTED_LANGUAGES = [
   'ar', 'en', 'fr', 'es', 'de', 'tr', 'ru', 'ur', 'hi', 'id', 'pt', 'zh'
@@ -23,22 +22,39 @@ const LANGUAGE_NAMES = {
 };
 
 const LANGUAGE_FLAGS = {
-  ar: '🇸🇦', en: '🇬🇧', fr: '🇫🇷', es: '🇪🇸', de: '🇩🇪', tr: '🇹🇷',
-  ru: '🇷🇺', ur: '🇵🇰', hi: '🇮🇳', id: '🇮🇩', pt: '🇧🇷', zh: '🇨🇳'
+  ar: '🇸🇦',
+  en: '🇬🇧',
+  fr: '🇫🇷',
+  es: '🇪🇸',
+  de: '🇩🇪',
+  tr: '🇹🇷',
+  ru: '🇷🇺',
+  ur: '🇵🇰',
+  hi: '🇮🇳',
+  id: '🇮🇩',
+  pt: '🇧🇷',
+  zh: '🇨🇳'
 };
 
-const normalizeLanguage = (value) => {
-  const code = String(value || '').toLowerCase().split('-')[0];
-  return SUPPORTED_LANGUAGES.includes(code) ? code : (code === 'pt' ? 'pt' : (SUPPORTED_LANGUAGES.includes(code) ? code : 'ar'));
+const LANGUAGE_OPTIONS = SUPPORTED_LANGUAGES.map((code) => ({
+  code,
+  label: LANGUAGE_NAMES[code],
+  flag: LANGUAGE_FLAGS[code]
+}));
+
+const normalizeLanguage = (value, fallback = 'ar') => {
+  const code = String(value || '').toLowerCase().split('-')[0].trim();
+  return SUPPORTED_LANGUAGES.includes(code) ? code : fallback;
 };
 
 const isSupportedLanguage = (code) =>
-  SUPPORTED_LANGUAGES.includes(String(code || '').toLowerCase());
+  SUPPORTED_LANGUAGES.includes(String(code || '').toLowerCase().split('-')[0].trim());
 
 module.exports = {
   SUPPORTED_LANGUAGES,
   LANGUAGE_NAMES,
   LANGUAGE_FLAGS,
+  LANGUAGE_OPTIONS,
   normalizeLanguage,
   isSupportedLanguage
 };

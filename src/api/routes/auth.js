@@ -59,7 +59,8 @@ router.post('/telegram', async (req, res) => {
         totalSpent: user.totalSpent,
         totalDeposited: user.totalDeposited,
         createdAt: user.createdAt,
-        preferredLanguage: user.preferredLanguage
+        preferredLanguage: user.preferredLanguage,
+        languageSelected: Boolean(user.languageSelected)
       }
     });
   } catch (err) {
@@ -87,7 +88,8 @@ router.get('/me', require('../../middlewares/auth').authMiddleware, async (req, 
       totalSpent: user.totalSpent,
       totalDeposited: user.totalDeposited,
       createdAt: user.createdAt,
-      preferredLanguage: user.preferredLanguage
+      preferredLanguage: user.preferredLanguage,
+      languageSelected: Boolean(user.languageSelected)
     }
   });
 });

@@ -6,60 +6,56 @@ const { Markup } = require('telegraf');
 const { emojiHtml, buttonEmojiId, buttonLabel } = require('../../utils/customEmoji');
 const { removeRememberedMenu, rememberMenu } = require('../../utils/menuMessage');
 const { sendGamerError } = require('../../utils/gamerErrors');
+const { botLocale, showLanguagePicker } = require('./language');
 
-const buildWelcomeMessage = async (user, lang = 'ar') => {
+const cleanBotText = (value = '') => String(value)
+  .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\uFE0F\u200D]/gu, '')
+  .replace(/\s{2,}/g, ' ')
+  .trim();
+
+const escapeHtml = (value = '') => cleanBotText(value)
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;');
+
+const buildWelcomeMessage = async (user, language = 'ar') => {
   const ui = await getUiSettings();
-  const locale = lang === 'en' ? 'en' : 'ar';
-  const name = user.firstName || (locale === 'en' ? 'Pro Gamer' : 'يا أسطورة');
+  const locale = botLocale(language);
+  const name = cleanBotText(user.firstName || (locale === 'en' ? 'there' : 'بك'));
   const welcome = ui.welcome[locale];
-  const highlights = ui.highlights.slice(0, 4);
+  const highlights = ui.highlights.slice(0, 2);
   const balance = Number(user.balance || 0).toFixed(2);
   const orders = Number(user.totalOrders || 0);
-
-  // The welcome_message setting supports {name}, {balance}, {orders} placeholders
-  const customMessage = (ui.welcomeMessage || '').trim()
+  const customMessage = String(ui.welcomeMessage || '').trim()
     .replace(/\{name\}/g, name)
     .replace(/\{balance\}/g, balance)
     .replace(/\{orders\}/g, orders);
-
-  // Two strongest highlights only — short, scannable, no clutter.
   const highlightLines = highlights
-    .slice(0, 2)
-    .map((item) => `• ${locale === 'en' ? item.textEn : item.textAr}`)
+    .map((item) => `• ${escapeHtml(locale === 'en' ? item.textEn : item.textAr)}`)
     .join('\n');
 
-  if (locale === 'en') {
-    return {
-      ui,
-      caption:
-        `${emojiHtml('rocket')} <b>${welcome.badge}</b>\n\n` +
-        `Hey <b>${name}</b> 👋\n\n` +
-        `${welcome.subtitle}\n\n` +
-        `${highlightLines}\n\n` +
-        `💰 <b>$${balance}</b> • 🏆 <b>${orders}</b> orders\n\n` +
-        `${customMessage ? `${customMessage}\n\n` : ''}` +
-        `<b>Ready? Hit PLAY NOW 👇</b>`
-    };
-  }
-
-  return {
-    ui,
-    caption:
-      `${emojiHtml('rocket')} <b>${welcome.badge}</b>\n\n` +
-      `هلا <b>${name}</b> 👋\n\n` +
-      `${welcome.subtitle}\n\n` +
+  const caption = locale === 'en'
+    ? `${emojiHtml('gamepad')} <b>${escapeHtml(welcome.title)}</b>\n\n` +
+      `Welcome, <b>${escapeHtml(name)}</b>.\n${escapeHtml(welcome.subtitle)}\n\n` +
       `${highlightLines}\n\n` +
-      `💰 <b>$${balance}</b> • 🏆 <b>${orders}</b> طلب\n\n` +
-      `${customMessage ? `${customMessage}\n\n` : ''}` +
-      `<b>جاهز؟ اضغط PLAY NOW 👇</b>`
-  };
+      `<b>Balance:</b> $${balance} · <b>Orders:</b> ${orders}\n` +
+      `${customMessage ? `\n${escapeHtml(customMessage)}\n` : ''}` +
+      `\nChoose “Open Store” below to start.`
+    : `${emojiHtml('gamepad')} <b>${escapeHtml(welcome.title)}</b>\n\n` +
+      `أهلاً <b>${escapeHtml(name)}</b>.\n${escapeHtml(welcome.subtitle)}\n\n` +
+      `${highlightLines}\n\n` +
+      `<b>الرصيد:</b> $${balance} · <b>الطلبات:</b> ${orders}\n` +
+      `${customMessage ? `\n${escapeHtml(customMessage)}\n` : ''}` +
+      `\nاختر «فتح المتجر» بالأسفل للبدء.`;
+
+  return { ui, caption };
 };
 
-const mainKeyboard = async (lang = 'ar', isAdmin = false) => {
+const mainKeyboard = async (language = 'ar', isAdmin = false) => {
   const ui = await getUiSettings();
   return buildBotInlineKeyboard({
     Markup,
-    lang,
+    lang: botLocale(language),
     isAdmin,
     quickLinks: ui.quickLinks,
     supportUsername: ui.supportUsername,
@@ -69,6 +65,56 @@ const mainKeyboard = async (lang = 'ar', isAdmin = false) => {
   });
 };
 
+const handleReferral = async (ctx, user, language) => {
+  if (!ctx.startPayload || user.referredBy) return;
+  const refId = Number.parseInt(String(ctx.startPayload).replace(/^ref_/, ''), 10);
+  if (!refId || refId === user.telegramId) return;
+
+  const referrer = await User.findOne({ telegramId: refId });
+  if (!referrer) return;
+
+  user.referredBy = refId;
+  await user.save();
+  referrer.referralCount += 1;
+  const bonus = await Settings.get('referral_bonus', 0.5);
+  if (bonus > 0) await referrer.addBalance(bonus, `مكافأة إحالة: ${user.firstName}`);
+
+  const isEnglish = botLocale(language) === 'en';
+  await ctx.telegram.sendMessage(
+    refId,
+    isEnglish
+      ? `${emojiHtml('trophy')} A new user joined through your link. $${bonus} was added to your balance.`
+      : `${emojiHtml('trophy')} انضم مستخدم جديد من رابطك. تمت إضافة $${bonus} إلى رصيدك.`
+  ).catch(() => {});
+  logger.info(`Referral: ${user.telegramId} referred by ${refId}`);
+};
+
+const notifyNewUser = async (ctx, user, language) => {
+  const adminIds = (process.env.ADMIN_IDS || '').split(',').map((id) => Number.parseInt(id.trim(), 10)).filter(Boolean);
+  const isNewUser = Date.now() - new Date(user.createdAt).getTime() < 60_000;
+  if (!isNewUser) return;
+
+  const isEnglish = botLocale(language) === 'en';
+  for (const adminId of adminIds) {
+    await ctx.telegram.sendMessage(
+      adminId,
+      `${emojiHtml('users')} <b>${isEnglish ? 'New user' : 'مستخدم جديد'}</b>\n\n` +
+      `${escapeHtml(user.fullName)}\n` +
+      `ID: <code>${user.telegramId}</code>`,
+      {
+        parse_mode: 'HTML',
+        ...Markup.inlineKeyboard([[
+          {
+            text: buttonLabel('users', isEnglish ? 'View user' : 'عرض المستخدم'),
+            web_app: { url: `${process.env.BASE_URL}/admin#users?search=${user.telegramId}` },
+            ...(buttonEmojiId('users') ? { icon_custom_emoji_id: buttonEmojiId('users') } : {})
+          }
+        ]])
+      }
+    ).catch(() => {});
+  }
+};
+
 const startHandler = async (ctx) => {
   try {
     const user = ctx.dbUser;
@@ -76,101 +122,40 @@ const startHandler = async (ctx) => {
       logger.error('Start handler: ctx.dbUser is undefined - possible DB connection issue');
       return sendGamerError(ctx, 'dbError');
     }
-    const lang = user.preferredLanguage || 'ar';
 
-    // Open the main menu immediately: no challenge is placed before navigation.
+    const language = user.preferredLanguage || 'ar';
+    // Preserve referral payloads even when the first visible bot screen is
+    // the language gate. This sends no extra message to the new visitor.
+    await handleReferral(ctx, user, language);
 
-    // Handle referral
-    if (ctx.startPayload && ctx.startPayload !== '' && !user.referredBy) {
-      const payload = ctx.startPayload;
-      let refId = null;
-
-      if (payload.startsWith('ref_')) {
-        refId = parseInt(payload.replace('ref_', ''));
-      } else {
-        refId = parseInt(payload);
-      }
-
-      if (refId && refId !== user.telegramId) {
-        const referrer = await User.findOne({ telegramId: refId });
-        if (referrer) {
-          user.referredBy = refId;
-          await user.save();
-          referrer.referralCount += 1;
-          const bonus = await Settings.get('referral_bonus', 0.5);
-          if (bonus > 0) {
-            await referrer.addBalance(bonus, `مكافأة إحالة: ${user.firstName}`);
-          }
-          await referrer.save();
-
-          await ctx.telegram.sendMessage(refId,
-            `${emojiHtml('crown')} ${lang === 'en' ? 'New teammate joined!' : 'واحد جديد انضم عن طريقك!'}\n` +
-            `${emojiHtml('gem')} +$${bonus} ${lang === 'en' ? 'Added - Keep grinding!' : 'انضافت لرصيدك - استمر!'}`
-          ).catch(() => {});
-
-          logger.info(`Referral: ${user.telegramId} referred by ${refId}`);
-        }
-      }
+    // A new visitor sees only the language choices. No banner, menu or other
+    // controls are rendered until they make an explicit selection.
+    if (!user.languageSelected) {
+      await removeRememberedMenu(ctx);
+      return showLanguagePicker(ctx, { firstRun: true });
     }
 
-    const { ui, caption } = await buildWelcomeMessage(user, lang);
-    const inlineKeyboard = await mainKeyboard(lang, ctx.isAdmin);
-
+    const { caption } = await buildWelcomeMessage(user, language);
+    const inlineKeyboard = await mainKeyboard(language, ctx.isAdmin);
     await removeRememberedMenu(ctx);
+
     let menuMessage;
     try {
-      // Custom banner image (set from the Media Manager) falls back to the
-      // default public/banner.png so the welcome always has a hero image.
       const customBanner = await Settings.get('banner_image_url', '');
+      const baseUrl = (process.env.BASE_URL || '').replace(/\/$/, '');
       const bannerUrl = customBanner && !/^https?:/i.test(customBanner)
-        ? `${process.env.BASE_URL}${customBanner.startsWith('/') ? '' : '/'}${customBanner}`
-        : (customBanner || `${process.env.BASE_URL}/public/banner.png`);
+        ? `${baseUrl}${customBanner.startsWith('/') ? '' : '/'}${customBanner}`
+        : (customBanner || `${baseUrl}/public/banner.png`);
       menuMessage = await ctx.replyWithPhoto(
         { url: bannerUrl },
-        {
-          caption,
-          parse_mode: 'HTML',
-          ...inlineKeyboard
-        }
+        { caption, parse_mode: 'HTML', ...inlineKeyboard }
       );
     } catch (err) {
       logger.debug(`Banner failed, sending text: ${err.message}`);
-      menuMessage = await ctx.reply(caption, {
-        parse_mode: 'HTML',
-        ...inlineKeyboard
-      });
+      menuMessage = await ctx.reply(caption, { parse_mode: 'HTML', ...inlineKeyboard });
     }
     rememberMenu(ctx, menuMessage);
-
-    // Admin notification for new users only
-    const adminIds = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim())).filter(Boolean);
-    const isNewUser = (Date.now() - new Date(user.createdAt).getTime()) < 60000;
-
-    if (isNewUser) {
-        for (const adminId of adminIds) {
-          await ctx.telegram.sendMessage(
-            adminId,
-            `${emojiHtml('fire')} <b>${lang === 'en' ? 'New Gamer Joined' : 'جيمر جديد دخل'}</b>\n\n` +
-            `${emojiHtml('crown')} ${user.fullName}\n` +
-            `${emojiHtml('target')} ID: <code>${user.telegramId}</code>\n` +
-            `${user.username ? `${emojiHtml('fire')} @${user.username}\n` : ''}` +
-            `${user.referredBy ? `${emojiHtml('rocket')} Ref: <code>${user.referredBy}</code>\n` : ''}` +
-            `${emojiHtml('bolt')} ${new Date().toLocaleString('ar-SA')}`,
-            {
-              parse_mode: 'HTML',
-              ...Markup.inlineKeyboard([
-                [{
-                  text: buttonLabel('crown', lang === 'en' ? 'View User' : 'شوف اليوزر'),
-                  web_app: { url: `${process.env.BASE_URL}/admin#users?search=${user.telegramId}` },
-                  style: 'primary',
-                  icon_custom_emoji_id: buttonEmojiId('crown')
-                }]
-              ])
-            }
-          ).catch(() => {});
-        }
-    }
-
+    await notifyNewUser(ctx, user, language);
   } catch (err) {
     logger.error('Start handler error:', err);
     const { isDbError, notifyAdminsOfError } = require('../../utils/gamerErrors');

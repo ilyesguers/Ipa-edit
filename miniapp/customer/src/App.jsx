@@ -1,5 +1,4 @@
 import React, { lazy, Suspense, useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
 import useStore from './store/useStore';
 import Header from './components/Header';
@@ -8,8 +7,8 @@ import LoadingScreen from './components/LoadingScreen';
 import LanguagePicker from './components/LanguagePicker';
 import { isRTL } from './i18n';
 
-// Lazy-loaded tabs & sheets — only loaded when actually opened,
-// so the initial bundle stays small and first paint is fast.
+// Tabs and sheets stay code-split so the first usable screen only downloads
+// what it needs. This matters in Telegram and on Railway cold connections.
 const ProductsTab = lazy(() => import('./components/tabs/ProductsTab'));
 const MyKeysTab = lazy(() => import('./components/tabs/MyKeysTab'));
 const HistoryTab = lazy(() => import('./components/tabs/HistoryTab'));
@@ -25,55 +24,65 @@ const TAB_COMPONENTS = {
   keys: MyKeysTab,
   history: HistoryTab,
   profile: ProfileTab,
-  support: SupportTab,
+  support: SupportTab
+};
+
+const GuestUser = {
+  firstName: 'Guest',
+  username: 'guest',
+  balance: 0,
+  role: 'customer',
+  totalOrders: 0
 };
 
 export default function App() {
-  const { login, fetchPublicSettings, isLoading, isAuthenticated, activeTab, locale, showDurationSheet, showCheckout, showBinanceSheet, currentOrder, needsLanguageSelect, showLanguagePicker } = useStore();
+  const {
+    login,
+    fetchPublicSettings,
+    isLoading,
+    activeTab,
+    locale,
+    showDurationSheet,
+    showCheckout,
+    showBinanceSheet,
+    currentOrder,
+    needsLanguageSelect,
+    showLanguagePicker
+  } = useStore();
   const [showSuccess, setShowSuccess] = useState(false);
   const [successData, setSuccessData] = useState(null);
-  // A calm, lightweight scene changes every two seconds to make the store feel alive.
-  const [backgroundScene, setBackgroundScene] = useState(0);
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
     const initData = tg?.initData || '';
 
-    fetchPublicSettings().catch(() => {});
-
-    // Auto-login with gamer fallback
-    login(initData).catch(() => {
-      useStore.setState({
-        user: { firstName: 'Pro Gamer 😎', username: 'gamer', balance: 0, role: 'customer', totalOrders: 0 },
-        isAuthenticated: true,
-        isLoading: false
-      });
-    });
-
-    // Anti-black-screen safety: if auth hangs (slow/flaky network), drop the
-    // loading screen and show the store as a guest so the page is never blank.
-    const authTimeout = setTimeout(() => {
-      if (useStore.getState().isLoading) {
-        useStore.setState({
-          user: { firstName: 'Pro Gamer 😎', username: 'gamer', balance: 0, role: 'customer', totalOrders: 0 },
-          isAuthenticated: true,
-          isLoading: false
-        });
-      }
-    }, 8000);
-
-    return () => clearTimeout(authTimeout);
-
-    // Telegram theme
     if (tg) {
       try {
         tg.ready();
         tg.expand();
         tg.setHeaderColor('#0d0f12');
         tg.setBackgroundColor('#0d0f12');
-      } catch {}
+      } catch (_) {}
     }
-  }, []);
+
+    // Settings and auth start in parallel. The language gate remains the only
+    // visible screen while this happens, rather than rendering the store under
+    // an overlay and wasting work on product cards.
+    fetchPublicSettings().catch(() => {});
+    login(initData).catch(() => {
+      useStore.setState({ user: GuestUser, isAuthenticated: true, isLoading: false });
+    });
+
+    // Never leave a user at a loading screen when a slow Railway connection
+    // takes too long. They can still browse as a guest and retry actions later.
+    const authTimeout = window.setTimeout(() => {
+      if (useStore.getState().isLoading) {
+        useStore.setState({ user: GuestUser, isAuthenticated: true, isLoading: false });
+      }
+    }, 8_000);
+
+    return () => window.clearTimeout(authTimeout);
+  }, [fetchPublicSettings, login]);
 
   useEffect(() => {
     const rtl = isRTL(locale);
@@ -83,84 +92,65 @@ export default function App() {
   }, [locale]);
 
   useEffect(() => {
-    const timer = setInterval(() => setBackgroundScene((scene) => (scene + 1) % 4), 2000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
     if (currentOrder && !showBinanceSheet) {
       setSuccessData(currentOrder);
       setShowSuccess(true);
     }
-  }, [currentOrder]);
+  }, [currentOrder, showBinanceSheet]);
 
+  // This must stay before LoadingScreen and the shell. On first use the
+  // language picker is literally the only rendered application interface.
+  if (needsLanguageSelect) return <LanguagePicker blocking />;
   if (isLoading) return <LoadingScreen />;
 
   const ActiveTab = TAB_COMPONENTS[activeTab] || ProductsTab;
 
   return (
-    <div dir={isRTL(locale) ? 'rtl' : 'ltr'} className="app-shell flex flex-col min-h-screen bg-bg text-white overflow-hidden relative">
-      {/* Decorative background deliberately stays behind all controls and does not block taps. */}
-      <div className={`store-background store-background--${backgroundScene}`} aria-hidden="true">
-        <span className="store-orb store-orb--one" />
-        <span className="store-orb store-orb--two" />
-        <span className="store-symbol">{['✦', '◈', '⚡', '✦'][backgroundScene]}</span>
-      </div>
-
+    <div dir={isRTL(locale) ? 'rtl' : 'ltr'} className="app-shell flex min-h-screen flex-col bg-bg text-white">
       <Toaster
         position="bottom-center"
-        gutter={12}
+        gutter={10}
         toastOptions={{
-          style: { background: '#161922', color: '#fff', border: '1px solid rgba(16,185,129,0.2)', fontFamily: 'Cairo', borderRadius: '14px', fontSize: '13px', boxShadow: '0 8px 24px rgba(0,0,0,0.45)', padding: '10px 16px', marginBottom: 'env(safe-area-inset-bottom)' },
-          success: { iconTheme: { primary: '#10b981', secondary: '#000' } },
-          error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
+          style: {
+            background: '#161922',
+            color: '#fff',
+            border: '1px solid rgba(16,185,129,0.2)',
+            fontFamily: 'Cairo',
+            borderRadius: '12px',
+            fontSize: '13px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+            padding: '10px 14px',
+            marginBottom: 'env(safe-area-inset-bottom)'
+          },
           duration: 2500
         }}
       />
 
-      <div className="relative z-10 flex flex-col min-h-screen">
-        <Header />
+      <Header />
+      <main className="app-content flex-1 overflow-y-auto">
+        <Suspense fallback={<div className="p-4 space-y-3">{[1, 2, 3].map((item) => <div key={item} className="h-24 rounded-2xl skeleton" />)}</div>}>
+          <ActiveTab />
+        </Suspense>
+      </main>
+      <BottomNav />
 
-        <main className="app-content flex-1 overflow-y-auto">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15, ease: 'easeOut' }}
-              className="h-full"
-            >
-              <Suspense fallback={<div className="p-4 space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-24 rounded-2xl skeleton" />)}</div>}>
-                <ActiveTab />
-              </Suspense>
-            </motion.div>
-          </AnimatePresence>
-        </main>
-
-        <BottomNav />
-      </div>
-
-      {/* Overlays (lazy) */}
-      <AnimatePresence>
-        {showDurationSheet && (
-          <Suspense fallback={null}><DurationSheet /></Suspense>
-        )}
-        {showCheckout && (
-          <Suspense fallback={null}><CheckoutSheet /></Suspense>
-        )}
-        {showBinanceSheet && (
-          <Suspense fallback={null}><BinancePaySheet /></Suspense>
-        )}
-        {showSuccess && (
-          <Suspense fallback={null}><OrderSuccessModal data={successData} onClose={() => { setShowSuccess(false); setSuccessData(null); useStore.setState({ currentOrder: null }); }} /></Suspense>
-        )}
-      </AnimatePresence>
-
-      {/* Language picker — blocking on the very first visit, re-openable anytime */}
-      {(needsLanguageSelect || showLanguagePicker) && (
-        <LanguagePicker blocking={needsLanguageSelect} />
+      {showDurationSheet && <Suspense fallback={null}><DurationSheet /></Suspense>}
+      {showCheckout && <Suspense fallback={null}><CheckoutSheet /></Suspense>}
+      {showBinanceSheet && <Suspense fallback={null}><BinancePaySheet /></Suspense>}
+      {showSuccess && (
+        <Suspense fallback={null}>
+          <OrderSuccessModal
+            data={successData}
+            onClose={() => {
+              setShowSuccess(false);
+              setSuccessData(null);
+              useStore.setState({ currentOrder: null });
+            }}
+          />
+        </Suspense>
       )}
+
+      {showLanguagePicker && <LanguagePicker />}
     </div>
   );
 }

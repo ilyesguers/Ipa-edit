@@ -1,16 +1,57 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { fireConfetti } from './confetti';
 import useStore from '../store/useStore';
-import { t } from '../i18n';
+import { cleanDisplayText, t } from '../i18n';
 import PremiumIcon from './PremiumIcon';
 import { haptic } from '../utils/haptic';
 
 export default function OrderSuccessModal({ data, onClose }) {
-  const { locale } = useStore(); const [copied, setCopied] = useState(null); const [copiedAll, setCopiedAll] = useState(false); const canvasRef = useRef(null); const keys = data?.keys || [];
-  useEffect(() => { fireConfetti(canvasRef.current); haptic.success(); if (navigator.vibrate) navigator.vibrate([100, 50, 100]); }, []);
-  const copy = (key, index) => navigator.clipboard.writeText(key).then(() => { haptic.light(); setCopied(index); toast.success(t(locale, 'toastCopied')); setTimeout(() => setCopied(null), 1800); });
-  const copyAll = useCallback(() => navigator.clipboard.writeText(keys.join('\n')).then(() => { haptic.light(); setCopiedAll(true); toast.success(`${t(locale, 'copied')} ${keys.length}`); setTimeout(() => setCopiedAll(false), 2200); }), [keys, locale]);
-  return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4"><canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[101]" style={{ width: '100%', height: '100%' }} /><motion.div initial={{ scale: 0.5 }} animate={{ scale: 1 }} exit={{ scale: 0.8 }} className="w-full max-w-sm bg-[#161922] rounded-3xl overflow-hidden border border-neon/20 relative z-[102]"><div className="bg-gradient-to-b from-neon/10 to-transparent p-6 text-center"><PremiumIcon name="celebration" size="3.7rem" className="text-neon mb-3" /><h2 className="text-2xl font-black text-white">{t(locale, 'purchaseSuccess')}</h2><p className="text-neon text-sm mt-1 inline-flex items-center gap-1"><PremiumIcon name="bolt" /> {t(locale, 'instantDelivery')}</p></div><div className="px-4 pb-4 space-y-3"><div className="flex items-center justify-between"><p className="text-sm font-bold text-muted">{t(locale, 'yourKeys')} ({keys.length})</p>{keys.length > 1 && <button type="button" onClick={copyAll} className="text-xs px-3 py-1.5 rounded-lg font-bold text-neon-blue border border-neon-blue/30">{copiedAll ? t(locale, 'copied') : t(locale, 'copyAll')}</button>}</div>{keys.map((key, index) => <motion.div key={index} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="bg-[#161922] border border-border rounded-xl p-3 flex items-center gap-2"><p className="flex-1 font-mono text-sm text-neon break-all">{key}</p><button type="button" onClick={() => copy(key, index)} className="w-11 h-11 rounded-lg border border-neon/30 text-neon flex items-center justify-center">{copied === index ? <PremiumIcon name="check" /> : <PremiumIcon name="copy" />}</button></motion.div>)}<div className="text-center space-y-1 pt-2"><p className="text-xs text-muted">{data?.order?.productName} — {data?.order?.durationName}</p><p className="text-xs text-muted">{t(locale, 'orderNumber')}: <code className="text-white/70">{data?.order?.orderNumber}</code></p></div><button type="button" onClick={onClose} className="w-full py-3 rounded-2xl font-black text-black bg-neon mt-2">{t(locale, 'thankYou')}</button></div></motion.div></motion.div>;
+  const { locale } = useStore();
+  const [copied, setCopied] = useState(null);
+  const [copiedAll, setCopiedAll] = useState(false);
+  const keys = data?.keys || [];
+
+  useEffect(() => { haptic.success(); }, []);
+
+  const copy = (key, index) => navigator.clipboard.writeText(key).then(() => {
+    haptic.light();
+    setCopied(index);
+    toast.success(t(locale, 'toastCopied'));
+    window.setTimeout(() => setCopied(null), 1800);
+  });
+
+  const copyAll = useCallback(() => navigator.clipboard.writeText(keys.join('\n')).then(() => {
+    haptic.light();
+    setCopiedAll(true);
+    toast.success(t(locale, 'copied'));
+    window.setTimeout(() => setCopiedAll(false), 1800);
+  }), [keys, locale]);
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4" role="dialog" aria-modal="true" aria-label={t(locale, 'purchaseSuccess')}>
+      <section className="w-full max-w-sm overflow-hidden rounded-3xl border border-[#10b981]/30 bg-[#161922]">
+        <header className="p-5 text-center border-b border-[#2d3748]">
+          <PremiumIcon name="checkmark" size="2rem" className="text-[#10b981]" />
+          <h2 className="mt-2 text-xl font-black text-white">{t(locale, 'purchaseSuccess')}</h2>
+          <p className="m-0 mt-1 text-xs text-[#9ca3af]">{t(locale, 'instantDelivery')}</p>
+        </header>
+        <div className="p-4 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <strong className="text-sm text-white">{t(locale, 'yourKeys')} ({keys.length})</strong>
+            {keys.length > 1 && <button type="button" onClick={copyAll} className="min-h-0 rounded-lg border border-[#10b981]/30 px-3 py-1.5 text-xs font-bold text-[#6ee7b7]">{copiedAll ? t(locale, 'copied') : t(locale, 'copyAll')}</button>}
+          </div>
+          {keys.map((key, index) => (
+            <div key={`${key}-${index}`} className="flex items-center gap-2 rounded-xl border border-[#2d3748] bg-[#11141a] p-2.5">
+              <code className="min-w-0 flex-1 break-all text-xs text-[#d1fae5]">{key}</code>
+              <button type="button" onClick={() => copy(key, index)} className="w-10 h-10 min-h-0 rounded-lg border border-[#10b981]/25 text-[#6ee7b7]" aria-label={t(locale, 'copyAll')}>
+                <PremiumIcon name={copied === index ? 'checkmark' : 'copy'} />
+              </button>
+            </div>
+          ))}
+          <p className="m-0 text-center text-xs text-[#9ca3af]">{cleanDisplayText(data?.order?.productName)} · {cleanDisplayText(data?.order?.durationName)}</p>
+          <button type="button" onClick={onClose} className="w-full rounded-xl bg-[#10b981] py-3 font-black text-[#06110b]">{t(locale, 'thankYou')}</button>
+        </div>
+      </section>
+    </div>
+  );
 }

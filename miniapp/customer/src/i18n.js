@@ -473,20 +473,29 @@ export const normalizeLocale = (value) => {
 
 export const isRTL = (locale) => RTL.includes(normalizeLocale(locale));
 
+/**
+ * Keep labels readable on small Telegram screens. Icons are rendered by the
+ * component that owns the action, so copy should not carry a second emoji.
+ */
+export const cleanDisplayText = (text = '') => String(text)
+  .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\uFE0F\u200D]/gu, '')
+  .replace(/\s{2,}/g, ' ')
+  .trim();
+
 export const t = (locale, key, vars = {}) => {
   const dictionary = TRANSLATIONS[normalizeLocale(locale)] || TRANSLATIONS.ar;
   let value = dictionary[key] ?? TRANSLATIONS.ar[key] ?? key;
   Object.entries(vars).forEach(([name, replacement]) => {
     value = value.replaceAll(`{${name}}`, String(replacement));
   });
-  return value;
+  // Keep locale values such as `ar-SA` intact while cleaning all UI labels.
+  return key === 'dateLocale' ? value : cleanDisplayText(value);
 };
 
 export const localizedName = (item, locale) => {
   if (!item) return '';
   const loc = normalizeLocale(locale);
-  if (loc === 'ar') return item.nameAr || item.name || '';
-  return item.name || item.nameAr || '';
+  return cleanDisplayText(loc === 'ar' ? (item.nameAr || item.name || '') : (item.name || item.nameAr || ''));
 };
 
 /**
@@ -494,7 +503,7 @@ export const localizedName = (item, locale) => {
  * strings before rendering them as plain text — otherwise users see literal
  * asterisks like `**PANEL RESELLER**` in headers and titles.
  */
-export const cleanMarkdown = (text = '') => String(text)
+export const cleanMarkdown = (text = '') => cleanDisplayText(String(text)
   .replace(/\*\*(.+?)\*\*/g, '$1')
   .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1$2')
-  .replace(/`([^`\n]+)`/g, '$1');
+  .replace(/`([^`\n]+)`/g, '$1'));

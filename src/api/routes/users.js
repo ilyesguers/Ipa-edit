@@ -24,6 +24,7 @@ router.get('/me', async (req, res) => {
       totalDeposited: user.totalDeposited,
       createdAt: user.createdAt,
       preferredLanguage: user.preferredLanguage,
+      languageSelected: Boolean(user.languageSelected),
       referralCount: user.referralCount
     }
   });
@@ -41,6 +42,10 @@ router.put('/me', async (req, res) => {
         return res.status(400).json({ success: false, error: 'Unsupported language' });
       }
       updates.preferredLanguage = language;
+      // Any successful preference update is an explicit user choice. This is
+      // what prevents the first-run picker from appearing again on another
+      // device or after Telegram clears its WebView storage.
+      updates.languageSelected = true;
     }
     if (req.body.notificationsEnabled !== undefined) {
       updates.notificationsEnabled = Boolean(req.body.notificationsEnabled);
