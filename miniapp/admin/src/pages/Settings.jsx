@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
+import { haptic } from '../utils/haptic';
 
 const THEME_PRESETS = [
   { id: 'aurora', icon: '🫧', title: 'Aurora', desc: 'سماوي + بنفسجي', gradient: 'from-cyan-500/20 to-violet-500/10' },
@@ -19,6 +20,7 @@ const TABS = [
   { id: 'navigation', label: 'الأزرار والتنقل', icon: '🧭' },
   { id: 'messages', label: 'الرسائل', icon: '💬' },
   { id: 'payments', label: 'الدفع', icon: '💳' },
+  { id: 'premium', label: 'إيموجي بريميوم', icon: '✨' },
   { id: 'system', label: 'النظام', icon: '⚙️' },
 ];
 
@@ -30,6 +32,20 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState('branding');
   const [quickLinkDraft, setQuickLinkDraft] = useState(EMPTY_LINK);
   const [highlightDraft, setHighlightDraft] = useState(EMPTY_HIGHLIGHT);
+
+  // ── Premium emoji manager ──
+  const [emojiEnabled, setEmojiEnabled] = useState(false);
+  const [emojiRows, setEmojiRows] = useState([]);
+  const [emojiSaving, setEmojiSaving] = useState(false);
+
+  // Fetch the premium-emoji catalog once the premium tab is opened.
+  useEffect(() => {
+    if (activeTab !== 'premium') return;
+    api.get('/admin/emojis/catalog').then((r) => {
+      setEmojiEnabled(Boolean(r.data.data?.enabled));
+      setEmojiRows((r.data.data?.catalog || []).map((row) => ({ ...row, input: row.configuredId || '' })));
+    }).catch(() => {});
+  }, [activeTab]);
 
   useEffect(() => {
     api.get('/settings').then((r) => {
@@ -57,6 +73,52 @@ export default function Settings() {
       toast.error(err.response?.data?.error || 'فشل في الحفظ');
     }
     setSavingKey('');
+  };
+
+  // Backup save: persist EVERY section at once — the phone-friendly rescue
+  // button that never depends on a tiny per-card save button being visible.
+  const [savingAll, setSavingAll] = useState(false);
+  const saveAll = async () => {
+    setSavingAll(true);
+    haptic.medium();
+    try {
+      const allKeys = [...brandingKeys, ...navigationKeys, ...messageKeys, ...paymentKeys, ...systemKeys];
+      const payload = {};
+      allKeys.forEach((k) => { if (settings[k] !== undefined) payload[k] = settings[k]; });
+      await api.put('/settings', payload);
+      haptic.success();
+      toast.success('💾 تم حفظ جميع الإعدادات دفعة واحدة');
+    } catch (err) {
+      haptic.error();
+      toast.error(err.response?.data?.error || 'فشل في الحفظ');
+    }
+    setSavingAll(false);
+  };
+
+  const saveEmojis = async () => {
+    setEmojiSaving(true);
+    haptic.medium();
+    try {
+      const map = {};
+      emojiRows.forEach((row) => { const v = String(row.input || '').trim(); if (v) map[row.key] = v; });
+      await api.put('/admin/emojis', { enabled: emojiEnabled, map });
+      haptic.success();
+      toast.success('✨ تم حفظ الإيموجي البريميوم — يعمل فوراً في البوت');
+    } catch (err) {
+      haptic.error();
+      toast.error(err.response?.data?.error || 'فشل الحفظ');
+    }
+    setEmojiSaving(false);
+  };
+
+  const testEmojis = async () => {
+    haptic.light();
+    try {
+      await api.post('/admin/emojis/test');
+      toast.success('📩 أُرسلت رسالة معاينة إلى حسابك في البوت');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'تعذر إرسال المعاينة');
+    }
   };
 
   const quickLinks = useMemo(() => (Array.isArray(settings.bot_quick_links) ? settings.bot_quick_links : []), [settings.bot_quick_links]);
@@ -97,7 +159,7 @@ export default function Settings() {
   const brandingKeys = ['bot_name', 'bot_username', 'channel_username', 'support_username', 'ui_theme_preset', 'ui_welcome_badge_ar', 'ui_welcome_badge_en', 'ui_welcome_title_ar', 'ui_welcome_title_en', 'ui_welcome_subtitle_ar', 'ui_welcome_subtitle_en', 'ui_footer_note_ar', 'ui_footer_note_en', 'admin_portal_label_ar', 'admin_portal_label_en', 'ui_home_highlights'];
   const navigationKeys = ['bot_quick_links'];
   const messageKeys = ['welcome_message', 'maintenance_message', 'shop_title', 'shop_description', 'footer_text'];
-  const paymentKeys = ['binance_api_key', 'binance_secret_key', 'binance_merchant_id', 'usdt_wallet_trc20', 'min_deposit', 'payment_timeout_minutes', 'stars_enabled', 'stars_per_usd'];
+  const paymentKeys = ['binance_api_key', 'binance_secret_key', 'binance_merchant_id', 'usdt_wallet_trc20', 'min_deposit', 'payment_timeout_minutes', 'stars_enabled', 'stars_per_usd', 'balance_offers_enabled', 'balance_offers_note_ar', 'balance_offers_note_en'];
   const systemKeys = ['referral_bonus', 'auto_verify_payments', 'admin_notification_on_order', 'admin_notification_on_payment', 'force_join_channel', 'channel_id', 'maintenance_mode', 'maintenance_message'];
 
   const themeName = THEME_PRESETS.find((item) => item.id === settings.ui_theme_preset)?.title || 'Aurora';
@@ -389,6 +451,24 @@ export default function Settings() {
             </div>
           </div>
 
+          {/* 🎁 Balance-for-offers — customers contact support directly */}
+          <div className="rounded-2xl border border-neon/25 bg-gradient-to-br from-neon/10 to-transparent p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-black text-white flex items-center gap-2">🎁 رصيد مقابل عروض <span className="text-[9px] px-2 py-0.5 rounded-full bg-neon/15 text-neon border border-neon/25">الدعم نفسه</span></p>
+                <p className="text-[11px] text-muted mt-1">زر يظهر للعملاء في صفحة الدفع وقائمة شحن الرصيد: يبيع العميل مفاتيح أو حسابات ألعاب مقابل رصيد، والمحادثة تذهب مباشرة إلى يوزر الدعم.</p>
+              </div>
+              <button onClick={() => update('balance_offers_enabled', !(settings.balance_offers_enabled !== false && String(settings.balance_offers_enabled) !== 'false'))} className={`w-12 h-6 rounded-full relative transition-colors shrink-0 ${settings.balance_offers_enabled !== false && String(settings.balance_offers_enabled) !== 'false' ? 'bg-neon' : 'bg-border'}`} aria-label="تفعيل زر العروض">
+                <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${settings.balance_offers_enabled !== false && String(settings.balance_offers_enabled) !== 'false' ? 'right-1' : 'left-1'}`} />
+              </button>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="نص الزر العربي" value={settings.balance_offers_note_ar || ''} onChange={(v) => update('balance_offers_note_ar', v)} placeholder="رصيد مقابل عروض — تواصل مع الدعم" />
+              <Field label="نص الزر الإنجليزي" value={settings.balance_offers_note_en || ''} onChange={(v) => update('balance_offers_note_en', v)} placeholder="Balance for offers — contact support" />
+            </div>
+            <p className="text-[10px] text-muted">المحادثة تُفتح على يوزر الدعم ({settings.support_username ? `@${settings.support_username}` : 'حدده من تبويب الهوية'}).</p>
+          </div>
+
           <div className="grid gap-3 md:grid-cols-2">
             <SecretField label="Binance API Key" value={settings.binance_api_key || ''} onChange={(v) => update('binance_api_key', v)} visible={showSecrets.binance_api_key} onToggle={() => setShowSecrets((s) => ({ ...s, binance_api_key: !s.binance_api_key }))} />
             <SecretField label="Binance Secret Key" value={settings.binance_secret_key || ''} onChange={(v) => update('binance_secret_key', v)} visible={showSecrets.binance_secret_key} onToggle={() => setShowSecrets((s) => ({ ...s, binance_secret_key: !s.binance_secret_key }))} />
@@ -396,6 +476,60 @@ export default function Settings() {
             <Field label="محفظة USDT TRC20" value={settings.usdt_wallet_trc20 || ''} onChange={(v) => update('usdt_wallet_trc20', v)} />
             <Field label="الحد الأدنى للإيداع" type="number" value={settings.min_deposit ?? ''} onChange={(v) => update('min_deposit', Number(v))} />
             <Field label="مهلة الدفع بالدقائق" type="number" value={settings.payment_timeout_minutes ?? ''} onChange={(v) => update('payment_timeout_minutes', Number(v))} />
+          </div>
+        </motion.div>
+      )}
+
+      {activeTab === 'premium' && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="admin-card space-y-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h3 className="font-black text-white text-sm">✨ الإيموجي البريميوم</h3>
+              <p className="text-muted text-[11px] mt-1">كل الإيموجيات العادية التي يستخدمها البوت — ضع ID الإيموجي البريميوم بجانبها وستتحول فوراً لإيموجيات متحركة.</p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={testEmojis} className="purple-btn text-xs px-3 py-1.5">📩 معاينة في البوت</button>
+              <button onClick={saveEmojis} className="neon-btn text-xs px-3 py-1.5">{emojiSaving ? '⏳...' : '💾 حفظ'}</button>
+            </div>
+          </div>
+
+          <div className="bg-bg border border-border rounded-2xl p-3 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-bold text-white">حالة الإيموجي البريميوم</p>
+              <p className="text-[11px] text-muted mt-0.5">{emojiEnabled ? 'مفعّل — البوت يرسم الإيموجيات ببريميوم' : 'معطّل — البوت يستخدم الإيموجي العادي'}</p>
+            </div>
+            <button onClick={() => setEmojiEnabled((v) => !v)} className={`w-12 h-6 rounded-full relative transition-colors shrink-0 ${emojiEnabled ? 'bg-gold' : 'bg-border'}`} aria-label="تفعيل الإيموجي البريميوم">
+              <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${emojiEnabled ? 'right-1' : 'left-1'}`} />
+            </button>
+          </div>
+
+          <div className="rounded-2xl border border-gold/20 bg-gold/5 p-3 text-[11px] leading-6 text-white">
+            <p className="font-bold text-gold">كيف أجلب الـ ID؟</p>
+            <p>1. أنشئ حزمة إيموجي من بوت <b dir="ltr">@Stickers</b> عبر الأمر <b dir="ltr">/newemojipack</b>.</p>
+            <p>2. أرسل أي إيموجي من حزمتك لبوت <b dir="ltr">@getmyid_bot</b> (أو فعّل «عرض الـ ID» في بعض البوتات) وانسخ الرقم.</p>
+            <p>3. الصق الرقم هنا واحفظ — يعمل مباشرة بدون إعادة تشغيل. الحقول الفارغة تبقي الإيموجي الافتراضي.</p>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] text-muted font-bold">القائمة الكاملة ({emojiRows.length})</p>
+            <p className="text-[11px] text-gold font-bold">{emojiRows.filter((r) => String(r.input || '').trim()).length} مخصص</p>
+          </div>
+
+          <div className="emoji-catalog max-h-[420px] overflow-y-auto pl-1">
+            {emojiRows.map((row) => (
+              <div key={row.key} className={`emoji-catalog__row ${String(row.input || '').trim() ? 'is-set' : ''}`}>
+                <span className="emoji-catalog__glyph" title={row.unicode}>{row.unicode}</span>
+                <span className="emoji-catalog__name">{row.key}</span>
+                <input
+                  className="emoji-catalog__input input-admin"
+                  placeholder={row.defaultId || 'ID البريميوم…'}
+                  value={row.input}
+                  inputMode="numeric"
+                  onChange={(e) => setEmojiRows((rows) => rows.map((r) => r.key === row.key ? { ...r, input: e.target.value.replace(/[^0-9]/g, '') } : r))}
+                />
+              </div>
+            ))}
+            {!emojiRows.length && <p className="text-xs text-muted">جاري تحميل القائمة…</p>}
           </div>
         </motion.div>
       )}
@@ -438,6 +572,14 @@ export default function Settings() {
           </div>
         </motion.div>
       )}
+      {/* 📌 زر الحفظ الاحتياطي — عائم دائماً، يحل مشكلة الوصول لأزرار الحفظ من الهاتف */}
+      <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="admin-floating-save">
+        <span>💾 حفظ سريع دون البحث عن أزرار الحفظ الصغيرة — يشمل كل التبويبات</span>
+        <button type="button" onClick={saveAll} disabled={savingAll} className="success-btn">
+          {savingAll ? '⏳ يُحفظ…' : '💾 حفظ الكل'}
+        </button>
+      </motion.div>
+      <div className="h-16" aria-hidden="true" />
     </div>
   );
 }

@@ -16,8 +16,21 @@
  * emoji). This makes premium emoji a progressive enhancement, never a crash.
  */
 
-const { stripPremiumEmoji } = require('./customEmoji');
+const { stripPremiumEmoji, applyPremiumEmoji, premiumEnabled } = require('./customEmoji');
 const logger = require('./logger');
+
+/** Upgrade raw Unicode emoji in outgoing HTML to the owner's premium pack. */
+const upgradeText = (text) => {
+  try {
+    if (typeof text !== 'string' || !text) return text;
+    // Already contains hand-built entities → still run (applyPremiumEmoji
+    // de-duplicates nested wrappers safely).
+    if (!premiumEnabled()) return text;
+    return applyPremiumEmoji(text);
+  } catch (_) {
+    return text;
+  }
+};
 
 // Error signatures that mean "the premium emoji / button style was rejected".
 const PREMIUM_EMOJI_ERROR = /(custom.?emoji|emoji.?invalid|button.?style|icon_custom_emoji_id|ENTITY_BOUNDS_INVALID)/i;
@@ -89,7 +102,7 @@ const withEmojiFallback = async (attempt, fallback) => {
  */
 const safeReply = (ctx, text, extra = {}) =>
   withEmojiFallback(
-    () => ctx.reply(text, extra),
+    () => ctx.reply(upgradeText(text), extra),
     () => ctx.reply(stripPremiumEmoji(text), stripKeyboardExtras(extra))
   );
 
@@ -98,7 +111,7 @@ const safeReply = (ctx, text, extra = {}) =>
  */
 const safeEditMessageText = (ctx, text, extra = {}) =>
   withEmojiFallback(
-    () => ctx.editMessageText(text, extra),
+    () => ctx.editMessageText(upgradeText(text), extra),
     () => ctx.editMessageText(stripPremiumEmoji(text), stripKeyboardExtras(extra))
   );
 
@@ -107,7 +120,7 @@ const safeEditMessageText = (ctx, text, extra = {}) =>
  */
 const safeSendMessage = (telegram, chatId, text, extra = {}) =>
   withEmojiFallback(
-    () => telegram.sendMessage(chatId, text, extra),
+    () => telegram.sendMessage(chatId, upgradeText(text), extra),
     () => telegram.sendMessage(chatId, stripPremiumEmoji(text), stripKeyboardExtras(extra))
   );
 
@@ -118,4 +131,5 @@ module.exports = {
   safeReply,
   safeEditMessageText,
   safeSendMessage,
+  upgradeText,
 };

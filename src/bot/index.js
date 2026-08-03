@@ -52,13 +52,23 @@ const { showLanguagePicker, isLanguageChoiceCallback, botLocale } = require('./h
   // Fix: patch the SHARED Telegram prototype ONCE so every instance —
   // including the per-update one — inherits the automatic premium-emoji
   // fallback (retry the same request with all premium-only fields stripped).
-  const { isPremiumEmojiError, stripKeyboardExtras } = require('../utils/safeSend');
+  const { isPremiumEmojiError, stripKeyboardExtras, upgradeText } = require('../utils/safeSend');
   const { stripPremiumEmoji, emojiHtml, buttonEmojiId, buttonLabel } = require('../utils/customEmoji');
 
   const TelegramProto = Object.getPrototypeOf(bot.telegram);
   if (!Object.getOwnPropertyDescriptor(TelegramProto, '__premiumEmojiSafe')?.value) {
     const originalCallApi = TelegramProto.callApi; // unbound; re-bound per call below
     TelegramProto.callApi = async function (method, payload = {}, ...rest) {
+      // Progressive enhancement: translate plain Unicode emoji in every
+      // outgoing message (bot handlers AND API-route notifications share this
+      // path) into the owner's premium custom emoji pack. Best-effort and
+      // cache-backed, so it never blocks or slows sending.
+      if (payload && typeof payload === 'object') {
+        try {
+          if (typeof payload.text === 'string') payload = { ...payload, text: upgradeText(payload.text) };
+          if (typeof payload.caption === 'string') payload = { ...payload, caption: upgradeText(payload.caption) };
+        } catch (_) { /* pure decoration — never block a send */ }
+      }
       try {
         return await originalCallApi.call(this, method, payload, ...rest);
       } catch (err) {
@@ -133,9 +143,9 @@ const { showLanguagePicker, isLanguageChoiceCallback, botLocale } = require('./h
         );
       }
 
-      const maintenance = await Settings.get('maintenance_mode', false);
+      const maintenance = await require('../utils/settingsCache').getCached('maintenance_mode', false);
       if (maintenance && !ctx.isAdmin) {
-        const maintenanceMsg = await Settings.get('maintenance_message', `${emojiHtml('gear')} المتجر حالياً في صيانة مجدولة، وسنعود للعمل خلال وقت قصير. / Scheduled maintenance — we will be back shortly.`);
+        const maintenanceMsg = await require('../utils/settingsCache').getCached('maintenance_message', `${emojiHtml('gear')} المتجر حالياً في صيانة مجدولة، وسنعود للعمل خلال وقت قصير. / Scheduled maintenance — we will be back shortly.`);
         return ctx.reply(maintenanceMsg);
       }
 
@@ -143,9 +153,10 @@ const { showLanguagePicker, isLanguageChoiceCallback, botLocale } = require('./h
       // Skipped for admins and for brand-new users who still need to pass the
       // captcha first (otherwise they could never reach the captcha prompt).
       if (!ctx.isAdmin && user.captchaPassed) {
+        const { getCached } = require('../utils/settingsCache');
         const [forceJoin, channelId] = await Promise.all([
-          Settings.get('force_join_channel', false),
-          Settings.get('channel_id', '')
+          getCached('force_join_channel', false),
+          getCached('channel_id', '')
         ]);
         if (forceJoin && channelId) {
           const cached = forceJoinOkCache.get(telegramId);

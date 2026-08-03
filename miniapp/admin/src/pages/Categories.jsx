@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
 import ImagePicker from '../components/ImagePicker';
+import Sheet, { SheetActions } from '../components/Sheet';
+import { haptic } from '../utils/haptic';
 
 const EMPTY_CAT = { name: '', nameAr: '', icon: '🎮', slug: '', image: null };
 const EMPTY_GAME = { name: '', nameAr: '', icon: null, category: '' };
@@ -17,6 +19,8 @@ export default function Categories() {
   const [gameForm, setGameForm] = useState(EMPTY_GAME);
   const [editingCat, setEditingCat] = useState(null);
   const [editingGame, setEditingGame] = useState(null);
+  const [savingCat, setSavingCat] = useState(false);
+  const [savingGame, setSavingGame] = useState(false);
 
   const load = async () => {
     const [cr, gr] = await Promise.all([api.get('/admin/categories'), api.get('/admin/games')]);
@@ -31,23 +35,29 @@ export default function Categories() {
   const saveCat = async () => {
     if (!catForm.name) return toast.error('اسم القسم مطلوب');
     const slug = catForm.slug || catForm.name.toLowerCase().replace(/\s+/g, '-');
+    setSavingCat(true);
     try {
       if (editingCat) { await api.put(`/admin/categories/${editingCat}`, { ...catForm, slug }); toast.success('✅ تم التحديث'); }
       else { await api.post('/admin/categories', { ...catForm, slug }); toast.success('✅ تم إنشاء القسم'); }
+      haptic.success();
       setShowCatForm(false); setCatForm(EMPTY_CAT); setEditingCat(null);
       load();
-    } catch (err) { toast.error(err.response?.data?.error || 'فشل'); }
+    } catch (err) { haptic.error(); toast.error(err.response?.data?.error || 'فشل'); }
+    setSavingCat(false);
   };
 
   const saveGame = async () => {
     if (!gameForm.name || !gameForm.category) return toast.error('اسم اللعبة والقسم مطلوبان');
+    setSavingGame(true);
     try {
       const slug = gameForm.name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
       if (editingGame) { await api.put(`/admin/games/${editingGame}`, gameForm); toast.success('✅ تم التحديث'); }
       else { await api.post('/admin/games', { ...gameForm, slug }); toast.success('✅ تم إنشاء اللعبة'); }
+      haptic.success();
       setShowGameForm(false); setGameForm(EMPTY_GAME); setEditingGame(null);
       load();
-    } catch (err) { toast.error(err.response?.data?.error || 'فشل'); }
+    } catch (err) { haptic.error(); toast.error(err.response?.data?.error || 'فشل'); }
+    setSavingGame(false);
   };
 
   const handleDeleteCat = async (id) => {
@@ -140,50 +150,34 @@ export default function Categories() {
         </div>
       </div>
 
-      {/* Category Form Modal */}
-      <AnimatePresence>
-        {showCatForm && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowCatForm(false)} className="fixed inset-0 bg-black/80 z-40" />
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="fixed left-4 right-4 top-1/2 -translate-y-1/2 z-50 bg-panel border border-border rounded-2xl p-5 max-w-sm mx-auto space-y-3 max-h-[90dvh] overflow-y-auto">
-              <h3 className="font-black text-white">{editingCat ? '✏️ تعديل قسم' : '+ قسم جديد'}</h3>
-              <input value={catForm.name} onChange={e => setCatForm(f => ({ ...f, name: e.target.value }))} placeholder="Category Name (EN)" className="input-admin" />
-              <input value={catForm.nameAr} onChange={e => setCatForm(f => ({ ...f, nameAr: e.target.value }))} placeholder="اسم القسم (AR)" className="input-admin" />
-              <input value={catForm.icon} onChange={e => setCatForm(f => ({ ...f, icon: e.target.value }))} placeholder="الأيقونة (emoji عند عدم وجود صورة)" className="input-admin" />
-              <ImagePicker label="🖼️ صورة القسم" value={catForm.image} onChange={(url) => setCatForm(f => ({ ...f, image: url }))} hint="تظهر بدلاً من الإيموجي في متجر العميل." />
-              <div className="flex gap-2">
-                <motion.button whileTap={{ scale: 0.95 }} onClick={saveCat} className="flex-1 neon-btn py-3 rounded-xl font-bold">حفظ</motion.button>
-                <button onClick={() => setShowCatForm(false)} className="px-4 py-3 border border-border rounded-xl text-muted text-sm">إلغاء</button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      {/* Category Form Sheet — sticky footer keeps the save button reachable on phones */}
+      <Sheet
+        open={showCatForm}
+        onClose={() => setShowCatForm(false)}
+        title={editingCat ? '✏️ تعديل قسم' : '➕ قسم جديد'}
+        footer={<SheetActions onSave={saveCat} saving={savingCat} onCancel={() => setShowCatForm(false)} />}
+      >
+        <input value={catForm.name} onChange={e => setCatForm(f => ({ ...f, name: e.target.value }))} placeholder="Category Name (EN)" className="input-admin" />
+        <input value={catForm.nameAr} onChange={e => setCatForm(f => ({ ...f, nameAr: e.target.value }))} placeholder="اسم القسم (AR)" className="input-admin" />
+        <input value={catForm.icon} onChange={e => setCatForm(f => ({ ...f, icon: e.target.value }))} placeholder="الأيقونة (emoji عند عدم وجود صورة)" className="input-admin" />
+        <ImagePicker label="🖼️ صورة القسم" value={catForm.image} onChange={(url) => setCatForm(f => ({ ...f, image: url }))} hint="تظهر بدلاً من الإيموجي في متجر العميل." />
+      </Sheet>
 
-      {/* Game Form Modal */}
-      <AnimatePresence>
-        {showGameForm && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowGameForm(false)} className="fixed inset-0 bg-black/80 z-40" />
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="fixed left-4 right-4 top-1/2 -translate-y-1/2 z-50 bg-panel border border-border rounded-2xl p-5 max-w-sm mx-auto space-y-3 max-h-[90dvh] overflow-y-auto">
-              <h3 className="font-black text-white">{editingGame ? '✏️ تعديل لعبة' : '+ لعبة جديدة'}</h3>
-              <input value={gameForm.name} onChange={e => setGameForm(f => ({ ...f, name: e.target.value }))} placeholder="Game Name (EN)" className="input-admin" />
-              <input value={gameForm.nameAr} onChange={e => setGameForm(f => ({ ...f, nameAr: e.target.value }))} placeholder="اسم اللعبة (AR)" className="input-admin" />
-              <select value={gameForm.category} onChange={e => setGameForm(f => ({ ...f, category: e.target.value }))} className="input-admin">
-                <option value="">اختر القسم</option>
-                {categories.map(c => <option key={c._id} value={c._id}>{c.nameAr || c.name}</option>)}
-              </select>
-              <ImagePicker label="🖼️ أيقونة اللعبة" value={gameForm.icon} onChange={(url) => setGameForm(f => ({ ...f, icon: url }))} hint="تظهر داخل بطاقة اللعبة في المتجر." />
-              <div className="flex gap-2">
-                <motion.button whileTap={{ scale: 0.95 }} onClick={saveGame} className="flex-1 neon-btn py-3 rounded-xl font-bold">حفظ</motion.button>
-                <button onClick={() => setShowGameForm(false)} className="px-4 py-3 border border-border rounded-xl text-muted text-sm">إلغاء</button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      {/* Game Form Sheet */}
+      <Sheet
+        open={showGameForm}
+        onClose={() => setShowGameForm(false)}
+        title={editingGame ? '✏️ تعديل لعبة' : '➕ لعبة جديدة'}
+        footer={<SheetActions onSave={saveGame} saving={savingGame} onCancel={() => setShowGameForm(false)} />}
+      >
+        <input value={gameForm.name} onChange={e => setGameForm(f => ({ ...f, name: e.target.value }))} placeholder="Game Name (EN)" className="input-admin" />
+        <input value={gameForm.nameAr} onChange={e => setGameForm(f => ({ ...f, nameAr: e.target.value }))} placeholder="اسم اللعبة (AR)" className="input-admin" />
+        <select value={gameForm.category} onChange={e => setGameForm(f => ({ ...f, category: e.target.value }))} className="input-admin">
+          <option value="">اختر القسم</option>
+          {categories.map(c => <option key={c._id} value={c._id}>{c.nameAr || c.name}</option>)}
+        </select>
+        <ImagePicker label="🖼️ أيقونة اللعبة" value={gameForm.icon} onChange={(url) => setGameForm(f => ({ ...f, icon: url }))} hint="تظهر داخل بطاقة اللعبة في المتجر." />
+      </Sheet>
     </div>
   );
 }

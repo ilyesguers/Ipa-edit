@@ -8,7 +8,7 @@ import { haptic } from '../../utils/haptic';
 import { playSound, useSoundStore } from '../../utils/sound';
 
 export default function ProfileTab() {
-  const { user, locale, toggleLocale, setActiveTab } = useStore();
+  const { user, locale, toggleLocale, setActiveTab, publicSettings } = useStore();
   const { muted, setMuted, volume, setVolume } = useSoundStore();
   const [balanceHistory, setBalanceHistory] = useState([]);
   const dateLocale = t(locale, 'dateLocale');
@@ -66,6 +66,17 @@ export default function ProfileTab() {
           <span><PremiumIcon name="support" /> {t(locale, 'support')}</span>
           <PremiumIcon name={locale === 'ar' ? 'left' : 'right'} />
         </button>
+        {(publicSettings?.balance_offers_enabled !== false && String(publicSettings?.balance_offers_enabled) !== 'false') && (
+          <a
+            href={`https://t.me/${String(publicSettings?.support_username || 'support').replace(/^@/, '')}`}
+            target="_blank" rel="noreferrer"
+            onClick={() => { haptic.light(); playSound('sparkle'); }}
+            className="settings-list__row settings-list__button offers-profile-row"
+          >
+            <span><PremiumIcon name="gift" /> {t(locale, 'offersBalance')}</span>
+            <PremiumIcon name={locale === 'ar' ? 'left' : 'right'} />
+          </a>
+        )}
         <div className="settings-list__row">
           <span><PremiumIcon name={muted ? 'volumeOff' : 'volume'} /> {t(locale, 'soundEffects')}</span>
           <div className="profile-sound">

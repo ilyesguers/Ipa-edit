@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
+import Sheet, { SheetActions } from '../components/Sheet';
+import { haptic } from '../utils/haptic';
 
 const emptyForm = { code: '', discountType: 'percentage', discountValue: '', maxUses: '', expiresAt: '', description: '', minOrderAmount: 0 };
 
@@ -10,12 +12,14 @@ export default function Coupons() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [editing, setEditing] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   const load = () => api.get('/admin/coupons').then(r => setCoupons(r.data.data || []));
   useEffect(() => { load(); }, []);
 
   const save = async () => {
     if (!form.code || !form.discountValue) return toast.error('الكود والخصم مطلوبان');
+    setSaving(true);
     try {
       const data = {
         ...form,
@@ -27,9 +31,11 @@ export default function Coupons() {
       };
       if (editing) { await api.put(`/admin/coupons/${editing}`, data); toast.success('✅ تم التحديث'); }
       else { await api.post('/admin/coupons', data); toast.success('✅ تم إنشاء الكوبون'); }
+      haptic.success();
       setShowForm(false); setForm(emptyForm); setEditing(null);
       load();
-    } catch (err) { toast.error(err.response?.data?.error || 'فشل'); }
+    } catch (err) { haptic.error(); toast.error(err.response?.data?.error || 'فشل'); }
+    setSaving(false);
   };
 
   const handleDelete = async (id) => {
@@ -67,7 +73,7 @@ export default function Coupons() {
               </p>
               <div className="flex gap-3 mt-1 text-[10px] text-muted">
                 <span>🔢 {coupon.currentUses}/{coupon.maxUses || '∞'}</span>
-                {coupon.expiresAt && <span>📅 {new Date(coupon.expiresAt).toLocaleDateString('ar-IQ')}</span>}
+                {coupon.expiresAt && <span>📅 {new Date(coupon.expiresAt).toLocaleDateString('ar-IQ-u-nu-latn')}</span>}
               </div>
             </div>
             <div className="flex gap-1.5 flex-shrink-0">
@@ -80,13 +86,13 @@ export default function Coupons() {
         {coupons.length === 0 && <div className="text-center py-8 text-muted">لا توجد كوبونات بعد</div>}
       </div>
 
-      <AnimatePresence>
-        {showForm && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowForm(false)} className="fixed inset-0 bg-black/80 z-40" />
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="fixed left-4 right-4 top-1/2 -translate-y-1/2 z-50 bg-panel border border-border rounded-2xl p-5 max-w-sm mx-auto space-y-3">
-              <h3 className="font-black text-white">{editing ? '✏️ تعديل كوبون' : '+ كوبون جديد'}</h3>
+      <Sheet
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        title={editing ? '✏️ تعديل كوبون' : '➕ كوبون جديد'}
+        footer={<SheetActions saveLabel="💾 حفظ الكوبون" onSave={save} saving={saving} onCancel={() => setShowForm(false)} />}
+      >
+
               <div>
                 <label className="text-xs text-muted">كود الخصم</label>
                 <input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} placeholder="SAVE20" className="input-admin mt-1 font-mono font-bold tracking-widest" />
@@ -128,14 +134,7 @@ export default function Coupons() {
                 <label className="text-xs text-muted">الوصف (اختياري)</label>
                 <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="input-admin mt-1" />
               </div>
-              <div className="flex gap-2">
-                <motion.button whileTap={{ scale: 0.95 }} onClick={save} className="flex-1 neon-btn py-3 rounded-xl font-bold">حفظ الكوبون</motion.button>
-                <button onClick={() => setShowForm(false)} className="px-4 py-3 border border-border rounded-xl text-muted text-sm">إلغاء</button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      </Sheet>
     </div>
   );
 }

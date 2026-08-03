@@ -1,9 +1,16 @@
 /**
  * 🎮 GAMER EDITION - Premium Emoji System for Teens & Gamers
  * One source of truth for all bot emojis.
- * Target: gaming teens - fire, rocket, explosion, crown, etc.
- * All IDs are distinct, no more 4 repeated emojis.
- * Fallback to unicode ensures bot never crashes.
+ *
+ * Two configuration layers (highest priority first):
+ *   1. Admin panel — Settings keys `premium_emoji_enabled` (bool) and
+ *      `premium_emoji_map` ({ emojiKey: customEmojiId }). The bot caches them
+ *      in memory and refreshes every minute, so the owner can paste a premium
+ *      emoji ID in the panel and it goes live without a restart.
+ *   2. Environment variables — USE_PREMIUM_EMOJI=true + PREMIUM_EMOJI_*.
+ *
+ * Fallback to unicode ensures the bot never crashes; every send helper strips
+ * premium entities and retries if Telegram rejects an ID.
  */
 
 const PREMIUM_IDS = {
@@ -141,15 +148,71 @@ const STYLE_TO_EMOJI = {
   danger: 'fire'
 };
 
+// ── DB-backed configuration (admin panel) ─────────────────────────────────
+// Settings are cached in-process and refreshed periodically so the millions of
+// messages the bot sends never wait on MongoDB. `configurePremiumEmoji` is
+// called from the admin API the moment the owner saves, making it instant.
+const SETTINGS_KEY_ENABLED = 'premium_emoji_enabled';
+const SETTINGS_KEY_MAP = 'premium_emoji_map';
+const REFRESH_MS = 60 * 1000;
+
+let dbState = { loaded: false, enabled: false, map: {} };
+let refreshTimer = null;
+
+const validEmojiId = (value) => /^\d{5,25}$/.test(String(value || '').trim());
+
+const normalizeMap = (raw) => {
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [key, id] of Object.entries(raw)) {
+    if (UNICODE_FALLBACK[key] && validEmojiId(id)) out[key] = String(id).trim();
+  }
+  return out;
+};
+
+const loadPremiumEmojiSettings = async () => {
+  try {
+    const Settings = require('../models/Settings');
+    const [enabled, map] = await Promise.all([
+      Settings.get(SETTINGS_KEY_ENABLED, null),
+      Settings.get(SETTINGS_KEY_MAP, null)
+    ]);
+    dbState = {
+      loaded: true,
+      enabled: enabled === null ? false : Boolean(enabled),
+      map: normalizeMap(map)
+    };
+  } catch (err) {
+    // DB not ready yet (boot races) — keep previous state and retry next tick.
+  }
+  return dbState;
+};
+
+/** Called once after MongoDB connects; schedules the 60s silent refresh. */
+const initPremiumEmoji = () => {
+  loadPremiumEmojiSettings().catch(() => {});
+  if (!refreshTimer) {
+    refreshTimer = setInterval(() => { loadPremiumEmojiSettings().catch(() => {}); }, REFRESH_MS);
+    if (refreshTimer.unref) refreshTimer.unref();
+  }
+};
+
+/** Called by the admin API right after saving — applies without restart. */
+const configurePremiumEmoji = (enabled, map) => {
+  dbState = { loaded: true, enabled: Boolean(enabled), map: normalizeMap(map) };
+  return dbState;
+};
+
 // Premium emoji IDs are account-specific. Keeping them opt-in avoids Telegram
 // retries (and duplicated-looking glyphs) when an owner has not configured a
-// valid pack for this bot.
+// valid pack for this bot. The admin-panel flag wins; env is the fallback.
 const premiumEnabled = () => {
+  if (dbState.loaded) return dbState.enabled;
   const flag = String(process.env.USE_PREMIUM_EMOJI || 'false').trim().toLowerCase();
   return ['true', '1', 'yes', 'on'].includes(flag);
 };
 
-const getEmojiId = (key) => EMOJI[key] || null;
+const getEmojiId = (key) => dbState.map[key] || EMOJI[key] || null;
 
 const getStyleEmojiId = (style) => {
   if (!premiumEnabled()) return undefined;
@@ -191,10 +254,66 @@ const buttonEmojiId = (keyOrStyle) => {
     : getEmojiId(keyOrStyle);
 };
 
+// ── Whole-message upgrade: replace plain Unicode emoji with premium ────────
+// The bot has hundreds of places that hand-write raw emoji (🛒 ✅ 📦 …). The
+// admin "Premium emoji" page maps each of those glyphs to a custom emoji ID,
+// and applyPremiumEmoji() rewrites any outgoing HTML text so the owner only
+// pastes IDs — no code changes needed per message.
+let unicodeMapCache = null;
+
+const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const buildUnicodeMap = () => {
+  // key → [unicodeGlyph, emojiId]; glyph variants deduped.
+  const pairs = new Map();
+  for (const key of Object.keys(UNICODE_FALLBACK)) {
+    const id = premiumEnabled() ? getEmojiId(key) : null;
+    if (!id || !validEmojiId(id)) continue;
+    const glyph = UNICODE_FALLBACK[key];
+    if (!pairs.has(glyph)) pairs.set(glyph, id);
+  }
+  unicodeMapCache = pairs;
+  return pairs;
+};
+
+const applyPremiumEmoji = (html = '') => {
+  if (!premiumEnabled()) return String(html);
+  if (!unicodeMapCache) buildUnicodeMap();
+  if (!unicodeMapCache || !unicodeMapCache.size) return String(html);
+
+  let out = String(html);
+  for (const [glyph, id] of unicodeMapCache.entries()) {
+    // Skip glyphs that are already wrapped in a <tg-emoji> for this id by
+    // rewriting only raw occurrences. A negative lookbehind for '">' keeps us
+    // from touching entity contents of existing tags' attributes.
+    const pattern = new RegExp(escapeRegExp(glyph), 'g');
+    if (!pattern.test(out)) continue;
+    out = out.replace(pattern, `<tg-emoji emoji-id="${id}">${glyph}</tg-emoji>`);
+  }
+  // Clean up accidental nesting: tg-emoji inside tg-emoji (rare double-pass).
+  out = out.replace(/(<tg-emoji[^>]*>)(<tg-emoji[^>]*>)(.*?)(<\/tg-emoji>)(<\/tg-emoji>)/gis, '$1$3$4');
+  return out;
+};
+
+/** Invalidate caches after the admin saves a new map. */
+const invalidateUnicodeMap = () => { unicodeMapCache = null; };
+
+/** Catalog used by the admin page: every known emoji with its current state. */
+const getEmojiCatalog = () => Object.keys(UNICODE_FALLBACK).map((key) => ({
+  key,
+  unicode: UNICODE_FALLBACK[key],
+  label: key,
+  currentId: getEmojiId(key) || '',
+  configuredId: dbState.map[key] || '',
+  defaultId: EMOJI[key] || ''
+}));
+
 module.exports = {
   PREMIUM_IDS,
   EMOJI,
   UNICODE_FALLBACK,
+  SETTINGS_KEY_ENABLED,
+  SETTINGS_KEY_MAP,
   premiumEnabled,
   getEmojiId,
   getStyleEmojiId,
@@ -203,4 +322,11 @@ module.exports = {
   buttonLabel,
   buttonEmojiId,
   stripPremiumEmoji,
+  applyPremiumEmoji,
+  invalidateUnicodeMap,
+  getEmojiCatalog,
+  validEmojiId,
+  initPremiumEmoji,
+  configurePremiumEmoji,
+  loadPremiumEmojiSettings,
 };
