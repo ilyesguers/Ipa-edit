@@ -51,6 +51,24 @@ export default function App() {
   const [maintenance, setMaintenance] = useState(false);
   const [unreadOrders, setUnreadOrders] = useState(0);
 
+  // Lock body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (sidebarOpen) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    };
+  }, [sidebarOpen]);
+
   useEffect(() => {
     if (!user?.isAdmin) return undefined;
     const socket = io('/', { transports: ['websocket', 'polling'] });
@@ -170,7 +188,7 @@ export default function App() {
       <div className="admin-main">
         <header className="admin-topbar">
           <div className="admin-topbar__title">
-            <button type="button" onClick={() => setSidebarOpen((open) => !open)} className="admin-topbar__menu lg:hidden" aria-label="فتح القائمة"><AdminIcon name="menu" /></button>
+            <button type="button" onClick={() => setSidebarOpen((open) => !open)} className={`admin-topbar__menu lg:hidden ${sidebarOpen ? 'is-sidebar-open' : ''}`} aria-label={sidebarOpen ? 'إغلاق القائمة' : 'فتح القائمة'}><AdminIcon name={sidebarOpen ? 'close' : 'menu'} /></button>
             <span className="admin-topbar__page-icon"><AdminIcon name={pageMeta.icon} size="1.25rem" /></span>
             <div className="min-w-0">
               <h1>{pageMeta.title}</h1>

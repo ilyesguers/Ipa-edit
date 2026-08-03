@@ -75,7 +75,7 @@ export default function Sidebar({ activePage, setActivePage, setRouteQuery, user
   return (
     <>
       <div className="hidden lg:flex">{content}</div>
-      {sidebarOpen && <div className="fixed inset-y-0 right-0 z-40 lg:hidden">{content}</div>}
+      {sidebarOpen && <div className="fixed inset-y-0 right-0 z-40 lg:hidden animate-sidebar-in">{content}</div>}
     </>
   );
 }
