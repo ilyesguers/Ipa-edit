@@ -141,9 +141,12 @@ const STYLE_TO_EMOJI = {
   danger: 'fire'
 };
 
+// Premium emoji IDs are account-specific. Keeping them opt-in avoids Telegram
+// retries (and duplicated-looking glyphs) when an owner has not configured a
+// valid pack for this bot.
 const premiumEnabled = () => {
-  const flag = String(process.env.USE_PREMIUM_EMOJI || 'true').trim().toLowerCase();
-  return !['false', '0', 'no', 'off'].includes(flag);
+  const flag = String(process.env.USE_PREMIUM_EMOJI || 'false').trim().toLowerCase();
+  return ['true', '1', 'yes', 'on'].includes(flag);
 };
 
 const getEmojiId = (key) => EMOJI[key] || null;
@@ -155,11 +158,20 @@ const getStyleEmojiId = (style) => {
 
 const emojiChar = (key) => UNICODE_FALLBACK[key] || '🎮';
 
+// Callers from older menus sometimes already include a Unicode emoji in their
+// label and then ask this helper to add the button icon. Strip decorative
+// symbols first so every button always has one icon, never two.
+const stripDecorativeEmoji = (value = '') => String(value)
+  .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\uFE0F\u200D]/gu, '')
+  .replace(/\s{2,}/g, ' ')
+  .trim();
+
 const buttonLabel = (key, text, opts = {}) => {
   const customId = opts.emojiId || getEmojiId(key);
-  if (premiumEnabled() && (opts.hasIcon !== false) && customId) return text;
+  const cleanText = stripDecorativeEmoji(text);
+  if (premiumEnabled() && (opts.hasIcon !== false) && customId) return cleanText;
   const glyph = emojiChar(key);
-  return glyph ? `${glyph} ${text}` : text;
+  return glyph ? `${glyph} ${cleanText}`.trim() : cleanText;
 };
 
 const emojiHtml = (emojiKey, text = '') => {

@@ -66,10 +66,10 @@ const DEFAULT_HIGHLIGHTS = [
 // The old keyboard with shop/mykeys/history/profile/balance/help is removed
 // Now only 3-4 buttons max, all pointing to webapp or support
 const DEFAULT_QUICK_LINKS = [
-  { id: 'customer_app', emojiKey: 'rocket', textAr: '🚀 فتح المتجر - PLAY NOW', textEn: '🚀 Open Store - PLAY NOW', type: 'webapp', value: '/customer', row: 1, visibility: 'all', style: 'primary' },
-  { id: 'support', emojiKey: 'fire', textAr: '🔥 الدعم السريع', textEn: '🔥 Fast Support', type: 'url', value: 'https://t.me/{support}', row: 2, visibility: 'all', style: 'danger' },
-  { id: 'channel', emojiKey: 'explosion', textAr: '💥 قناة العروض', textEn: '💥 Deals Channel', type: 'url', value: 'https://t.me/{channel}', row: 2, visibility: 'all', style: 'secondary' },
-  { id: 'language', emojiKey: 'target', textAr: '🌍 English', textEn: '🌍 العربية', type: 'callback', value: 'language', row: 3, visibility: 'all', style: 'secondary' },
+  { id: 'customer_app', emojiKey: 'rocket', textAr: 'فتح المتجر', textEn: 'Open store', type: 'webapp', value: '/customer', row: 1, visibility: 'all', style: 'primary' },
+  { id: 'support', emojiKey: 'support', textAr: 'الدعم', textEn: 'Support', type: 'url', value: 'https://t.me/{support}', row: 2, visibility: 'all', style: 'secondary' },
+  { id: 'channel', emojiKey: 'megaphone', textAr: 'قناة العروض', textEn: 'Deals channel', type: 'url', value: 'https://t.me/{channel}', row: 2, visibility: 'all', style: 'secondary' },
+  { id: 'language', emojiKey: 'globe', textAr: 'تغيير اللغة', textEn: 'Change language', type: 'callback', value: 'language', row: 3, visibility: 'all', style: 'secondary' },
 ];
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -203,19 +203,19 @@ const getUiSettings = async () => {
     adminPortalLabelAr,
     adminPortalLabelEn
   ] = await Promise.all([
-    Settings.get('bot_name', 'GAMER STORE 🔥'),
+    Settings.get('bot_name', 'GAMER STORE'),
     Settings.get('welcome_message', ''),
     Settings.get('support_username', 'support'),
     Settings.get('channel_username', process.env.CHANNEL_USERNAME || ''),
     Settings.get('ui_theme_preset', 'midnight'),
-    Settings.get('ui_welcome_badge_ar', '🔥 للجيمرز المحترفين فقط'),
-    Settings.get('ui_welcome_badge_en', '🔥 For Pro Gamers Only'),
-    Settings.get('ui_welcome_title_ar', 'متجر الجيمرز الأسطوري 🎮'),
-    Settings.get('ui_welcome_title_en', 'Legendary Gamer Store 🎮'),
-    Settings.get('ui_welcome_subtitle_ar', 'أسرع متجر للألعاب والشحنات والبوستات - كل شي في مكان واحد مع تسليم فوري 🚀'),
-    Settings.get('ui_welcome_subtitle_en', 'Fastest game keys, boosts & top-ups - all in one place with rocket delivery 🚀'),
-    Settings.get('ui_footer_note_ar', '💥 عروض يومية + جوائز للمتابعين'),
-    Settings.get('ui_footer_note_en', '💥 Daily deals + giveaways for followers'),
+    Settings.get('ui_welcome_badge_ar', 'متجر الألعاب الرقمية'),
+    Settings.get('ui_welcome_badge_en', 'Digital game store'),
+    Settings.get('ui_welcome_title_ar', 'متجر الألعاب'),
+    Settings.get('ui_welcome_title_en', 'Game Store'),
+    Settings.get('ui_welcome_subtitle_ar', 'الألعاب والشحنات والمفاتيح الرقمية مع تسليم سريع.'),
+    Settings.get('ui_welcome_subtitle_en', 'Games, top-ups and digital keys with quick delivery.'),
+    Settings.get('ui_footer_note_ar', 'العروض والدعم في مكان واحد'),
+    Settings.get('ui_footer_note_en', 'Deals and support in one place'),
     Settings.get('bot_quick_links', DEFAULT_QUICK_LINKS),
     Settings.get('ui_home_highlights', DEFAULT_HIGHLIGHTS),
     Settings.get('admin_portal_label_ar', 'لوحة التحكم 👑'),

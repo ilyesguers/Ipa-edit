@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import toast from 'react-hot-toast';
 import useStore from '../store/useStore';
@@ -9,10 +8,93 @@ import api from '../utils/api';
 import { haptic } from '../utils/haptic';
 
 export default function BinancePaySheet() {
-  const { currentOrder, submitPaymentProof, selectedDuration, locale } = useStore(); const [txHash, setTxHash] = useState(''); const [loading, setLoading] = useState(false); const [copied, setCopied] = useState(false); const [walletInfo, setWalletInfo] = useState(null); const [countdown, setCountdown] = useState(900);
-  useEffect(() => { api.get('/payment/info').then((res) => { setWalletInfo(res.data.data); setCountdown((res.data.data?.paymentTimeoutMinutes || 15) * 60); }).catch(() => {}); }, []);
-  useEffect(() => { if (countdown > 0) { const timer = setTimeout(() => setCountdown((value) => value - 1), 1000); return () => clearTimeout(timer); } return undefined; }, [countdown]);
-  const amount = currentOrder?.amount || selectedDuration?.price || 0; const address = walletInfo?.usdtWallet || (locale === 'en' ? 'Contact support' : 'يرجى التواصل مع الدعم'); const checkoutUrl = currentOrder?.checkoutUrl || address; const copy = (value) => navigator.clipboard.writeText(value).then(() => { haptic.light(); setCopied(true); toast.success(t(locale, 'copied')); setTimeout(() => setCopied(false), 1800); });
-  const submit = async () => { if (!txHash.trim()) { haptic.error(); return toast.error(t(locale, 'txHash')); } haptic.medium(); setLoading(true); try { await submitPaymentProof(txHash); haptic.success(); toast.success(t(locale, 'submitted') || t(locale, 'copied')); useStore.setState({ showBinanceSheet: false }); } catch (error) { haptic.error(); toast.error(error.response?.data?.error || t(locale, 'failed')); } finally { setLoading(false); } };
-  return <><motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/90 z-50" /><motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', stiffness: 260, damping: 30 }} className="fixed bottom-0 left-0 right-0 z-50 bottom-sheet rounded-t-3xl max-h-[95vh] overflow-y-auto"><div className="flex justify-center pt-3 pb-2"><div className="w-10 h-1 rounded-full bg-[#2d3748]" /></div><div className="px-4 pb-8 space-y-4"><div className="text-center"><PremiumIcon name="gem" size="2.8rem" className="text-[#f0b90b] animate-float" /><h2 className="text-xl font-black text-white mt-2">{t(locale, 'binance')}</h2><p className="text-muted text-sm">USDT — TRC20</p></div><div className={`mx-auto w-fit px-4 py-2 rounded-xl border font-mono text-lg font-bold ${countdown > 300 ? 'border-neon/30 text-neon bg-neon/5' : 'border-red/30 text-red bg-red/5'}`}>{Math.floor(countdown / 60).toString().padStart(2, '0')}:{(countdown % 60).toString().padStart(2, '0')}</div><div className="bg-[#161922] border border-border rounded-2xl p-4 text-center"><p className="text-muted text-sm">{locale === 'en' ? 'Exact payment amount' : 'المبلغ الدقيق للدفع'}</p><p className="text-3xl font-black text-[#f0b90b]">{Number(amount).toFixed(6)}</p><p className="text-white font-bold">USDT TRC20</p><button type="button" onClick={() => copy(Number(amount).toFixed(6))} className="mt-2 text-xs text-neon border border-neon/30 px-3 py-1 rounded-lg">{t(locale, 'copyAll')}</button></div><div className="flex flex-col items-center gap-3"><div className="bg-white p-4 rounded-2xl"><QRCodeSVG value={checkoutUrl} size={180} bgColor="#ffffff" fgColor="#000000" level="H" /></div><p className="text-xs text-muted">{locale === 'en' ? 'Scan with Binance' : 'امسح الكود بتطبيق Binance'}</p></div><div><p className="text-xs text-muted mb-2">{locale === 'en' ? 'Or send manually to:' : 'أو أرسل يدوياً إلى:'}</p><div className="bg-[#161922] border border-border rounded-xl p-3 flex items-center gap-2"><p className="flex-1 text-xs font-mono text-white break-all">{address}</p><button type="button" onClick={() => copy(address)} className="w-11 h-11 rounded-lg bg-neon/10 border border-neon/30 text-neon">{copied ? '✓' : <PremiumIcon name="copy" />}</button></div></div>{currentOrder?.checkoutUrl && <a href={currentOrder.checkoutUrl} target="_blank" rel="noreferrer" className="w-full py-3 rounded-xl font-bold text-center block bg-[#f0b90b] text-black text-sm">{locale === 'en' ? 'Open Binance' : 'فتح في تطبيق Binance'}</a>}<div><p className="text-sm font-semibold text-white mb-2">{locale === 'en' ? 'Payment proof' : 'إثبات الدفع'}</p><input type="text" inputMode="text" placeholder={t(locale, 'txHash')} value={txHash} onChange={(event) => setTxHash(event.target.value)} className="w-full bg-[#161922] border border-border rounded-xl py-3 px-4 text-sm text-white placeholder-muted outline-none focus:border-neon-blue/50" /></div><motion.button type="button" whileTap={{ scale: 0.97 }} onClick={submit} disabled={loading || !txHash.trim()} className="w-full py-4 rounded-2xl font-black text-base bg-neon-blue text-black disabled:opacity-40">{loading ? t(locale, 'loading') : t(locale, 'submit')}</motion.button><button type="button" onClick={() => useStore.setState({ showBinanceSheet: false })} className="w-full py-2 text-muted text-sm">{t(locale, 'cancel')}</button></div></motion.div></>;
+  const { currentOrder, submitPaymentProof, selectedDuration, locale } = useStore();
+  const [txHash, setTxHash] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [walletInfo, setWalletInfo] = useState(null);
+  const [countdown, setCountdown] = useState(900);
+  const close = () => useStore.setState({ showBinanceSheet: false });
+
+  useEffect(() => {
+    api.get('/payment/info').then((res) => {
+      setWalletInfo(res.data.data);
+      setCountdown((res.data.data?.paymentTimeoutMinutes || 15) * 60);
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (countdown <= 0) return undefined;
+    const timer = window.setTimeout(() => setCountdown((value) => value - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [countdown]);
+
+  const amount = currentOrder?.amount || selectedDuration?.price || 0;
+  const address = walletInfo?.usdtWallet || (locale === 'ar' ? 'يرجى التواصل مع الدعم' : 'Contact support');
+  const checkoutUrl = currentOrder?.checkoutUrl || address;
+  const copy = (value) => navigator.clipboard.writeText(value).then(() => {
+    haptic.light();
+    setCopied(true);
+    toast.success(t(locale, 'copied'));
+    window.setTimeout(() => setCopied(false), 1800);
+  });
+
+  const submit = async () => {
+    if (!txHash.trim()) {
+      haptic.error();
+      toast.error(t(locale, 'txHash'));
+      return;
+    }
+    haptic.medium();
+    setLoading(true);
+    try {
+      await submitPaymentProof(txHash);
+      haptic.success();
+      toast.success(t(locale, 'submitted'));
+      close();
+    } catch (error) {
+      haptic.error();
+      toast.error(error.response?.data?.error || t(locale, 'failed'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <button type="button" className="fixed inset-0 z-40 bg-black/75 border-0" onClick={close} aria-label={t(locale, 'cancel')} />
+      <section className="fixed bottom-0 left-0 right-0 z-50 bottom-sheet rounded-t-[24px] max-h-[94dvh] overflow-y-auto" role="dialog" aria-modal="true" aria-label={t(locale, 'binance')}>
+        <div className="flex justify-center py-3"><span className="w-10 h-1 rounded-full bg-[#2d3748]" /></div>
+        <div className="px-5 pb-7 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="m-0 text-lg font-black text-white flex items-center gap-2"><PremiumIcon name="coin" className="text-[#f0b90b]" /> {t(locale, 'binance')}</h2>
+            <button type="button" onClick={close} className="w-10 h-10 min-h-0 rounded-xl border border-[#2d3748] text-[#9ca3af]">×</button>
+          </div>
+          <p className={`mx-auto w-fit px-3 py-1.5 rounded-lg border font-mono text-sm ${countdown > 300 ? 'border-[#10b981]/30 text-[#6ee7b7]' : 'border-[#ef4444]/30 text-[#fca5a5]'}`}>{Math.floor(countdown / 60).toString().padStart(2, '0')}:{(countdown % 60).toString().padStart(2, '0')}</p>
+          <div className="gamer-card rounded-2xl p-4 text-center">
+            <p className="m-0 text-xs text-[#9ca3af]">{locale === 'ar' ? 'المبلغ المطلوب' : 'Payment amount'}</p>
+            <strong className="block mt-1 text-2xl text-[#f5d06f]">{Number(amount).toFixed(6)} USDT</strong>
+            <button type="button" onClick={() => copy(Number(amount).toFixed(6))} className="mt-3 min-h-0 px-3 py-1.5 rounded-lg border border-[#10b981]/25 text-xs text-[#6ee7b7]">{t(locale, 'copyAll')}</button>
+          </div>
+          <div className="grid justify-items-center gap-2">
+            <div className="rounded-2xl bg-white p-3"><QRCodeSVG value={checkoutUrl} size={170} bgColor="#fff" fgColor="#000" level="H" /></div>
+            <small className="text-[#9ca3af]">{locale === 'ar' ? 'امسح الرمز بتطبيق Binance' : 'Scan with Binance'}</small>
+          </div>
+          <div>
+            <p className="mb-2 text-xs text-[#9ca3af]">{locale === 'ar' ? 'أو أرسل يدوياً إلى' : 'Or send manually to'}</p>
+            <div className="flex items-center gap-2 rounded-xl border border-[#2d3748] bg-[#11141a] p-2">
+              <code className="min-w-0 flex-1 break-all text-[11px] text-white">{address}</code>
+              <button type="button" onClick={() => copy(address)} className="w-10 h-10 min-h-0 flex-none rounded-lg border border-[#10b981]/25 text-[#6ee7b7]">{copied ? <PremiumIcon name="checkmark" /> : <PremiumIcon name="copy" />}</button>
+            </div>
+          </div>
+          {currentOrder?.checkoutUrl && <a href={currentOrder.checkoutUrl} target="_blank" rel="noreferrer" className="block rounded-xl bg-[#f0b90b] py-3 text-center text-sm font-black text-[#16110a]">{locale === 'ar' ? 'فتح Binance' : 'Open Binance'}</a>}
+          <div>
+            <label htmlFor="tx-hash" className="mb-2 block text-sm font-bold text-white">{locale === 'ar' ? 'إثبات الدفع' : 'Payment proof'}</label>
+            <input id="tx-hash" type="text" placeholder={t(locale, 'txHash')} value={txHash} onChange={(event) => setTxHash(event.target.value)} className="w-full h-11 rounded-xl border border-[#2d3748] bg-[#11141a] px-3 text-sm text-white outline-none focus:border-[#10b981]" />
+          </div>
+          <button type="button" onClick={submit} disabled={loading || !txHash.trim()} className="w-full rounded-xl bg-[#10b981] py-3 font-black text-[#06110b] disabled:opacity-45">{loading ? t(locale, 'loading') : t(locale, 'submit')}</button>
+        </div>
+      </section>
+    </>
+  );
 }

@@ -1,8 +1,8 @@
 [phases.setup]
-nixPkgs = ["...", "python3", "gnumake", "gcc"]
+nixPkgs = ["..."]
 
 [phases.install]
-cmds = ["npm ci || npm install"]
+cmds = ["npm install --no-audit --no-fund"]
 
 [phases.build]
 cmds = [

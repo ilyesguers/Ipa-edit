@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { SUPPORTED_LANGUAGES } = require('../utils/languages');
 
 const purchaseHistorySchema = new mongoose.Schema({
   orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' },
@@ -42,7 +43,10 @@ const userSchema = new mongoose.Schema({
   balanceHistory: [balanceTransactionSchema],
   referredBy: { type: Number, default: null },
   referralCount: { type: Number, default: 0 },
-  preferredLanguage: { type: String, enum: ['ar', 'en'], default: 'ar' },
+  // `languageSelected` lets us distinguish an explicit choice from the
+  // fallback language assigned when Telegram creates the account.
+  preferredLanguage: { type: String, enum: SUPPORTED_LANGUAGES, default: 'ar' },
+  languageSelected: { type: Boolean, default: false },
   notificationsEnabled: { type: Boolean, default: true },
   captchaPassed: { type: Boolean, default: false },
   captchaPassedAt: { type: Date, default: null }

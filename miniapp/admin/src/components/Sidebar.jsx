@@ -1,18 +1,18 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { canViewPage } from '../utils/permissions';
+import AdminIcon from './AdminIcon';
 
 const NAV = [
-  { id: 'dashboard', icon: '🪄', label: 'لوحة التحكم', desc: 'ملخص سريع' },
-  { id: 'categories', icon: '🗂️', label: 'الأقسام والألعاب', desc: 'تنظيم البيع' },
-  { id: 'products', icon: '🔑', label: 'المنتجات', desc: 'أسعار ومدد' },
-  { id: 'inventory', icon: '📦', label: 'المخزون', desc: 'إضافة ومراقبة المفاتيح' },
-  { id: 'orders', icon: '🛒', label: 'الطلبات', desc: 'مدفوعات وتسليم' },
-  { id: 'users', icon: '👥', label: 'المستخدمون', desc: 'أرصدة ورسائل' },
-  { id: 'coupons', icon: '🎟️', label: 'الكوبونات', desc: 'عروض وخصومات' },
-  { id: 'broadcast', icon: '📢', label: 'الإذاعة', desc: 'حملات ورسائل' },
-  { id: 'media', icon: '🖼️', label: 'الصور والوسائط', desc: 'تحكم بكل الصور' },
-  { id: 'settings', icon: '🎛️', label: 'الإعدادات والتصميم', desc: 'هوية وأزرار' },
+  { id: 'dashboard', icon: 'dashboard', label: 'لوحة التحكم', desc: 'ملخص سريع' },
+  { id: 'categories', icon: 'categories', label: 'الأقسام والألعاب', desc: 'تنظيم المسار' },
+  { id: 'products', icon: 'product', label: 'المنتجات', desc: 'أسعار ومدد' },
+  { id: 'inventory', icon: 'inventory', label: 'المخزون', desc: 'المفاتيح والتوفر' },
+  { id: 'orders', icon: 'orders', label: 'الطلبات', desc: 'الدفع والتسليم' },
+  { id: 'users', icon: 'users', label: 'المستخدمون', desc: 'الحسابات والأرصدة' },
+  { id: 'coupons', icon: 'coupon', label: 'الكوبونات', desc: 'الخصومات' },
+  { id: 'broadcast', icon: 'broadcast', label: 'الإذاعة', desc: 'الرسائل' },
+  { id: 'media', icon: 'media', label: 'الوسائط', desc: 'الصور والبنرات' },
+  { id: 'settings', icon: 'settings', label: 'الإعدادات', desc: 'المتجر والبوت' }
 ];
 
 export default function Sidebar({ activePage, setActivePage, setRouteQuery, user, sidebarOpen, setSidebarOpen, unreadOrders = 0 }) {
@@ -22,106 +22,60 @@ export default function Sidebar({ activePage, setActivePage, setRouteQuery, user
     setSidebarOpen(false);
   };
 
+  const visibleItems = NAV.filter((item) => canViewPage(user, item.id));
   const content = (
-    <div className="flex flex-col h-full bg-panel border-l border-border w-72">
-      <div className="p-4 border-b border-border">
-        <div className="rounded-2xl border border-neon/20 bg-gradient-to-br from-neon/10 to-transparent p-4 neon-glow">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-neon/10 border border-neon/20 flex items-center justify-center text-2xl">👑</div>
-            <div>
-              <p className="font-black text-white text-base">Admin Portal</p>
-              <p className="text-neon text-[11px] font-semibold">CONTROL • ORDERS • STOCK</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-2 mt-4 text-center text-[10px]">
-            {[
-              ['🛒', 'الطلبات'],
-              ['📦', 'المخزون'],
-              ['🎛️', 'الهوية'],
-            ].map(([icon, label]) => (
-              <div key={label} className="bg-card/70 border border-border rounded-xl py-2 text-muted">
-                <div className="text-base mb-1">{icon}</div>
-                <div>{label}</div>
-              </div>
-            ))}
-          </div>
+    <aside className="admin-sidebar" aria-label="التنقل الإداري">
+      <div className="admin-sidebar__brand">
+        <span className="admin-sidebar__brand-mark"><AdminIcon name="shield" size="1.25rem" /></span>
+        <div className="min-w-0">
+          <strong>لوحة الإدارة</strong>
+          <small>إدارة المتجر بوضوح</small>
         </div>
       </div>
 
-      <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
-        {NAV.filter((item) => canViewPage(user, item.id)).map((item) => (
-          <button
-            key={item.id}
-            onClick={() => goTo(item.id)}
-            className={`sidebar-item w-full text-right relative ${activePage === item.id ? 'active' : ''}`}
-          >
-            <span className="text-xl">{item.icon}</span>
-            <span className="flex-1 min-w-0 text-right">
-              <span className="block truncate">{item.label}</span>
-              <span className="block text-[10px] font-medium opacity-70 truncate">{item.desc}</span>
-            </span>
-            {activePage === item.id && (
-              <motion.div
-                layoutId="sidebar-bar"
-                className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-full"
-                style={{ background: 'linear-gradient(180deg, #10b981, #6366f1)', boxShadow: '0 0 10px #10b981' }}
-                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-              />
-            )}
-            {item.id === 'orders' && unreadOrders > 0 && (
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 min-w-[20px] h-5 px-1 rounded-full bg-red text-white text-[10px] font-black flex items-center justify-center shadow-lg shadow-red/40 animate-pulse">
-                {unreadOrders > 99 ? '99+' : unreadOrders}
+      <nav className="admin-sidebar__nav">
+        <p className="admin-sidebar__section-label">الإدارة</p>
+        {visibleItems.map((item) => {
+          const active = activePage === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => goTo(item.id)}
+              aria-current={active ? 'page' : undefined}
+              className={`admin-sidebar__item ${active ? 'is-active' : ''}`}
+            >
+              <span className="admin-sidebar__item-icon"><AdminIcon name={item.icon} /></span>
+              <span className="admin-sidebar__item-copy">
+                <strong>{item.label}</strong>
+                <small>{item.desc}</small>
               </span>
-            )}
-          </button>
-        ))}
+              {item.id === 'orders' && unreadOrders > 0 && <span className="admin-sidebar__badge">{unreadOrders > 99 ? '99+' : unreadOrders}</span>}
+            </button>
+          );
+        })}
       </nav>
 
-      <div className="p-3 border-t border-border">
-        <div className="rounded-2xl bg-card border border-border p-3 space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <div className="w-10 h-10 rounded-xl bg-neon/10 flex items-center justify-center text-neon text-lg">🛡️</div>
-              <span className="absolute -top-0.5 -left-0.5 w-2.5 h-2.5 bg-green rounded-full border border-card">
-                <span className="absolute inset-0 bg-green rounded-full animate-ping opacity-50" />
-              </span>
-            </div>
-            <div>
-              <p className="text-white text-sm font-bold">{user?.firstName}</p>
-              <p className="text-[10px] text-neon font-semibold">ONLINE ADMIN</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <a href="/customer" target="_blank" rel="noreferrer" className="text-center text-xs rounded-xl border border-border bg-bg px-3 py-2 text-muted hover:text-white transition-all">
-              📱 المتجر
-            </a>
-            <button onClick={() => goTo('settings')} className="text-center text-xs rounded-xl border border-neon/20 bg-neon/10 px-3 py-2 text-neon transition-all">
-              🎨 التصميم
-            </button>
+      <div className="admin-sidebar__footer">
+        <div className="admin-sidebar__user">
+          <span className="admin-sidebar__avatar">{user?.firstName?.[0] || 'A'}</span>
+          <div className="min-w-0">
+            <strong>{user?.firstName || 'Admin'}</strong>
+            <small>متصل الآن</small>
           </div>
         </div>
+        <div className="admin-sidebar__footer-actions">
+          <a href="/customer" target="_blank" rel="noreferrer" title="فتح المتجر"><AdminIcon name="store" /></a>
+          <button type="button" onClick={() => goTo('settings')} title="الإعدادات"><AdminIcon name="settings" /></button>
+        </div>
       </div>
-    </div>
+    </aside>
   );
 
   return (
     <>
       <div className="hidden lg:flex">{content}</div>
-
-      <AnimatePresence>
-        {sidebarOpen && (
-          <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'spring', stiffness: 300, damping: 35 }}
-            className="fixed top-0 right-0 bottom-0 z-40 lg:hidden"
-          >
-            {content}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {sidebarOpen && <div className="fixed inset-y-0 right-0 z-40 lg:hidden">{content}</div>}
     </>
   );
 }

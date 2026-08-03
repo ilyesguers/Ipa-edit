@@ -3,8 +3,28 @@ import api from '../utils/api';
 import { cachedFetch, invalidateCache } from '../utils/cache';
 import { normalizeLocale } from '../i18n';
 
-// First visit = no saved locale yet → the language picker must appear.
-const SAVED_LOCALE = localStorage.getItem('locale');
+const LOCALE_KEY = 'locale';
+const LANGUAGE_CHOSEN_KEY = 'language_selected';
+
+const readStoredLocale = () => {
+  try {
+    const value = localStorage.getItem(LOCALE_KEY);
+    return value ? normalizeLocale(value) : null;
+  } catch (_) {
+    return null;
+  }
+};
+
+const persistLocale = (locale) => {
+  try {
+    localStorage.setItem(LOCALE_KEY, locale);
+    localStorage.setItem(LANGUAGE_CHOSEN_KEY, '1');
+  } catch (_) {}
+};
+
+// A previous version only stored `locale`; treat it as a valid existing choice
+// too, so returning users are never forced through onboarding again.
+const SAVED_LOCALE = readStoredLocale();
 
 const useStore = create((set, get) => ({
   // User
@@ -12,9 +32,10 @@ const useStore = create((set, get) => ({
   token: null,
   isLoading: true,
   isAuthenticated: false,
-  locale: normalizeLocale(SAVED_LOCALE || 'ar'),
+  locale: SAVED_LOCALE || 'ar',
 
-  // Language selection — appears on the very first visit & via the header.
+  // First visit deliberately stops at the language screen. The rest of the
+  // mini app is not rendered until an explicit choice is available.
   needsLanguageSelect: !SAVED_LOCALE,
   showLanguagePicker: false,
 
@@ -46,8 +67,8 @@ const useStore = create((set, get) => ({
   // Actions
   setUser: (user) => set({ user }),
   setToken: (token) => {
-    localStorage.setItem('token', token);
-    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    try { localStorage.setItem('token', token); } catch (_) {}
+    api.defaults.headers.common.Authorization = `Bearer ${token}`;
     set({ token });
   },
   setActiveTab: (tab) => set({ activeTab: tab }),
@@ -55,13 +76,19 @@ const useStore = create((set, get) => ({
   closeLanguagePicker: () => set({ showLanguagePicker: false, needsLanguageSelect: false }),
   setLocale: async (nextLocale) => {
     const locale = normalizeLocale(nextLocale);
-    localStorage.setItem('locale', locale);
-    set({ locale, needsLanguageSelect: false });
-    // Keep bot and mini-app language in sync. This is intentionally best effort
-    // so the UI still switches when the API is temporarily unavailable.
+    persistLocale(locale);
+    set((state) => ({
+      locale,
+      needsLanguageSelect: false,
+      showLanguagePicker: false,
+      user: state.user ? { ...state.user, preferredLanguage: locale, languageSelected: true } : state.user
+    }));
+
+    // Before Telegram authentication finishes this request is intentionally
+    // skipped; `login` below syncs the pending selection after it gets a token.
+    if (!get().token) return locale;
     try {
       await api.put('/users/me', { preferredLanguage: locale });
-      set((state) => ({ user: state.user ? { ...state.user, preferredLanguage: locale } : state.user }));
     } catch (_) {}
     return locale;
   },
@@ -72,7 +99,7 @@ const useStore = create((set, get) => ({
       const res = await api.get('/settings/public');
       set({ publicSettings: res.data.data || {} });
       return res.data.data || {};
-    } catch (err) {
+    } catch (_) {
       set({ publicSettings: {} });
       return {};
     }
@@ -85,9 +112,29 @@ const useStore = create((set, get) => ({
       const res = await api.post('/auth/telegram', { initData });
       const { token, user } = res.data;
       get().setToken(token);
-      const locale = normalizeLocale(user.preferredLanguage || window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code || get().locale);
-      localStorage.setItem('locale', locale);
-      set({ user, locale, isAuthenticated: true, isLoading: false });
+
+      const savedLocale = readStoredLocale();
+      const hasLocalChoice = Boolean(savedLocale);
+      const hasServerChoice = Boolean(user.languageSelected);
+      const locale = hasLocalChoice
+        ? savedLocale
+        : normalizeLocale(user.preferredLanguage || window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code || get().locale);
+      const hasChoice = hasLocalChoice || hasServerChoice;
+
+      if (!hasLocalChoice && hasServerChoice) persistLocale(locale);
+      set({
+        user: { ...user, preferredLanguage: locale, languageSelected: hasChoice },
+        locale,
+        needsLanguageSelect: !hasChoice,
+        isAuthenticated: true,
+        isLoading: false
+      });
+
+      // A language picked in the web gate can beat the authentication request.
+      // Persist it after auth without making the UI wait for a second network call.
+      if (hasLocalChoice && (!hasServerChoice || normalizeLocale(user.preferredLanguage) !== locale)) {
+        api.put('/users/me', { preferredLanguage: locale }).catch(() => {});
+      }
       return user;
     } catch (err) {
       set({ isLoading: false });
@@ -128,18 +175,12 @@ const useStore = create((set, get) => ({
 
   selectDuration: (duration) => set({ selectedDuration: duration, showCheckout: true, showDurationSheet: false }),
 
-  // Coupon
   applyCoupon: async (code, amount) => {
-    try {
-      const res = await api.post('/orders/validate-coupon', { code, amount });
-      set({ couponDiscount: res.data.data.discountAmount });
-      return res.data.data;
-    } catch (err) {
-      throw err;
-    }
+    const res = await api.post('/orders/validate-coupon', { code, amount });
+    set({ couponDiscount: res.data.data.discountAmount });
+    return res.data.data;
   },
 
-  // Purchase
   purchaseWithWallet: async () => {
     const { selectedProduct, selectedDuration, quantity, couponCode } = get();
     const res = await api.post('/orders/wallet', {
@@ -148,11 +189,9 @@ const useStore = create((set, get) => ({
       quantity,
       couponCode: couponCode || undefined
     });
-    // Refresh the balance from the server response so the header updates instantly
     const nextUser = res.data.data?.balance !== undefined
       ? { ...get().user, balance: res.data.data.balance }
       : get().user;
-    // Purchases change keys/orders/stock — drop those caches so tabs reload fresh
     invalidateCache('my-keys');
     invalidateCache('orders:1');
     if (selectedProduct) invalidateCache(`product:${selectedProduct._id}`);
@@ -180,7 +219,6 @@ const useStore = create((set, get) => ({
     return res.data;
   },
 
-  // Reset
   reset: () => set({
     selectedCategory: null, selectedGame: null, games: [], products: [],
     selectedProduct: null, showDurationSheet: false, selectedDuration: null,
@@ -189,7 +227,7 @@ const useStore = create((set, get) => ({
   }),
 
   goBack: () => {
-    const { selectedDuration, selectedProduct, showDurationSheet, selectedGame, selectedCategory } = get();
+    const { selectedProduct, showDurationSheet, selectedGame, selectedCategory } = get();
     if (showDurationSheet) return set({ showDurationSheet: false });
     if (selectedProduct) return set({ selectedProduct: null });
     if (selectedGame) return set({ selectedGame: null, products: [], breadcrumb: [selectedCategory] });
