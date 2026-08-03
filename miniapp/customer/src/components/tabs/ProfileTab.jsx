@@ -5,9 +5,11 @@ import PremiumIcon from '../PremiumIcon';
 import api from '../../utils/api';
 import { cachedFetch } from '../../utils/cache';
 import { haptic } from '../../utils/haptic';
+import { playSound, useSoundStore } from '../../utils/sound';
 
 export default function ProfileTab() {
   const { user, locale, toggleLocale, setActiveTab } = useStore();
+  const { muted, setMuted, volume, setVolume } = useSoundStore();
   const [balanceHistory, setBalanceHistory] = useState([]);
   const dateLocale = t(locale, 'dateLocale');
 
@@ -56,14 +58,39 @@ export default function ProfileTab() {
           <span><PremiumIcon name="calendar" /> {t(locale, 'joined')}</span>
           <strong>{user?.createdAt ? new Date(user.createdAt).toLocaleDateString(dateLocale) : '—'}</strong>
         </div>
-        <button type="button" onClick={() => { haptic.light(); toggleLocale(); }} className="settings-list__row settings-list__button">
+        <button type="button" onClick={() => { haptic.light(); playSound('tap'); toggleLocale(); }} className="settings-list__row settings-list__button">
           <span><PremiumIcon name="globe" /> {t(locale, 'language')}</span>
           <PremiumIcon name={locale === 'ar' ? 'left' : 'right'} />
         </button>
-        <button type="button" onClick={() => setActiveTab('support')} className="settings-list__row settings-list__button">
+        <button type="button" onClick={() => { playSound('tap'); setActiveTab('support'); }} className="settings-list__row settings-list__button">
           <span><PremiumIcon name="support" /> {t(locale, 'support')}</span>
           <PremiumIcon name={locale === 'ar' ? 'left' : 'right'} />
         </button>
+        <div className="settings-list__row">
+          <span><PremiumIcon name={muted ? 'volumeOff' : 'volume'} /> {t(locale, 'soundEffects')}</span>
+          <div className="profile-sound">
+            <button
+              type="button"
+              onClick={() => { haptic.light(); setMuted(!muted); playSound('toggle'); }}
+              className={`profile-sound__switch ${!muted ? 'is-on' : ''}`}
+              role="switch"
+              aria-checked={!muted}
+              aria-label={t(locale, 'sound')}
+            >
+              <i />
+            </button>
+            <input
+              type="range"
+              min="0" max="100" step="5"
+              value={Math.round(volume * 100)}
+              dir="ltr"
+              aria-label={t(locale, 'volume')}
+              onChange={(e) => { const v = Number(e.target.value) / 100; setVolume(v); if (v > 0 && muted) setMuted(false); }}
+              onPointerUp={() => playSound('tap')}
+              style={{ '--fill': `${Math.round(volume * 100)}%` }}
+            />
+          </div>
+        </div>
       </section>
 
       {user?.role === 'admin' && (

@@ -97,7 +97,7 @@ export default function Settings() {
   const brandingKeys = ['bot_name', 'bot_username', 'channel_username', 'support_username', 'ui_theme_preset', 'ui_welcome_badge_ar', 'ui_welcome_badge_en', 'ui_welcome_title_ar', 'ui_welcome_title_en', 'ui_welcome_subtitle_ar', 'ui_welcome_subtitle_en', 'ui_footer_note_ar', 'ui_footer_note_en', 'admin_portal_label_ar', 'admin_portal_label_en', 'ui_home_highlights'];
   const navigationKeys = ['bot_quick_links'];
   const messageKeys = ['welcome_message', 'maintenance_message', 'shop_title', 'shop_description', 'footer_text'];
-  const paymentKeys = ['binance_api_key', 'binance_secret_key', 'binance_merchant_id', 'usdt_wallet_trc20', 'min_deposit', 'payment_timeout_minutes'];
+  const paymentKeys = ['binance_api_key', 'binance_secret_key', 'binance_merchant_id', 'usdt_wallet_trc20', 'min_deposit', 'payment_timeout_minutes', 'stars_enabled', 'stars_per_usd'];
   const systemKeys = ['referral_bonus', 'auto_verify_payments', 'admin_notification_on_order', 'admin_notification_on_payment', 'force_join_channel', 'channel_id', 'maintenance_mode', 'maintenance_message'];
 
   const themeName = THEME_PRESETS.find((item) => item.id === settings.ui_theme_preset)?.title || 'Aurora';
@@ -358,6 +358,35 @@ export default function Settings() {
             <button onClick={() => handleSave('payments', paymentKeys)} className="neon-btn text-xs px-3 py-1.5">
               {savingKey === 'payments' ? '⏳...' : '💾 حفظ'}
             </button>
+          </div>
+
+          {/* ⭐ Telegram Stars — price is decided by the admin here */}
+          <div className="rounded-2xl border border-gold/25 bg-gradient-to-br from-gold/10 to-transparent p-4 space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-black text-white flex items-center gap-2">⭐ الدفع بنجوم تيليجرام <span className="text-[9px] px-2 py-0.5 rounded-full bg-gold/15 text-gold border border-gold/25">XTR</span></p>
+                <p className="text-[11px] text-muted mt-1">يشتري العميل بالنجوم مباشرة داخل تيليجرام، والمفاتيح تصله تلقائياً فور الدفع.</p>
+              </div>
+              <button onClick={() => update('stars_enabled', !(settings.stars_enabled))} className={`w-12 h-6 rounded-full relative transition-colors shrink-0 ${settings.stars_enabled ? 'bg-gold' : 'bg-border'}`} aria-label="تفعيل الدفع بالنجوم">
+                <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${settings.stars_enabled ? 'right-1' : 'left-1'}`} />
+              </button>
+            </div>
+            <div className="grid gap-3 md:grid-cols-[220px_1fr] items-end">
+              <div>
+                <label className="text-xs text-muted font-semibold block mb-1.5">سعر النجمة — كم نجمة تعادل 1 دولار؟</label>
+                <input
+                  type="number" min="1" step="1"
+                  value={settings.stars_per_usd ?? 50}
+                  onChange={(e) => update('stars_per_usd', Math.max(1, Number(e.target.value) || 1))}
+                  className="input-admin" dir="ltr" placeholder="50"
+                />
+              </div>
+              <div className="rounded-xl bg-bg/80 border border-gold/20 p-3 text-[11px] text-white leading-6">
+                <p className="font-bold text-gold mb-1">معاينة الأسعار:</p>
+                <p>منتج بـ $1 = <b className="text-gold">{Math.max(1, Math.ceil((Number(settings.stars_per_usd) || 50) * 1))} ⭐</b> · منتج بـ $5 = <b className="text-gold">{Math.max(1, Math.ceil((Number(settings.stars_per_usd) || 50) * 5))} ⭐</b> · منتج بـ $10 = <b className="text-gold">{Math.max(1, Math.ceil((Number(settings.stars_per_usd) || 50) * 10))} ⭐</b></p>
+                <p className="text-muted mt-1">غيّر الرقم ثم اضغط «حفظ» — ينعكس فوراً على زر الدفع في المتجر.</p>
+              </div>
+            </div>
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">

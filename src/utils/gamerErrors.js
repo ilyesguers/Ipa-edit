@@ -15,59 +15,59 @@ const getGamerError = (errorType, lang = 'ar') => {
   const errors = {
     // Database/User errors
     userNotFound: {
-      ar: `${emojiHtml('ghost')} <b>يا خوي بياناتك ما وصلت!</b>\n\n` +
-          `${emojiHtml('rocket')} جرب /start مرة ثانية عشان تتحمل بياناتك\n\n` +
-          `${emojiHtml('fire')} لو استمرت المشكلة، تواصل مع الدعم`,
-      en: `${emojiHtml('ghost')} <b>Your data didn't load!</b>\n\n` +
-          `${emojiHtml('rocket')} Try /start again to load your data\n\n` +
-          `${emojiHtml('fire')} If problem continues, contact support`
+      ar: `${emojiHtml('ghost')} <b>تعذر تحميل بيانات حسابك</b>\n\n` +
+          `${emojiHtml('rocket')} أرسل /start من جديد لإعادة تحميل بياناتك\n\n` +
+          `${emojiHtml('fire')} وإن استمرت المشكلة، يرجى التواصل مع الدعم الفني`,
+      en: `${emojiHtml('ghost')} <b>Your account data could not be loaded</b>\n\n` +
+          `${emojiHtml('rocket')} Send /start again to reload your data\n\n` +
+          `${emojiHtml('fire')} If the problem continues, please contact support`
     },
-    
+
     dbError: {
-      ar: `${emojiHtml('bolt')} <b>لاق كبير! ⏳</b>\n\n` +
-          `${emojiHtml('target')} السيرفر يتحمل ضغط - جرب بعد شوي\n\n` +
-          `${emojiHtml('explosion')} لو استمرت المشكلة، تواصل مع الدعم`,
-      en: `${emojiHtml('bolt')} <b>Major LAG detected!</b>\n\n` +
-          `${emojiHtml('target')} Server under pressure - try again in a bit\n\n` +
-          `${emojiHtml('explosion')} If it continues, contact support`
+      ar: `${emojiHtml('bolt')} <b>ضغط مؤقت على الخادم ⏳</b>\n\n` +
+          `${emojiHtml('target')} النظام يستقبل طلبات كثيرة حالياً — أعد المحاولة بعد لحظات\n\n` +
+          `${emojiHtml('explosion')} وإن تكررت المشكلة، يرجى التواصل مع الدعم الفني`,
+      en: `${emojiHtml('bolt')} <b>Temporary server load ⏳</b>\n\n` +
+          `${emojiHtml('target')} The system is busy right now — please retry in a moment\n\n` +
+          `${emojiHtml('explosion')} If it continues, please contact support`
     },
-  
+
     // Command errors
     commandError: {
-      ar: `${emojiHtml('skull')} <b>الأمر ما اشتغل!</b>\n\n` +
-          `${emojiHtml('rocket')} جرب /start للبدء من جديد\n\n` +
-          `${emojiHtml('fire')} أو تواصل مع الدعم لو تحتاج مساعدة`,
-      en: `${emojiHtml('skull')} <b>Command failed!</b>\n\n` +
-          `${emojiHtml('rocket')} Try /start to restart\n\n` +
-          `${emojiHtml('fire')} Or contact support if you need help`
+      ar: `${emojiHtml('skull')} <b>تعذر تنفيذ الأمر</b>\n\n` +
+          `${emojiHtml('rocket')} أرسل /start للبدء من جديد\n\n` +
+          `${emojiHtml('fire')} أو تواصل مع الدعم الفني إذا احتجت مساعدة`,
+      en: `${emojiHtml('skull')} <b>Command could not be completed</b>\n\n` +
+          `${emojiHtml('rocket')} Send /start to begin again\n\n` +
+          `${emojiHtml('fire')} Or contact support if you need assistance`
     },
-    
+
     // Generic error
     generic: {
-      ar: `${emojiHtml('explosion')} <b>صار لاق صغير</b>\n\n` +
-          `${emojiHtml('target')} حاول مرة ثانية - غالباً يزبط!\n\n` +
-          `${emojiHtml('rocket')} لو كل مرة يسقط، تواصل مع الدعم`,
-      en: `${emojiHtml('explosion')} <b>BOOM! Small glitch</b>\n\n` +
-          `${emojiHtml('target')} Try again - usually fixes it!\n\n` +
-          `${emojiHtml('rocket')} If it keeps happening, contact support`
+      ar: `${emojiHtml('explosion')} <b>حدث خطأ غير متوقع</b>\n\n` +
+          `${emojiHtml('target')} أعد المحاولة — يُحل الأمر عادةً من أول مرة\n\n` +
+          `${emojiHtml('rocket')} وإن تكرر الخطأ، يرجى التواصل مع الدعم الفني`,
+      en: `${emojiHtml('explosion')} <b>An unexpected error occurred</b>\n\n` +
+          `${emojiHtml('target')} Please retry — it usually works right away\n\n` +
+          `${emojiHtml('rocket')} If the error repeats, please contact support`
     },
-    
+
     // Loading state
     loading: {
       ar: `${emojiHtml('bolt')} <b>جاري التحميل...</b>\n\n` +
-          `${emojiHtml('rocket')} ثواني وتجهز!`,
+          `${emojiHtml('rocket')} لحظات ويكتمل التجهيز`,
       en: `${emojiHtml('bolt')} <b>Loading...</b>\n\n` +
-          `${emojiHtml('rocket')} Almost ready!`
+          `${emojiHtml('rocket')} Almost ready`
     },
-    
+
     // Maintenance
     maintenance: {
-      ar: `${emojiHtml('gear')} <b>الصيانة جارية!</b>\n\n` +
-          `${emojiHtml('rocket')} بنرجع بأسرع وقت - فضولي؟\n\n` +
-          `${emojiHtml('fire')} تابعنا عشان تعرف متى نرجع!`,
-      en: `${emojiHtml('gear')} <b>Under maintenance!</b>\n\n` +
-          `${emojiHtml('rocket')} Coming back ASAP - stay tuned!\n\n` +
-          `${emojiHtml('fire')} Follow us to know when we're back!`
+      ar: `${emojiHtml('gear')} <b>صيانة مؤقتة</b>\n\n` +
+          `${emojiHtml('rocket')} نجري تحديثات سريعة وسنعود للعمل خلال دقائق\n\n` +
+          `${emojiHtml('fire')} تابع القناة لتعرف موعد العودة أولاً`,
+      en: `${emojiHtml('gear')} <b>Scheduled maintenance</b>\n\n` +
+          `${emojiHtml('rocket')} We are applying quick updates and will be back within minutes\n\n` +
+          `${emojiHtml('fire')} Follow the channel to know the moment we return`
     }
   };
   

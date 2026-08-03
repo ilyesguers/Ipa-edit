@@ -6,6 +6,9 @@ import PremiumIcon from '../PremiumIcon';
 import api from '../../utils/api';
 import { cachedFetch } from '../../utils/cache';
 import { haptic } from '../../utils/haptic';
+import { playSound } from '../../utils/sound';
+
+const isImageUrl = (value) => typeof value === 'string' && /^(https?:\/\/|\/)/.test(value);
 
 export default function ProductsTab() {
   const {
@@ -26,6 +29,7 @@ export default function ProductsTab() {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [activeProductType, setActiveProductType] = useState('panel');
   const [loading, setLoading] = useState(true);
+  const [guideOpen, setGuideOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -60,6 +64,7 @@ export default function ProductsTab() {
 
   const handleCategory = async (category) => {
     haptic.light();
+    playSound('select');
     setLoading(true);
     try {
       await selectCategory(category);
@@ -70,6 +75,7 @@ export default function ProductsTab() {
 
   const handleGame = async (game) => {
     haptic.light();
+    playSound('select');
     setLoading(true);
     try {
       await selectGame(game);
@@ -80,6 +86,7 @@ export default function ProductsTab() {
 
   const openProduct = (product) => {
     haptic.light();
+    playSound('open');
     selectProduct(product).catch(() => {});
   };
 
@@ -88,13 +95,13 @@ export default function ProductsTab() {
       ? !product.productType || product.productType === 'panel_key'
       : product.productType === 'service');
     return (
-      <div className="store-page">
+      <div className="store-page drill-view" key={`game-${selectedGame._id}`}>
         <Breadcrumb locale={locale} />
         <div className="product-type-switch" role="tablist" aria-label="Product type">
-          <button type="button" role="tab" aria-selected={activeProductType === 'panel'} onClick={() => setActiveProductType('panel')} className={activeProductType === 'panel' ? 'is-active' : ''}>
+          <button type="button" role="tab" aria-selected={activeProductType === 'panel'} onClick={() => { playSound('toggle'); setActiveProductType('panel'); }} className={activeProductType === 'panel' ? 'is-active' : ''}>
             <PremiumIcon name="key" /> {t(locale, 'panelKeys')}
           </button>
-          <button type="button" role="tab" aria-selected={activeProductType === 'service'} onClick={() => setActiveProductType('service')} className={activeProductType === 'service' ? 'is-active' : ''}>
+          <button type="button" role="tab" aria-selected={activeProductType === 'service'} onClick={() => { playSound('toggle'); setActiveProductType('service'); }} className={activeProductType === 'service' ? 'is-active' : ''}>
             <PremiumIcon name="rocket" /> {t(locale, 'services')}
           </button>
         </div>
@@ -110,7 +117,7 @@ export default function ProductsTab() {
 
   if (selectedCategory) {
     return (
-      <div className="store-page">
+      <div className="store-page drill-view" key={`cat-${selectedCategory._id}`}>
         <Breadcrumb locale={locale} />
         <div className="page-heading">
           <div>
@@ -134,23 +141,20 @@ export default function ProductsTab() {
   const subtitle = cleanMarkdown(locale === 'ar'
     ? (publicSettings?.ui_welcome_subtitle_ar || t(locale, 'welcomeSubtitle'))
     : (publicSettings?.ui_welcome_subtitle_en || t(locale, 'welcomeSubtitle')));
-  const guide = locale === 'ar'
-    ? [
-      { icon: 'gamepad', title: 'اختر القسم', text: 'ابدأ بالمنصة أو اللعبة المناسبة.' },
-      { icon: 'key', title: 'اختر المنتج', text: 'راجع السعر والخيارات المتاحة.' },
-      { icon: 'wallet', title: 'أكمل الدفع', text: 'ستصلك التفاصيل بعد تأكيد الطلب.' }
-    ]
-    : [
-      { icon: 'gamepad', title: 'Choose a category', text: 'Start with your platform or game.' },
-      { icon: 'key', title: 'Choose a product', text: 'Review the available price and options.' },
-      { icon: 'wallet', title: 'Complete payment', text: 'Your details arrive after confirmation.' }
-    ];
+  const badge = cleanMarkdown(locale === 'ar'
+    ? (publicSettings?.ui_welcome_badge_ar || t(locale, 'welcomeBadge'))
+    : (publicSettings?.ui_welcome_badge_en || t(locale, 'welcomeBadge')));
+  const guide = [
+    { icon: 'gamepad', title: t(locale, 'guideStep1Title'), text: t(locale, 'guideStep1Text') },
+    { icon: 'key', title: t(locale, 'guideStep2Title'), text: t(locale, 'guideStep2Text') },
+    { icon: 'wallet', title: t(locale, 'guideStep3Title'), text: t(locale, 'guideStep3Text') }
+  ];
 
   return (
-    <div className="store-page space-y-5">
+    <div className="store-page space-y-5" key="store-home">
       <section className="store-intro">
         <div>
-          <p className="store-intro__eyebrow">{t(locale, 'welcomeBadge')}</p>
+          <p className="store-intro__eyebrow">{badge}</p>
           <h1>{title}</h1>
           <p>{subtitle}</p>
         </div>
@@ -160,16 +164,28 @@ export default function ProductsTab() {
         </a>
       </section>
 
-      <details className="store-guide">
-        <summary><span><PremiumIcon name="help" /> {locale === 'ar' ? 'دليل شراء سريع' : 'Quick buying guide'}</span><PremiumIcon name="down" /></summary>
-        <div className="store-guide__steps">
-          {guide.map((step, index) => <div key={step.title}>
-            <span><b>{index + 1}</b><PremiumIcon name={step.icon} /></span>
-            <strong>{step.title}</strong>
-            <small>{step.text}</small>
-          </div>)}
+      <div className="store-guide">
+        <button
+          type="button"
+          className="store-guide__trigger"
+          onClick={() => { haptic.light(); playSound('toggle'); setGuideOpen((v) => !v); }}
+          aria-expanded={guideOpen}
+        >
+          <span><PremiumIcon name="help" /> {t(locale, 'quickGuide')}</span>
+          <PremiumIcon name="down" className={`collapsible__chevron ${guideOpen ? 'rotate-180' : ''}`} />
+        </button>
+        <div className={`collapsible ${guideOpen ? 'is-open' : ''}`}>
+          <div className="collapsible__inner">
+            <div className="store-guide__steps">
+              {guide.map((step, index) => <div key={step.title}>
+                <span><b>{index + 1}</b><PremiumIcon name={step.icon} /></span>
+                <strong>{step.title}</strong>
+                <small>{step.text}</small>
+              </div>)}
+            </div>
+          </div>
         </div>
-      </details>
+      </div>
 
       <div className="store-search">
         <PremiumIcon name="target" />
@@ -226,7 +242,7 @@ function Breadcrumb({ locale }) {
   const { breadcrumb, goBack } = useStore();
   return (
     <div className="breadcrumb">
-      <button type="button" onClick={() => { haptic.light(); goBack(); }} aria-label={t(locale, 'back')}>
+      <button type="button" onClick={() => { haptic.light(); playSound('close'); goBack(); }} aria-label={t(locale, 'back')}>
         <PremiumIcon name={locale === 'ar' ? 'right' : 'left'} />
       </button>
       <div>
@@ -237,9 +253,14 @@ function Breadcrumb({ locale }) {
 }
 
 function CategoryCard({ category, locale, onSelect }) {
+  const showImage = isImageUrl(category.image);
   return (
     <button type="button" onClick={onSelect} className="category-card">
-      <span className="category-card__icon"><PremiumIcon name="gamepad" /></span>
+      {showImage ? (
+        <img src={category.image} alt="" className="category-card__img" loading="lazy" />
+      ) : (
+        <span className="category-card__icon">{category.icon && !isImageUrl(category.icon) ? <span aria-hidden="true">{category.icon}</span> : <PremiumIcon name="gamepad" />}</span>
+      )}
       <span>{localizedName(category, locale)}</span>
       <PremiumIcon name={locale === 'ar' ? 'left' : 'right'} className="category-card__arrow" />
     </button>
@@ -247,10 +268,10 @@ function CategoryCard({ category, locale, onSelect }) {
 }
 
 function GameCard({ game, locale, onSelect }) {
-  const hasImage = typeof game.icon === 'string' && /^(https?:\/\/|\/)/.test(game.icon);
+  const showImage = isImageUrl(game.icon) || isImageUrl(game.image);
   return (
     <button type="button" onClick={onSelect} className="game-card">
-      {hasImage ? <img src={game.icon} alt="" /> : <PremiumIcon name="gamepad" size="1.7rem" />}
+      {showImage ? <img src={game.icon || game.image} alt="" loading="lazy" /> : <PremiumIcon name="gamepad" size="1.7rem" />}
       <span>{localizedName(game, locale)}</span>
     </button>
   );

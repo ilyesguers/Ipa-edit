@@ -213,6 +213,52 @@ const useStore = create((set, get) => ({
     return res.data.data;
   },
 
+  // ⭐ Telegram Stars checkout: create the invoice on our API, open it inside
+  // Telegram, then poll the order until the bot delivers the keys.
+  purchaseWithStars: async () => {
+    const { selectedProduct, selectedDuration, quantity, couponCode } = get();
+    const res = await api.post('/orders/stars', {
+      productId: selectedProduct._id,
+      durationId: selectedDuration._id,
+      quantity,
+      couponCode: couponCode || undefined
+    });
+    return res.data.data; // { invoiceUrl, starsAmount, orderNumber, orderId }
+  },
+
+  pollOrder: async (orderNumber, { timeoutMs = 20000, intervalMs = 1600 } = {}) => {
+    const deadline = Date.now() + timeoutMs;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const res = await api.get(`/orders/lookup/${encodeURIComponent(orderNumber)}`);
+      const order = res.data?.data;
+      if (order && (order.status === 'completed' || order.status === 'failed' || order.status === 'cancelled')) {
+        return order;
+      }
+      if (Date.now() > deadline) return order;
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+  },
+
+  completeStarsOrder: (order) => {
+    const { selectedProduct } = get();
+    invalidateCache('my-keys');
+    invalidateCache('orders:1');
+    if (selectedProduct) invalidateCache(`product:${selectedProduct._id}`);
+    const gameId = selectedProduct?.game?._id || selectedProduct?.game;
+    if (gameId) invalidateCache(`products:${gameId}`);
+    set({
+      currentOrder: {
+        order,
+        keys: order?.keyValues || [],
+        starsAmount: order?.starsAmount,
+        via: 'stars'
+      },
+      showCheckout: false,
+      showDurationSheet: false
+    });
+  },
+
   submitPaymentProof: async (txHash) => {
     const { currentOrder } = get();
     const res = await api.post('/orders/payment-proof', { orderId: currentOrder.order?._id, txHash });

@@ -19,6 +19,7 @@ const PAYMENT_LABELS = {
   binance: '🟡 Binance',
   manual_crypto: '🔗 يدوي',
   admin_gift: '🎁 هدية',
+  telegram_stars: '⭐ نجوم تيليجرام',
 };
 
 export default function Orders({ routeQuery = {}, setRouteQuery }) {
@@ -94,9 +95,9 @@ export default function Orders({ routeQuery = {}, setRouteQuery }) {
     if (!refunding) return;
     haptic.medium();
     try {
-      await api.post(`/admin/orders/${refunding}/refund`, { reason: refundReason || undefined });
+      const res = await api.post(`/admin/orders/${refunding}/refund`, { reason: refundReason || undefined });
       haptic.success();
-      toast.success('💰 تم الاسترجاع للمحفظة');
+      toast.success(res.data?.data?.starsRefunded ? '⭐ أعاد تيليجرام النجوم للمستخدم' : '💰 تم الاسترجاع للمحفظة');
       setRefunding(null);
       setRefundReason('');
       load(1);
@@ -170,7 +171,7 @@ export default function Orders({ routeQuery = {}, setRouteQuery }) {
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="font-black text-neon">${order.finalPrice?.toFixed(2)}</p>
-                  <p className="text-[10px] text-muted">{new Date(order.createdAt).toLocaleDateString('ar-SA')}</p>
+                  <p className="text-[10px] text-muted">{new Date(order.createdAt).toLocaleDateString('ar-IQ')}</p>
                 </div>
               </div>
 
@@ -232,7 +233,7 @@ export default function Orders({ routeQuery = {}, setRouteQuery }) {
               {detail.couponCode && <InfoRow label="الكوبون" value={detail.couponCode} />}
               {detail.paymentTxHash && <InfoRow label="TxHash" value={detail.paymentTxHash} mono onCopy={() => copy(detail.paymentTxHash)} />}
               {detail.adminNotes && <InfoRow label="ملاحظة الإدارة" value={detail.adminNotes} />}
-              <InfoRow label="التاريخ" value={new Date(detail.createdAt).toLocaleString('ar-SA')} />
+              <InfoRow label="التاريخ" value={new Date(detail.createdAt).toLocaleString('ar-IQ')} />
               <div className="flex gap-2 pt-2">
                 <button onClick={() => { setDetail(null); window.dispatchEvent(new CustomEvent('admin-navigate', { detail: { page: 'users', query: { search: detail.user } } })); }} className="flex-1 py-2.5 rounded-xl border border-neon/30 bg-neon/10 text-neon text-xs font-bold">👤 ملف المستخدم</button>
                 <button onClick={() => setDetail(null)} className="px-4 py-2.5 border border-border rounded-xl text-muted text-xs font-bold">إغلاق</button>
@@ -261,7 +262,11 @@ export default function Orders({ routeQuery = {}, setRouteQuery }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-md rounded-3xl border border-border bg-panel p-5 space-y-4">
             <h3 className="text-white font-black">💰 استرجاع الطلب</h3>
-            <p className="text-xs text-muted">سيتم تحويل المبلغ إلى محفظة المستخدم وإبطال المفاتيح المسلّمة.</p>
+            <p className="text-xs text-muted">
+              {orders.find((o) => o._id === refunding)?.paymentMethod === 'telegram_stars'
+                ? '⭐ سيعيد تيليجرام النجوم إلى رصيد المستخدم مباشرة، وستُبطل المفاتيح المسلّمة.'
+                : 'سيتم تحويل المبلغ إلى محفظة المستخدم وإبطال المفاتيح المسلّمة.'}
+            </p>
             <textarea value={refundReason} onChange={(e) => setRefundReason(e.target.value)} rows={3} className="input-admin resize-none" placeholder="سبب الاسترجاع (اختياري)" />
             <div className="flex gap-2">
               <button onClick={handleRefund} className="flex-1 py-3 rounded-xl font-bold text-sm bg-gold/10 border border-gold/30 text-gold">تأكيد الاسترجاع</button>

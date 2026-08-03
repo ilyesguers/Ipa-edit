@@ -37,30 +37,30 @@ const profileHandler = async (ctx) => {
   const referralLink = `https://t.me/${botUsername}?start=ref_${user.telegramId}`;
 
   const roleLabel = user.role === 'admin' || user.role === 'superadmin'
-    ? t(lang, 'أسطورة', 'Legend')
-    : t(lang, 'جيمر', 'Gamer');
+    ? t(lang, 'إدارة', 'Admin')
+    : t(lang, 'عضو', 'Member');
 
   const completedOrders = await Order.countDocuments({ user: user.telegramId, status: 'completed' });
   const pendingOrders = await Order.countDocuments({ user: user.telegramId, status: { $in: ['pending', 'processing'] } });
 
   const msg = (
-    `${emojiHtml('crown')} <b>${t(lang, 'بروفايل الأسطورة', 'Legend Profile')}</b>\n\n` +
-    `${emojiHtml('rocket')} ${t(lang, 'الاسم', 'Name')}: <b>${user.fullName}</b> ${emojiHtml('fire')}\n` +
+    `${emojiHtml('crown')} <b>${t(lang, 'ملفي الشخصي', 'My Profile')}</b>\n\n` +
+    `${emojiHtml('rocket')} ${t(lang, 'الاسم', 'Name')}: <b>${user.fullName}</b>\n` +
     `${emojiHtml('target')} ID: <code>${user.telegramId}</code>\n` +
-    `${emojiHtml('fire')} ${user.username ? `@${user.username}` : t(lang, 'مو محدد', 'No username')} | ${emojiHtml('crown')} ${roleLabel}\n\n` +
+    `${emojiHtml('fire')} ${user.username ? `@${user.username}` : t(lang, 'بدون معرّف', 'No username')} | ${emojiHtml('crown')} ${roleLabel}\n\n` +
     `━━━━━━━━━━━━━━━\n` +
     `${emojiHtml('wallet')} ${t(lang, 'الرصيد', 'Balance')}: <b>$${user.balance.toFixed(2)}</b>\n` +
-    `${emojiHtml('trophy')} ${t(lang, 'الطلبات', 'Orders')}: <b>${user.totalOrders}</b> ${emojiHtml('fire')}\n` +
-    `${emojiHtml('gem')} ${t(lang, 'الصرف', 'Spent')}: <b>$${user.totalSpent.toFixed(2)}</b>\n` +
-    `${emojiHtml('shield')} ${t(lang, 'مكتملة', 'Done')}: <b>${completedOrders}</b> | ${emojiHtml('bolt')} ${t(lang, 'معلقة', 'Pending')}: <b>${pendingOrders}</b>\n\n` +
+    `${emojiHtml('trophy')} ${t(lang, 'الطلبات', 'Orders')}: <b>${user.totalOrders}</b>\n` +
+    `${emojiHtml('gem')} ${t(lang, 'إجمالي المشتريات', 'Total spent')}: <b>$${user.totalSpent.toFixed(2)}</b>\n` +
+    `${emojiHtml('shield')} ${t(lang, 'مكتملة', 'Completed')}: <b>${completedOrders}</b> | ${emojiHtml('bolt')} ${t(lang, 'قيد المعالجة', 'Pending')}: <b>${pendingOrders}</b>\n\n` +
     `━━━━━━━━━━━━━━━\n` +
-    `${emojiHtml('rocket')} ${t(lang, 'الإحالات', 'Referrals')}: <b>${user.referralCount || 0}</b> ${emojiHtml('explosion')}\n` +
-    `${emojiHtml('target')} ${t(lang, 'رابط الدعوة', 'Invite Link')}:\n<code>${referralLink}</code>\n\n` +
-    `${emojiHtml('fire')} ${t(lang, 'ادع ربعك وخذ بونص - كل ما زادوا كل ما صرت أسطورة أكثر!', 'Invite friends & get bonus - more friends = more legend!')}`
+    `${emojiHtml('rocket')} ${t(lang, 'دعواتك الناجحة', 'Successful invites')}: <b>${user.referralCount || 0}</b>\n` +
+    `${emojiHtml('target')} ${t(lang, 'رابط الدعوة الخاص بك', 'Your invite link')}:\n<code>${referralLink}</code>\n\n` +
+    `${emojiHtml('fire')} ${t(lang, 'شارك رابطك مع أصدقائك واحصل على مكافأة عن كل تسجيل.', 'Share your link with friends and earn a bonus for every sign-up.')}`
   );
 
   const buttons = Markup.inlineKeyboard([
-    [btn('rocket', t(lang, 'افتح المتجر - PLAY NOW', 'Open Store - PLAY NOW'), null, 'primary', true, `${process.env.BASE_URL}/customer`)],
+    [btn('rocket', t(lang, '🛍️ فتح المتجر', '🛍️ Open Store'), null, 'primary', true, `${process.env.BASE_URL}/customer`)],
     [btn('gem', t(lang, 'مفاتيحي', 'My Keys'), null, 'success', true, `${process.env.BASE_URL}/customer`)],
     [btn('ghost', t(lang, 'الرئيسية', 'Home'), 'main_menu', 'primary')]
   ]);
@@ -74,18 +74,17 @@ const showActivity = async (ctx) => {
   const recentOrders = await Order.find({ user: user.telegramId, status: 'completed' }).sort({ createdAt: -1 }).limit(5);
 
   let msg = (
-    `${emojiHtml('fire')} <b>${t(lang, 'نشاطك الأسطوري', 'Your Legendary Activity')}</b>\n\n` +
-    `${emojiHtml('trophy')} ${t(lang, 'إجمالي الطلبات', 'Total Orders')}: <b>${user.totalOrders}</b> | ${emojiHtml('wallet')} $${user.totalSpent.toFixed(2)}\n` +
-    `${emojiHtml('crown')} ${t(lang, 'المستوى', 'Level')}: <b>${user.totalOrders > 10 ? 'أسطورة' : user.totalOrders > 5 ? 'محترف' : 'جيمر صاعد'}</b>\n\n`
+    `${emojiHtml('fire')} <b>${t(lang, 'ملخص نشاطك', 'Your Activity Summary')}</b>\n\n` +
+    `${emojiHtml('trophy')} ${t(lang, 'إجمالي الطلبات', 'Total orders')}: <b>${user.totalOrders}</b> | ${emojiHtml('wallet')} $${user.totalSpent.toFixed(2)}\n\n`
   );
 
   if (recentOrders.length) {
-    msg += `${emojiHtml('rocket')} <b>${t(lang, 'آخر مشترياتك', 'Last Purchases')}:</b>\n`;
+    msg += `${emojiHtml('rocket')} <b>${t(lang, 'آخر المشتريات', 'Latest purchases')}:</b>\n`;
     recentOrders.forEach((order, i) => {
-      msg += `${i + 1}. ${emojiHtml('gem')} ${order.productName} - ${order.durationName} | $${order.finalPrice.toFixed(2)}\n`;
+      msg += `${i + 1}. ${emojiHtml('gem')} ${order.productName} — ${order.durationName} | $${order.finalPrice.toFixed(2)}\n`;
     });
   } else {
-    msg += `${emojiHtml('ghost')} ${t(lang, 'لسا ما اشتريت؟ يلا ابدأ وكن أسطورة!', 'No purchases yet? Let\'s GO & become legend!')}`;
+    msg += `${emojiHtml('ghost')} ${t(lang, 'لا توجد مشتريات بعد — ابدأ من المتجر الإلكتروني.', 'No purchases yet — start from the web store.')}`;
   }
 
   await editOrReplyMenu(ctx, msg, {

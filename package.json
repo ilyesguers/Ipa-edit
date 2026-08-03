@@ -1,7 +1,7 @@
 {
   "name": "gamer-store-legends",
-  "version": "4.1.0",
-  "description": "🔥 GAMER STORE - Legendary Digital Keys for Pro Gamers & Teens - Telegram Bot + Mini Apps",
+  "version": "5.0.0",
+  "description": "🎮 GAMER STORE — Telegram digital-goods store: bot + customer mini app + admin panel + Telegram Stars payments",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
@@ -9,7 +9,6 @@
     "build:admin": "cd miniapp/admin && npm install --no-audit --no-fund && npm run build",
     "build:customer": "cd miniapp/customer && npm install --no-audit --no-fund && npm run build",
     "build": "npm run build:customer && npm run build:admin",
-    "setup": "node src/utils/setup.js",
     "postinstall": "echo '🔥 Gamer Store installed - Ready to play! 🎮'"
   },
   "dependencies": {

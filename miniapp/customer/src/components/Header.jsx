@@ -2,7 +2,9 @@ import React from 'react';
 import useStore from '../store/useStore';
 import { cleanMarkdown, t } from '../i18n';
 import PremiumIcon from './PremiumIcon';
+import VolumeControl from './VolumeControl';
 import { haptic } from '../utils/haptic';
+import { playSound } from '../utils/sound';
 
 export default function Header() {
   const { user, publicSettings, setActiveTab, locale } = useStore();
@@ -33,10 +35,12 @@ export default function Header() {
       </button>
 
       <div className="store-header__actions">
+        <VolumeControl />
         <button
           type="button"
           onClick={() => {
             haptic.light();
+            playSound('tap');
             useStore.getState().openLanguagePicker();
           }}
           className="store-header__icon-button"
@@ -47,7 +51,7 @@ export default function Header() {
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('profile')}
+          onClick={() => { playSound('tap'); setActiveTab('profile'); }}
           className="store-header__balance"
           aria-label={t(locale, 'balance')}
         >

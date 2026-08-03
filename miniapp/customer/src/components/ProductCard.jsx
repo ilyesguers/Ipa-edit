@@ -32,12 +32,12 @@ export default function ProductCard({ product, locale = 'ar', onSelect, compact 
         <span className="product-card__topline">
           <strong>{localizedName(product, locale)}</strong>
           <span className={`product-card__stock ${hasStock ? 'is-available' : 'is-unavailable'}`}>
-            {hasStock ? t(locale, 'available') : (locale === 'ar' ? 'غير متاح' : 'Unavailable')}
+            {hasStock ? t(locale, 'available') : t(locale, 'unavailable')}
           </span>
         </span>
         {product.features?.[0]?.text && <small>{cleanDisplayText(product.features[0].text)}</small>}
         <span className="product-card__footer">
-          <span><small>{locale === 'ar' ? 'يبدأ من' : 'From'}</small><b>{formatPrice(minPrice)}</b></span>
+          <span><small>{t(locale, 'from')}</small><b>{formatPrice(minPrice)}</b></span>
           <span className="product-card__select"><PremiumIcon name={locale === 'ar' ? 'left' : 'right'} /></span>
         </span>
       </span>

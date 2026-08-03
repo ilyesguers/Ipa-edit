@@ -185,7 +185,7 @@ export default function Users({ routeQuery = {}, setRouteQuery, currentUser }) {
                 ))}
               </div>
               <div className="grid grid-cols-3 gap-2 text-center">
-                {[['الإحالات', selected.referralCount || 0, 'text-neon-blue'], ['شحنت', `$${selected.totalDeposited?.toFixed(2)}`, 'text-green'], ['منضم', selected.createdAt ? new Date(selected.createdAt).toLocaleDateString('ar-SA') : '—', 'text-muted']].map(([l, v, c]) => (
+                {[['الإحالات', selected.referralCount || 0, 'text-neon-blue'], ['شحنت', `$${selected.totalDeposited?.toFixed(2)}`, 'text-green'], ['منضم', selected.createdAt ? new Date(selected.createdAt).toLocaleDateString('ar-IQ') : '—', 'text-muted']].map(([l, v, c]) => (
                   <div key={l} className="bg-bg border border-border rounded-xl p-2">
                     <p className={`font-black ${c} text-xs`}>{v}</p>
                     <p className="text-[10px] text-muted">{l}</p>
@@ -236,7 +236,7 @@ export default function Users({ routeQuery = {}, setRouteQuery, currentUser }) {
                     <div key={i} className="flex justify-between items-center py-1.5 border-b border-border last:border-0 text-xs">
                       <div className="min-w-0">
                         <p className="text-white truncate">{tx.description || tx.type}</p>
-                        <p className="text-[10px] text-muted">{new Date(tx.createdAt).toLocaleString('ar-SA')}{tx.adminId ? ` · بواسطة ${tx.adminId}` : ''}</p>
+                        <p className="text-[10px] text-muted">{new Date(tx.createdAt).toLocaleString('ar-IQ')}{tx.adminId ? ` · بواسطة ${tx.adminId}` : ''}</p>
                       </div>
                       <span className={`font-black shrink-0 ${tx.type === 'credit' || tx.type === 'refund' ? 'text-green' : 'text-red'}`}>
                         {tx.type === 'credit' || tx.type === 'refund' ? '+' : '-'}${Number(tx.amount || 0).toFixed(2)}

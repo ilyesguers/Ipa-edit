@@ -5,7 +5,9 @@ import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import LoadingScreen from './components/LoadingScreen';
 import LanguagePicker from './components/LanguagePicker';
+import SpaceBackground from './components/SpaceBackground';
 import { isRTL } from './i18n';
+import { initSoundUnlock } from './utils/sound';
 
 // Tabs and sheets stay code-split so the first usable screen only downloads
 // what it needs. This matters in Telegram and on Railway cold connections.
@@ -72,6 +74,7 @@ export default function App() {
     login(initData).catch(() => {
       useStore.setState({ user: GuestUser, isAuthenticated: true, isLoading: false });
     });
+    initSoundUnlock();
 
     // Never leave a user at a loading screen when a slow Railway connection
     // takes too long. They can still browse as a guest and retry actions later.
@@ -128,9 +131,12 @@ export default function App() {
 
       <Header />
       <main className="app-content flex-1 overflow-y-auto">
-        <Suspense fallback={<div className="p-4 space-y-3">{[1, 2, 3].map((item) => <div key={item} className="h-24 rounded-2xl skeleton" />)}</div>}>
-          <ActiveTab />
-        </Suspense>
+        <SpaceBackground />
+        <div key={activeTab} className="tab-view" role="region" aria-live="polite">
+          <Suspense fallback={<div className="p-4 space-y-3">{[1, 2, 3].map((item) => <div key={item} className="h-24 rounded-2xl skeleton" />)}</div>}>
+            <ActiveTab />
+          </Suspense>
+        </div>
       </main>
       <BottomNav />
 

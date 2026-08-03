@@ -61,7 +61,7 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     service: 'GAMER STORE',
-    version: '4.1.0'
+    version: '5.0.0'
   });
 });
 
@@ -73,7 +73,7 @@ app.get('/', (req, res) => {
   }
   res.json({
     name: 'GAMER STORE',
-    version: '4.1.0',
+    version: '5.0.0',
     status: 'online',
     endpoints: {
       customer: '/customer',
@@ -227,7 +227,8 @@ const startBot = async () => {
       const fullWebhookUrl = `${webhookDomain.replace(/\/$/, '')}${webhookPath}`;
       await bot.telegram.setWebhook(fullWebhookUrl, {
         drop_pending_updates: false,
-        allowed_updates: ['message', 'callback_query', 'inline_query']
+        // pre_checkout_query + successful_payment (inside message) power Telegram Stars
+        allowed_updates: ['message', 'callback_query', 'pre_checkout_query']
       });
       app.use(webhookPath, express.json(), (req, res) => {
         Promise.resolve(bot.handleUpdate(req.body, res)).catch((err) => {
