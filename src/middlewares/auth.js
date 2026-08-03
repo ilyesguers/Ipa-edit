@@ -1,31 +1,80 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const User = require('../models/User');
 const logger = require('../utils/logger');
 
 const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim())).filter(Boolean);
 
+// ── JWT secret ──────────────────────────────────────────────────────────────
+// SECURITY: never fall back to a hard-coded secret. If JWT_SECRET is missing
+// we generate a cryptographically random one for this process (tokens issued
+// before a restart become invalid, which is safe: clients silently re-auth
+// with Telegram initData). A fixed fallback would let anyone forge tokens and
+// take over accounts — including admin accounts.
+let BOOT_JWT_SECRET = null;
+const getJwtSecret = () => {
+  const envSecret = String(process.env.JWT_SECRET || '').trim();
+  if (envSecret && envSecret !== 'secret') return envSecret;
+  if (!BOOT_JWT_SECRET) {
+    BOOT_JWT_SECRET = crypto.randomBytes(48).toString('hex');
+    logger.warn('⚠️ JWT_SECRET is not set in the environment — a random per-boot secret was generated. Set JWT_SECRET so sessions survive restarts.');
+  }
+  return BOOT_JWT_SECRET;
+};
+
+// Maximum age (seconds) accepted for Telegram initData. Old WebApp payloads
+// are still fully re-usable by an attacker if they leak, so a replay window
+// closes that hole. Default: 7 days — strict enough to kill indefinite replay,
+// lenient enough that long-lived WebView sessions never break for customers.
+// Configure with TG_AUTH_MAX_AGE_SECONDS (0 disables the check).
+const TG_AUTH_MAX_AGE = Number(process.env.TG_AUTH_MAX_AGE_SECONDS ?? 7 * 24 * 60 * 60);
+
+const timingSafeEqualHex = (a, b) => {
+  try {
+    const bufA = Buffer.from(String(a), 'hex');
+    const bufB = Buffer.from(String(b), 'hex');
+    return bufA.length === bufB.length && crypto.timingSafeEqual(bufA, bufB);
+  } catch (_) {
+    return false;
+  }
+};
+
 // Verify Telegram WebApp init data
 const verifyTelegramWebApp = (initData) => {
-  if (!initData) return null;
+  if (!initData || typeof initData !== 'string') return null;
+  // Guard against oversized payloads (initData is normally < 4KB)
+  if (initData.length > 16 * 1024) return null;
   try {
     const params = new URLSearchParams(initData);
     const hash = params.get('hash');
+    if (!hash) return null;
     params.delete('hash');
     const sortedParams = Array.from(params.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([k, v]) => `${k}=${v}`)
       .join('\n');
 
-    const crypto = require('crypto');
     const secretKey = crypto.createHmac('sha256', 'WebAppData')
       .update(process.env.BOT_TOKEN || '').digest();
     const expectedHash = crypto.createHmac('sha256', secretKey)
       .update(sortedParams).digest('hex');
 
-    if (hash !== expectedHash) return null;
+    // Constant-time comparison so the hash can't be brute-forced by timing.
+    if (!timingSafeEqualHex(hash, expectedHash)) return null;
+
+    // Replay protection: reject very old initData so a leaked payload cannot
+    // be reused forever. URLSearchParams.get already percent-decodes values —
+    // decoding again corrupts names that legitimately contain '%' (+ fixed).
+    if (TG_AUTH_MAX_AGE > 0) {
+      const authDate = parseInt(params.get('auth_date') || '0', 10);
+      if (!authDate || Math.abs(Date.now() / 1000 - authDate) > TG_AUTH_MAX_AGE) return null;
+    }
 
     const userStr = params.get('user');
-    return userStr ? JSON.parse(decodeURIComponent(userStr)) : null;
+    if (!userStr) return null;
+    const user = JSON.parse(userStr);
+    if (!user || !Number.isFinite(Number(user.id))) return null;
+    return user;
   } catch (e) {
     return null;
   }
@@ -46,8 +95,10 @@ const authMiddleware = async (req, res, next) => {
     if (!telegramUser) {
       const token = req.headers.authorization?.split(' ')[1];
       if (token) {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
-        telegramUser = { id: decoded.telegramId };
+        const decoded = jwt.verify(token, getJwtSecret());
+        if (Number.isFinite(Number(decoded.telegramId))) {
+          telegramUser = { id: Number(decoded.telegramId) };
+        }
       }
     }
 
@@ -108,7 +159,7 @@ const requirePermission = (permission) => (req, res, next) => {
 };
 
 const generateToken = (telegramId) => {
-  return jwt.sign({ telegramId }, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
+  return jwt.sign({ telegramId: Number(telegramId) }, getJwtSecret(), { expiresIn: '7d' });
 };
 
 module.exports = { authMiddleware, adminOnly, requirePermission, hasPermission, ALL_PERMISSIONS, generateToken, verifyTelegramWebApp };

@@ -53,7 +53,7 @@ const ar = {
   binance: 'الدفع عبر Binance Pay', txHash: 'رقم المعاملة (TxHash)', submit: 'إرسال للتحقق',
   submitted: 'تم الاستلام — جاري التحقق', cancel: 'إلغاء',
   language: 'اللغة', switchLanguage: 'تغيير اللغة', toastCopied: 'تم النسخ إلى الحافظة',
-  emptyBalance: 'لا توجد حركات رصيد بعد', dateLocale: 'ar-IQ',
+  emptyBalance: 'لا توجد حركات رصيد بعد', dateLocale: 'ar-IQ-u-nu-latn',
   chooseOption: 'اختر المدة',
   quickGuide: 'دليل الشراء السريع',
   guideStep1Title: 'اختر القسم', guideStep1Text: 'ابدأ بالمنصة أو اللعبة المناسبة.',
@@ -70,7 +70,8 @@ const ar = {
   scanQr: 'امسح الرمز بتطبيق Binance',
   orSendManually: 'أو أرسل يدوياً إلى',
   paymentProof: 'إثبات الدفع',
-  orderPending: 'طلبك قيد المعالجة — سيتم التسليم فور تأكيد الدفع.'
+  orderPending: 'طلبك قيد المعالجة — سيتم التسليم فور تأكيد الدفع.',
+  offersBalance: 'رصيد مقابل عروض 🎁', offersBalanceNote: 'بِع حسابات أو مفاتيح مقابل رصيد — المحادثة مع الدعم مباشرة'
 };
 
 const en = {
@@ -126,7 +127,8 @@ const en = {
   scanQr: 'Scan the code with Binance',
   orSendManually: 'Or send manually to',
   paymentProof: 'Payment proof',
-  orderPending: 'Your order is being processed — it will be delivered once payment is confirmed.'
+  orderPending: 'Your order is being processed — it will be delivered once payment is confirmed.',
+  offersBalance: 'Balance for offers 🎁', offersBalanceNote: 'Sell accounts or keys for wallet balance — chat with support directly'
 };
 
 const fr = {
@@ -182,7 +184,8 @@ const fr = {
   scanQr: 'Scannez le code avec Binance',
   orSendManually: 'Ou envoyez manuellement à',
   paymentProof: 'Preuve de paiement',
-  orderPending: 'Votre commande est en cours de traitement — elle sera livrée dès confirmation du paiement.'
+  orderPending: 'Votre commande est en cours de traitement — elle sera livrée dès confirmation du paiement.',
+  offersBalance: 'Solde contre offres 🎁', offersBalanceNote: 'Vendez comptes ou clés contre du solde — discussion directe avec le support'
 };
 
 const es = {
@@ -238,7 +241,8 @@ const es = {
   scanQr: 'Escanea el código con Binance',
   orSendManually: 'O envía manualmente a',
   paymentProof: 'Comprobante de pago',
-  orderPending: 'Tu pedido se está procesando — se entregará al confirmarse el pago.'
+  orderPending: 'Tu pedido se está procesando — se entregará al confirmarse el pago.',
+  offersBalance: 'Saldo por ofertas 🎁', offersBalanceNote: 'Vende cuentas o claves por saldo — habla directo con soporte'
 };
 
 const de = {
@@ -294,7 +298,8 @@ const de = {
   scanQr: 'Code mit Binance scannen',
   orSendManually: 'Oder manuell senden an',
   paymentProof: 'Zahlungsnachweis',
-  orderPending: 'Deine Bestellung wird bearbeitet — Lieferung nach Zahlungsbestätigung.'
+  orderPending: 'Deine Bestellung wird bearbeitet — Lieferung nach Zahlungsbestätigung.',
+  offersBalance: 'Guthaben für Angebote 🎁', offersBalanceNote: 'Verkaufe Accounts oder Keys gegen Guthaben — direkter Chat mit dem Support'
 };
 
 const tr = {
@@ -350,7 +355,8 @@ const tr = {
   scanQr: 'Kodu Binance ile tara',
   orSendManually: 'Ya da manuel gönder:',
   paymentProof: 'Ödeme kanıtı',
-  orderPending: 'Siparişin işleniyor — ödeme onaylanınca teslim edilecek.'
+  orderPending: 'Siparişin işleniyor — ödeme onaylanınca teslim edilecek.',
+  offersBalance: 'Teklif karşılığı bakiye 🎁', offersBalanceNote: 'Hesap veya anahtar satıp bakiye kazan — destekle doğrudan konuş'
 };
 
 const ru = {
@@ -406,7 +412,8 @@ const ru = {
   scanQr: 'Отсканируйте код в Binance',
   orSendManually: 'Или отправьте вручную на',
   paymentProof: 'Подтверждение оплаты',
-  orderPending: 'Ваш заказ обрабатывается — доставим после подтверждения оплаты.'
+  orderPending: 'Ваш заказ обрабатывается — доставим после подтверждения оплаты.',
+  offersBalance: 'Баланс за предложения 🎁', offersBalanceNote: 'Продай аккаунт или ключи за баланс — чат напрямую с поддержкой'
 };
 
 const ur = {
@@ -445,7 +452,7 @@ const ur = {
   binance: 'Binance Pay سے ادائیگی', txHash: 'ٹرانزیکشن ہیش (TxHash)', submit: 'تصدیق کے لیے بھیجیں',
   submitted: 'موصول — تصدیق جاری', cancel: 'منسوخ',
   language: 'زبان', switchLanguage: 'زبان تبدیل کریں', toastCopied: 'کلپ بورڈ پر کاپی ہوگیا',
-  emptyBalance: 'ابھی کوئی بیلنس حرکت نہیں', dateLocale: 'ur-PK',
+  emptyBalance: 'ابھی کوئی بیلنس حرکت نہیں', dateLocale: 'ur-PK-u-nu-latn',
   chooseOption: 'اختیار منتخب کریں',
   quickGuide: 'فوری خریداری گائیڈ',
   guideStep1Title: 'زمرہ منتخب کریں', guideStep1Text: 'اپنے پلیٹ فارم یا گیم سے شروع کریں۔',
@@ -462,7 +469,8 @@ const ur = {
   scanQr: 'Binance سے کوڈ اسکین کریں',
   orSendManually: 'یا manually بھیجیں:',
   paymentProof: 'ادائیگی کا ثبوت',
-  orderPending: 'آپ کا آرڈر پروسیس ہو رہا ہے — ادائیگی کی تصدیق پر ڈیلیور ہوگا۔'
+  orderPending: 'آپ کا آرڈر پروسیس ہو رہا ہے — ادائیگی کی تصدیق پر ڈیلیور ہوگا۔',
+  offersBalance: 'آفرز کے بدلے بیلنس 🎁', offersBalanceNote: 'اکاؤنٹس یا کیز بیچ کر بیلنس پائیں — سپورٹ سے براہ راست بات کریں'
 };
 
 const hi = {
@@ -518,7 +526,8 @@ const hi = {
   scanQr: 'Binance से कोड स्कैन करें',
   orSendManually: 'या मैन्युअल रूप से भेजें:',
   paymentProof: 'भुगतान प्रमाण',
-  orderPending: 'आपका ऑर्डर प्रोसेस हो रहा है — भुगतान पुष्टि पर डिलीवर होगा।'
+  orderPending: 'आपका ऑर्डर प्रोसेस हो रहा है — भुगतान पुष्टि पर डिलीवर होगा।',
+  offersBalance: 'ऑफ़र के बदले बैलेंस 🎁', offersBalanceNote: 'अकाउंट या कीज़ बेचकर बैलेंस पाएँ — सपोर्ट से सीधे बात करें'
 };
 
 const id = {
@@ -574,7 +583,8 @@ const id = {
   scanQr: 'Pindai kode dengan Binance',
   orSendManually: 'Atau kirim manual ke',
   paymentProof: 'Bukti pembayaran',
-  orderPending: 'Pesananmu sedang diproses — akan dikirim setelah pembayaran terkonfirmasi.'
+  orderPending: 'Pesananmu sedang diproses — akan dikirim setelah pembayaran terkonfirmasi.',
+  offersBalance: 'Saldo untuk penawaran 🎁', offersBalanceNote: 'Jual akun atau key untuk saldo — ngobrol langsung dengan support'
 };
 
 const pt = {
@@ -630,7 +640,8 @@ const pt = {
   scanQr: 'Escaneie o código com o Binance',
   orSendManually: 'Ou envie manualmente para',
   paymentProof: 'Comprovante de pagamento',
-  orderPending: 'Seu pedido está sendo processado — será entregue quando o pagamento for confirmado.'
+  orderPending: 'Seu pedido está sendo processado — será entregue quando o pagamento for confirmado.',
+  offersBalance: 'Saldo por ofertas 🎁', offersBalanceNote: 'Venda contas ou chaves por saldo — fale direto com o suporte'
 };
 
 const zh = {
@@ -686,7 +697,8 @@ const zh = {
   scanQr: '使用 Binance 扫码',
   orSendManually: '或手动发送至',
   paymentProof: '支付凭证',
-  orderPending: '订单处理中 — 支付确认后立即发货。'
+  orderPending: '订单处理中 — 支付确认后立即发货。',
+  offersBalance: '以优惠换余额 🎁', offersBalanceNote: '出售账号或密钥换取余额 — 直接联系客服'
 };
 
 export const TRANSLATIONS = { ar, en, fr, es, de, tr, ru, ur, hi, id, pt, zh };

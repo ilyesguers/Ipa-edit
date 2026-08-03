@@ -56,7 +56,7 @@ const historyHandler = async (ctx, page = 1) => {
     const statusText = STATUS_LABELS[order.status]?.[isEn ? 'en' : 'ar'] || order.status;
     msg += `${emojiHtml(statusIcon)} <b>${order.productName}</b>\n`;
     msg += `   ${emojiHtml('gem')} ${order.durationName} × ${order.quantity}\n`;
-    msg += `   ${emojiHtml('wallet')} $${order.finalPrice.toFixed(2)} | ${order.createdAt.toLocaleDateString(isEn ? 'en-US' : 'ar-IQ')} | ${statusText}\n\n`;
+    msg += `   ${emojiHtml('wallet')} $${order.finalPrice.toFixed(2)} | ${order.createdAt.toLocaleDateString(isEn ? 'en-US' : 'ar-IQ-u-nu-latn')} | ${statusText}\n\n`;
   });
 
   const navButtons = [];

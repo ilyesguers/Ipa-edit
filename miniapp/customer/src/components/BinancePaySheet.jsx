@@ -9,7 +9,10 @@ import { haptic } from '../utils/haptic';
 import { playSound } from '../utils/sound';
 
 export default function BinancePaySheet() {
-  const { currentOrder, submitPaymentProof, selectedDuration, locale } = useStore();
+  const { currentOrder, submitPaymentProof, selectedDuration, locale, publicSettings } = useStore();
+  const offersEnabled = publicSettings?.balance_offers_enabled !== false && String(publicSettings?.balance_offers_enabled) !== 'false';
+  const supportUsername = String(publicSettings?.support_username || 'support').replace(/^@/, '');
+  const offersLabel = ((locale === 'ar' ? publicSettings?.balance_offers_note_ar : publicSettings?.balance_offers_note_en) || t(locale, 'offersBalance')).trim();
   const [txHash, setTxHash] = useState('');
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -98,7 +101,25 @@ export default function BinancePaySheet() {
             <label htmlFor="tx-hash" className="mb-2 block text-sm font-bold text-white">{t(locale, 'paymentProof')}</label>
             <input id="tx-hash" type="text" placeholder={t(locale, 'txHash')} value={txHash} onChange={(event) => setTxHash(event.target.value)} className="w-full h-11 rounded-xl border border-[#2d3748] bg-[#11141a] px-3 text-sm text-white outline-none focus:border-[#10b981]" />
           </div>
-          <button type="button" onClick={submit} disabled={loading || !txHash.trim()} className="w-full rounded-xl bg-[#10b981] py-3 font-black text-[#06110b] disabled:opacity-45">{loading ? t(locale, 'loading') : t(locale, 'submit')}</button>
+          <button type="button" onClick={submit} disabled={loading || !txHash.trim()} className="btn-sheen btn-sheen--on w-full rounded-xl bg-[#10b981] py-3 font-black text-[#06110b] disabled:opacity-45 active:scale-[.985] transition-transform">{loading ? t(locale, 'loading') : t(locale, 'submit')}</button>
+          {offersEnabled && (
+            <button
+              type="button"
+              onClick={() => {
+                haptic.medium();
+                playSound('sparkle');
+                const url = `https://t.me/${supportUsername}`;
+                try {
+                  if (window.Telegram?.WebApp?.openTelegramLink) { window.Telegram.WebApp.openTelegramLink(url); return; }
+                } catch (_) { /* fall back */ }
+                window.open(url, '_blank', 'noopener,noreferrer');
+              }}
+              className="offers-balance-btn w-full min-h-0 py-3 px-4 rounded-xl border border-[#a855f7]/40 bg-gradient-to-l from-[#a855f7]/15 to-[#7c3aed]/5 text-[#d8b4fe] flex items-center justify-between gap-3 font-black text-[13px] active:scale-[.985] transition-transform"
+            >
+              <span className="flex items-center gap-2"><span className="offers-balance-btn__gift" aria-hidden="true">🎁</span>{offersLabel}</span>
+              <span dir="ltr" className="text-[11px] opacity-80">@{supportUsername}</span>
+            </button>
+          )}
         </div>
       </section>
     </>

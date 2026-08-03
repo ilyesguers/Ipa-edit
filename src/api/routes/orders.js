@@ -11,6 +11,23 @@ const { getAdminPortalUrl } = require('../../utils/uiConfig');
 
 router.use(authMiddleware);
 
+// Sensitive endpoints get their own small buckets on top of the global
+// limiter: coupon brute-forcing and fake proof spam stay expensive even if
+// the shop stays reachable for everyone else.
+const rateLimit = require('express-rate-limit');
+const couponLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, max: 25,
+  standardHeaders: true, legacyHeaders: false,
+  message: { success: false, error: 'محاولات كثيرة — جرّب بعد قليل / Too many attempts, try again soon' }
+});
+const proofLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, max: 20,
+  standardHeaders: true, legacyHeaders: false,
+  message: { success: false, error: 'محاولات كثيرة — جرّب بعد قليل / Too many attempts, try again soon' }
+});
+
+const clampPosInt = (v, def = 1, max = 100) => Math.min(Math.max(parseInt(v, 10) || def, 1), max);
+
 // Push a real-time event to the connected admin panels (socket.io 'admin_room')
 const notifyAdminPanel = (req, payload) => {
   try {
@@ -22,12 +39,14 @@ const notifyAdminPanel = (req, payload) => {
 // Get user orders
 router.get('/', async (req, res) => {
   try {
-    const { page = 1, limit = 10, status } = req.query;
+    const { status } = req.query;
+    const page = clampPosInt(req.query.page, 1, 1000);
+    const limit = clampPosInt(req.query.limit, 10, 30);
     const query = { user: req.telegramId };
     if (status) query.status = status;
 
     const [orders, total] = await Promise.all([
-      Order.find(query).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(parseInt(limit)),
+      Order.find(query).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
       Order.countDocuments(query)
     ]);
     res.json({ success: true, data: orders, total, totalPages: Math.ceil(total / limit) });
@@ -37,7 +56,7 @@ router.get('/', async (req, res) => {
 });
 
 // Validate coupon
-router.post('/validate-coupon', async (req, res) => {
+router.post('/validate-coupon', couponLimiter, async (req, res) => {
   try {
     const { code, amount } = req.body;
     if (!code || typeof code !== 'string' || !code.trim()) {
@@ -46,7 +65,11 @@ router.post('/validate-coupon', async (req, res) => {
     if (amount === undefined || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
       return res.status(400).json({ success: false, error: 'مبلغ غير صالح / Invalid amount' });
     }
-    const coupon = await Coupon.findOne({ code: code.trim().toUpperCase() });
+    const normalizedCode = code.trim().toUpperCase().slice(0, 40);
+    if (!/^[A-Z0-9_-]{2,40}$/.test(normalizedCode)) {
+      return res.status(400).json({ success: false, error: 'أدخل كود الخصم / Enter a coupon code' });
+    }
+    const coupon = await Coupon.findOne({ code: normalizedCode });
     if (!coupon) return res.status(404).json({ success: false, error: 'الكود غير موجود' });
 
     const validity = coupon.isValid(parseFloat(amount));
@@ -75,7 +98,8 @@ router.post('/validate-coupon', async (req, res) => {
 // Create wallet order
 router.post('/wallet', async (req, res) => {
   try {
-    const { productId, durationId, quantity = 1, couponCode } = req.body;
+    const { productId, durationId, quantity: rawQty = 1, couponCode } = req.body;
+    const quantity = clampPosInt(rawQty, 1, 99);
     const { order } = await orderService.createOrder({
       telegramId: req.telegramId,
       productId, durationId, quantity, paymentMethod: 'wallet', couponCode
@@ -141,7 +165,8 @@ router.post('/wallet', async (req, res) => {
 // Create Binance Pay order
 router.post('/binance', async (req, res) => {
   try {
-    const { productId, durationId, quantity = 1, couponCode } = req.body;
+    const { productId, durationId, quantity: rawQty = 1, couponCode } = req.body;
+    const quantity = clampPosInt(rawQty, 1, 99);
     const { order, finalPrice } = await orderService.createOrder({
       telegramId: req.telegramId,
       productId, durationId, quantity, paymentMethod: 'binance', couponCode
@@ -196,7 +221,8 @@ router.post('/stars', async (req, res) => {
       return res.status(403).json({ success: false, error: 'الدفع بالنجوم متوقف حالياً / Stars payments are currently disabled' });
     }
 
-    const { productId, durationId, quantity = 1, couponCode } = req.body;
+    const { productId, durationId, quantity: rawQty = 1, couponCode } = req.body;
+    const quantity = clampPosInt(rawQty, 1, 99);
     const { order, finalPrice } = await orderService.createOrder({
       telegramId: req.telegramId,
       productId, durationId, quantity, paymentMethod: 'telegram_stars', couponCode
@@ -261,13 +287,25 @@ router.get('/lookup/:orderNumber', async (req, res) => {
 });
 
 // Submit manual payment proof
-router.post('/payment-proof', async (req, res) => {
+router.post('/payment-proof', proofLimiter, async (req, res) => {
   try {
     const { orderId, txHash } = req.body;
+    if (typeof txHash !== 'string' || txHash.trim().length < 10 || txHash.trim().length > 128
+      || !/^[\w\-:.\s]+$/i.test(txHash.trim())) {
+      return res.status(400).json({ success: false, error: 'رقم معاملة غير صالح / Invalid transaction reference' });
+    }
+    if (!/^[a-f\d]{24}$/i.test(String(orderId || ''))) {
+      return res.status(400).json({ success: false, error: 'Order not found' });
+    }
     const order = await Order.findOne({ _id: orderId, user: req.telegramId });
     if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
+    // Idempotent: only a live order may receive a proof. This blocks replaying
+    // proofs onto completed/cancelled orders to trigger re-fulfilment.
+    if (!['pending', 'processing'].includes(order.status)) {
+      return res.status(400).json({ success: false, error: `Order is already ${order.status}` });
+    }
 
-    order.paymentTxHash = txHash;
+    order.paymentTxHash = txHash.trim().slice(0, 128);
     order.status = 'processing';
     await order.save();
 

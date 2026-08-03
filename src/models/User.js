@@ -49,7 +49,10 @@ const userSchema = new mongoose.Schema({
   languageSelected: { type: Boolean, default: false },
   notificationsEnabled: { type: Boolean, default: true },
   captchaPassed: { type: Boolean, default: false },
-  captchaPassedAt: { type: Date, default: null }
+  captchaPassedAt: { type: Date, default: null },
+  // Private admin-only notes about this account (support context, warnings…).
+  // Never exposed through any customer-facing endpoint.
+  adminNotes: { type: String, default: '', maxlength: 1000 }
 }, {
   timestamps: true,
   toJSON: { virtuals: true },

@@ -14,6 +14,20 @@ const orderService = require('../../services/orderService');
 
 router.use(authMiddleware, adminOnly);
 
+// SECURITY: escape user input before it ever reaches a RegExp. Raw `$regex`
+// queries with attacker-controlled patterns (e.g. "(a+)+$") cause ReDoS and
+// can freeze the entire event loop.
+const escapeRegExp = (s) => String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&').slice(0, 64);
+
+// SECURITY: only these keys may be written from req.body — anything else is
+// dropped. This stops mass-assignment of internal fields (productCounts,
+// stock counters, timestamps…) through the generic update endpoints.
+const pick = (obj, allowed) => Object.fromEntries(
+  allowed.filter((k) => obj[k] !== undefined).map((k) => [k, obj[k]])
+);
+const clampPage = (v, def = 1, max = 10000) => Math.min(Math.max(parseInt(v, 10) || def, 1), max);
+const clampLimit = (v, def = 20, max = 100) => Math.min(Math.max(parseInt(v, 10) || def, 1), max);
+
 // ── Granular section permissions (empty permissions = full access) ──
 router.use('/stats', requirePermission('dashboard'));
 router.use('/recent-orders', requirePermission('dashboard'));
@@ -65,7 +79,8 @@ router.post('/categories', async (req, res) => {
 
 router.put('/categories/:id', async (req, res) => {
   try {
-    const cat = await Category.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updates = pick(req.body, ['name', 'nameAr', 'icon', 'image', 'slug', 'order', 'isActive']);
+    const cat = await Category.findByIdAndUpdate(req.params.id, updates, { new: true });
     res.json({ success: true, data: cat });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -98,7 +113,8 @@ router.post('/games', async (req, res) => {
 
 router.put('/games/:id', async (req, res) => {
   try {
-    const game = await Game.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updates = pick(req.body, ['name', 'nameAr', 'category', 'icon', 'image', 'slug', 'order', 'isActive', 'isFeatured']);
+    const game = await Game.findByIdAndUpdate(req.params.id, updates, { new: true });
     res.json({ success: true, data: game });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -131,7 +147,11 @@ router.post('/products', async (req, res) => {
 
 router.put('/products/:id', async (req, res) => {
   try {
-    const product = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updates = pick(req.body, [
+      'name', 'nameAr', 'game', 'category', 'logo', 'banner', 'description', 'features',
+      'productType', 'isActive', 'isHidden', 'isFeatured', 'order', 'tags', 'shareMessage'
+    ]);
+    const product = await Product.findByIdAndUpdate(req.params.id, updates, { new: true });
     res.json({ success: true, data: product });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -309,12 +329,15 @@ router.put('/keys/:id', async (req, res) => {
 // ── USERS ──
 router.get('/users', async (req, res) => {
   try {
-    const { search, page = 1, limit = 20, role, banned } = req.query;
+    const { search, role, banned } = req.query;
+    const page = clampPage(req.query.page);
+    const limit = clampLimit(req.query.limit, 20, 50);
     const query = {};
     if (search) {
+      const safe = escapeRegExp(search);
       query.$or = [
-        { username: { $regex: search, $options: 'i' } },
-        { firstName: { $regex: search, $options: 'i' } },
+        { username: { $regex: safe, $options: 'i' } },
+        { firstName: { $regex: safe, $options: 'i' } },
         { telegramId: isNaN(search) ? -1 : parseInt(search) }
       ];
     }
@@ -322,11 +345,11 @@ router.get('/users', async (req, res) => {
     if (banned !== undefined) query.isBanned = banned === 'true';
 
     const [users, total] = await Promise.all([
-      User.find(query).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(parseInt(limit)).select('-balanceHistory -purchaseHistory'),
+      User.find(query).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).select('-balanceHistory -purchaseHistory'),
       User.countDocuments(query)
     ]);
 
-    res.json({ success: true, data: users, total, page: parseInt(page), totalPages: Math.ceil(total / limit) });
+    res.json({ success: true, data: users, total, page, totalPages: Math.ceil(total / limit) });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -334,12 +357,123 @@ router.get('/users', async (req, res) => {
 
 router.get('/users/:id', async (req, res) => {
   try {
-    const user = await User.findOne({ telegramId: parseInt(req.params.id) });
+    const telegramId = parseInt(req.params.id);
+    const user = await User.findOne({ telegramId });
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
-    const orders = await Order.find({ user: parseInt(req.params.id) }).sort({ createdAt: -1 }).limit(20);
-    res.json({ success: true, data: { ...user.toObject(), recentOrders: orders } });
+
+    // Rich control-tower view: one round of aggregates instead of many queries.
+    const [orders, orderAgg, referrer] = await Promise.all([
+      Order.find({ user: telegramId }).sort({ createdAt: -1 }).limit(20),
+      Order.aggregate([
+        { $match: { user: telegramId } },
+        { $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          total: { $sum: { $ifNull: ['$finalPrice', 0] } },
+          lastAt: { $max: '$createdAt' }
+        } }
+      ]),
+      user.referredBy
+        ? User.findOne({ telegramId: user.referredBy }).select('telegramId username firstName')
+        : null
+    ]);
+
+    const byStatus = {};
+    let completedTotal = 0;
+    let completedCount = 0;
+    let lastOrderAt = null;
+    for (const row of orderAgg) {
+      byStatus[row._id] = { count: row.count, total: row.total };
+      if (row._id === 'completed') { completedTotal = row.total; completedCount = row.count; }
+      if (!lastOrderAt || row.lastAt > lastOrderAt) lastOrderAt = row.lastAt;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        ...user.toObject(),
+        recentOrders: orders,
+        stats: {
+          ordersByStatus: byStatus,
+          completedOrders: completedCount,
+          completedRevenue: completedTotal,
+          avgOrderValue: completedCount ? completedTotal / completedCount : 0,
+          lastOrderAt,
+          referredBy: referrer,
+          accountAgeDays: Math.max(0, Math.floor((Date.now() - new Date(user.createdAt).getTime()) / 86400000))
+        }
+      }
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ── NEW: full profile edit (owner-level member control) ────────────────────
+// Lets the admin correct names/usernames, edit the wallet balance directly,
+// change the language, toggle notifications and keep private admin notes —
+// everything logged in balanceHistory when money moves.
+router.put('/users/:id', async (req, res) => {
+  try {
+    const telegramId = parseInt(req.params.id);
+    const user = await User.findOne({ telegramId });
+    if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+
+    const ownerIds = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim())).filter(Boolean);
+    const isOwnerTarget = user.role === 'superadmin' || ownerIds.includes(user.telegramId);
+    const requesterIsOwner = ownerIds.includes(req.telegramId);
+
+    // Only an owner may edit the owner account itself.
+    if (isOwnerTarget && !requesterIsOwner) {
+      return res.status(403).json({ success: false, error: 'لا يمكن تعديل حساب المالك إلا من المالك نفسه' });
+    }
+
+    const { firstName, lastName, username, phone, preferredLanguage, notificationsEnabled, balance, adminNotes } = req.body;
+
+    if (firstName !== undefined) {
+      const v = String(firstName).trim();
+      if (!v || v.length > 64) return res.status(400).json({ success: false, error: 'الاسم مطلوب ويجب أن يكون أقل من 64 حرفاً' });
+      user.firstName = v;
+    }
+    if (lastName !== undefined) user.lastName = String(lastName).trim().slice(0, 64);
+    if (username !== undefined) {
+      const v = String(username || '').trim().replace(/^@/, '');
+      if (v && !/^[a-zA-Z0-9_]{3,32}$/.test(v)) return res.status(400).json({ success: false, error: 'صيغة اليوزر غير صحيحة' });
+      user.username = v || null;
+    }
+    if (phone !== undefined) user.phone = String(phone || '').trim().slice(0, 32) || null;
+    if (preferredLanguage !== undefined) {
+      const { isSupportedLanguage } = require('../../utils/languages');
+      const lang = String(preferredLanguage).toLowerCase().split('-')[0];
+      if (!isSupportedLanguage(lang)) return res.status(400).json({ success: false, error: 'لغة غير مدعومة' });
+      user.preferredLanguage = lang;
+      user.languageSelected = true;
+    }
+    if (notificationsEnabled !== undefined) user.notificationsEnabled = Boolean(notificationsEnabled);
+    if (adminNotes !== undefined) user.adminNotes = String(adminNotes || '').slice(0, 1000);
+
+    // Direct balance override — always audited in the wallet history.
+    if (balance !== undefined && balance !== '' && balance !== null) {
+      const next = parseFloat(balance);
+      if (!Number.isFinite(next) || next < 0 || next > 1000000) {
+        return res.status(400).json({ success: false, error: 'الرصيد يجب أن يكون رقماً بين $0 و $1,000,000' });
+      }
+      const diff = Math.round((next - user.balance) * 100) / 100;
+      if (diff !== 0) {
+        user.balance = Math.round(next * 100) / 100;
+        user.balanceHistory.push({
+          type: diff > 0 ? 'credit' : 'debit',
+          amount: Math.abs(diff),
+          description: '✏️ تعديل مباشر من الإدارة',
+          adminId: req.telegramId
+        });
+      }
+    }
+
+    await user.save();
+    res.json({ success: true, data: user });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
   }
 });
 
@@ -508,10 +642,17 @@ router.get('/users/:id/balance-history', async (req, res) => {
 router.post('/users/:id/dm', async (req, res) => {
   try {
     const { message } = req.body;
+    if (typeof message !== 'string' || !message.trim()) {
+      return res.status(400).json({ success: false, error: 'Message is required' });
+    }
+    // Telegram rejects messages > 4096 chars; cap before sending so the admin
+    // gets a clean error, and never forward absurd payloads.
+    const text = message.trim().slice(0, 4096);
     const bot = req.app.get('bot');
     if (!bot) return res.status(500).json({ success: false, error: 'Bot not available' });
 
-    await bot.telegram.sendMessage(parseInt(req.params.id), message, { parse_mode: 'HTML' });
+    const { safeSendMessage } = require('../../utils/safeSend');
+    await safeSendMessage(bot.telegram, parseInt(req.params.id), text, { parse_mode: 'HTML' });
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -534,7 +675,11 @@ router.post('/coupons', async (req, res) => {
 });
 
 router.put('/coupons/:id', async (req, res) => {
-  const coupon = await Coupon.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  const updates = pick(req.body, [
+    'code', 'description', 'discountType', 'discountValue', 'maxUses',
+    'minOrderAmount', 'maxDiscountAmount', 'applicableProducts', 'isActive', 'expiresAt'
+  ]);
+  const coupon = await Coupon.findByIdAndUpdate(req.params.id, updates, { new: true });
   res.json({ success: true, data: coupon });
 });
 
@@ -589,6 +734,12 @@ router.post('/broadcast', async (req, res) => {
     if (!message || !String(message).trim()) {
       return res.status(400).json({ success: false, error: 'Message is required' });
     }
+    if (String(message).length > 4096) {
+      return res.status(400).json({ success: false, error: 'Message is too long (max 4096 characters)' });
+    }
+    // Only real http(s) images — Telegram fetches the URL server-side, so an
+    // unrestricted value is an SSRF vector against anything Telegram can reach.
+    const safeImage = /^https:\/\/\S+\.(png|jpe?g|webp|gif)(\?\S*)?$/i.test(String(imageUrl || '')) ? imageUrl : null;
     const audience = ['all', 'buyers', 'with_balance', 'specific'].includes(targetAudience) ? targetAudience : 'all';
     if (audience === 'specific' && (!Array.isArray(specificUserIds) || specificUserIds.length === 0)) {
       return res.status(400).json({ success: false, error: 'Specific audience requires at least one user ID' });
@@ -617,7 +768,7 @@ router.post('/broadcast', async (req, res) => {
     const broadcast = await Broadcast.create({
       title: finalTitle,
       message: rawMessage,
-      imageUrl: imageUrl || null,
+      imageUrl: safeImage,
       buttons: safeButtons,
       targetAudience: audience,
       specificUserIds: audience === 'specific' ? users.map(u => u.telegramId) : [],
@@ -636,8 +787,8 @@ router.post('/broadcast', async (req, res) => {
           ? { reply_markup: { inline_keyboard: [safeButtons.map(b => ({ text: b.text, url: b.url }))] } }
           : {};
 
-        if (imageUrl) {
-          await bot.telegram.sendPhoto(u.telegramId, imageUrl, { caption: htmlMessage, parse_mode: 'HTML', ...tgButtons });
+        if (safeImage) {
+          await bot.telegram.sendPhoto(u.telegramId, safeImage, { caption: htmlMessage, parse_mode: 'HTML', ...tgButtons });
         } else {
           await bot.telegram.sendMessage(u.telegramId, htmlMessage, { parse_mode: 'HTML', ...tgButtons });
         }
@@ -657,11 +808,13 @@ router.post('/broadcast', async (req, res) => {
 // ── ORDERS ──
 router.get('/orders', async (req, res) => {
   try {
-    const { status, search, page = 1, limit = 20 } = req.query;
+    const { status, search } = req.query;
+    const page = clampPage(req.query.page);
+    const limit = clampLimit(req.query.limit, 20, 50);
     const query = {};
     if (status) query.status = status;
     if (search) {
-      const searchRegex = new RegExp(search, 'i');
+      const searchRegex = new RegExp(escapeRegExp(search), 'i');
       query.$or = [
         { orderNumber: searchRegex },
         { productName: searchRegex },
@@ -674,7 +827,7 @@ router.get('/orders', async (req, res) => {
       }
     }
     const [orders, total] = await Promise.all([
-      Order.find(query).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(parseInt(limit)),
+      Order.find(query).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
       Order.countDocuments(query)
     ]);
     res.json({ success: true, data: orders, total, totalPages: Math.ceil(total / limit) });
@@ -848,6 +1001,67 @@ router.post('/orders/:id/cancel', async (req, res) => {
       ).catch(() => {});
     }
 
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// ── ✨ PREMIUM EMOJI MANAGER ───────────────────────────────────────────────
+// The owner lists every emoji the bot uses, pastes a Telegram Premium custom
+// emoji ID next to it, and the bot renders the animated version everywhere —
+// without touching code. Cached in the bot; applies instantly on save.
+const customEmoji = require('../../utils/customEmoji');
+
+router.use('/emojis', requirePermission('settings'));
+
+router.get('/emojis/catalog', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      enabled: customEmoji.premiumEnabled(),
+      catalog: customEmoji.getEmojiCatalog()
+    }
+  });
+});
+
+router.put('/emojis', async (req, res) => {
+  try {
+    const { enabled, map } = req.body || {};
+    const cleanMap = {};
+    for (const [key, id] of Object.entries(map || {})) {
+      const v = String(id || '').trim();
+      if (!v) continue; // empty = remove override, keep default
+      if (!customEmoji.validEmojiId(v)) {
+        return res.status(400).json({ success: false, error: `ID غير صالح للإيموجي "${key}" — يجب أن يكون رقماً (من 5 إلى 25 خانة)` });
+      }
+      cleanMap[key] = v;
+    }
+    await Settings.set(customEmoji.SETTINGS_KEY_ENABLED, Boolean(enabled), req.telegramId);
+    await Settings.set(customEmoji.SETTINGS_KEY_MAP, cleanMap, req.telegramId);
+    customEmoji.configurePremiumEmoji(enabled, cleanMap);
+    customEmoji.invalidateUnicodeMap();
+    res.json({ success: true, data: { enabled: Boolean(enabled), mapped: Object.keys(cleanMap).length } });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// Send the requesting admin a live preview message using their mapped IDs.
+router.post('/emojis/test', async (req, res) => {
+  try {
+    const bot = req.app.get('bot');
+    if (!bot?.telegram?.sendMessage) {
+      return res.status(500).json({ success: false, error: 'البوت غير متاح حالياً' });
+    }
+    const { safeSendMessage } = require('../../utils/safeSend');
+    const sample = ['gamepad', 'rocket', 'fire', 'crown', 'key', 'wallet', 'shield', 'star', 'checkmark', 'gift'];
+    const lines = sample.map((key) => `${customEmoji.emojiHtml(key)} — ${key} (ID: ${customEmoji.getEmojiId(key) || 'بدون'})`);
+    await customEmoji.loadPremiumEmojiSettings();
+    await safeSendMessage(bot.telegram, req.telegramId,
+      `${customEmoji.emojiHtml('sparkle')} <b>معاينة الإيموجي البريميوم</b>\n\n${lines.join('\n')}\n\n${customEmoji.premiumEnabled() ? '✅ الإيموجي البريميوم مفعّل حالياً' : '⚠️ الإيموجي البريميوم معطّل حالياً — فعّله من لوحة التحكم'}`,
+      { parse_mode: 'HTML' }
+    );
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });

@@ -15,11 +15,13 @@ import React, { useEffect, useRef } from 'react';
  *   · canvas is position:fixed + pointer-events:none + z-index below content
  */
 
-const STAR_COUNT_BASE = 110;
+const STAR_COUNT_BASE = 130;
 const MAX_DPR = 1.75;
 const METEOR_MIN_DELAY = 2000;   // ms between meteors (min)
 const METEOR_MAX_DELAY = 5200;   // ms between meteors (max)
-const FLOATER_TYPES = ['👨‍🚀', '🛸', '🛰️', '🌙'];
+const SPARKLE_MIN_DELAY = 900;   // ms between sparkle bursts (min)
+const SPARKLE_MAX_DELAY = 2800;  // ms between sparkle bursts (max)
+const FLOATER_TYPES = ['👨‍🚀', '🛸', '🛰️', '🌙', '🎮', '👾', '🕹️', '💎', '🚀'];
 
 export default function SpaceBackground() {
   const canvasRef = useRef(null);
@@ -40,7 +42,13 @@ export default function SpaceBackground() {
     const stars = [];
     const meteors = [];
     const floaters = [];
-    const seed = { nextMeteorAt: performance.now() + 1200, nextFloaterAt: performance.now() + 3500 };
+    const sparkles = [];
+    const seed = {
+      nextMeteorAt: performance.now() + 1200,
+      nextFloaterAt: performance.now() + 3500,
+      nextSparkleAt: performance.now() + 1400
+    };
+    let auroraDrift = 0; // slow horizontal drift of the nebula layer (px)
 
     const spawnStars = () => {
       stars.length = 0;
@@ -90,6 +98,39 @@ export default function SpaceBackground() {
       seed.nextFloaterAt = now + 6500 + Math.random() * 7000;
     };
 
+    // ✨ Twinkle burst — a tiny 4-point flash around a random star. Pure
+    // additive lines, a few hundred ms, costs almost nothing.
+    const spawnSparkle = (now) => {
+      const host = stars[Math.floor(Math.random() * stars.length)];
+      if (host) {
+        sparkles.push({ x: host.x, y: host.y, life: 0, maxLife: 0.7 + Math.random() * 0.5, size: 3 + Math.random() * 5 });
+      }
+      if (sparkles.length > 14) sparkles.splice(0, sparkles.length - 14);
+      seed.nextSparkleAt = now + SPARKLE_MIN_DELAY + Math.random() * (SPARKLE_MAX_DELAY - SPARKLE_MIN_DELAY);
+    };
+
+    const drawSparkles = (dt, now) => {
+      if (now >= seed.nextSparkleAt) spawnSparkle(now);
+      if (!sparkles.length) return;
+      ctx.strokeStyle = '#dbe7ff';
+      ctx.lineCap = 'round';
+      for (let i = sparkles.length - 1; i >= 0; i -= 1) {
+        const sp = sparkles[i];
+        sp.life += dt;
+        const progress = sp.life / sp.maxLife;
+        if (progress >= 1) { sparkles.splice(i, 1); continue; }
+        const fade = progress < 0.3 ? progress / 0.3 : 1 - (progress - 0.3) / 0.7;
+        const arm = sp.size * (0.5 + progress);
+        ctx.globalAlpha = 0.75 * fade;
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        ctx.moveTo(sp.x - arm, sp.y); ctx.lineTo(sp.x + arm, sp.y);
+        ctx.moveTo(sp.x, sp.y - arm); ctx.lineTo(sp.x, sp.y + arm);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    };
+
     // Nebula blobs painted ONCE per resize into an offscreen canvas — per frame
     // we just drawImage() the cached layer (one blit instead of 3 gradients).
     const nebula = typeof document !== 'undefined' ? document.createElement('canvas') : null;
@@ -98,13 +139,17 @@ export default function SpaceBackground() {
     const paintNebula = () => {
       if (!nebulaCtx) return;
       const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
-      nebula.width = canvas.width;
+      // Paint at 2x width so the layer can drift seamlessly (wrap-around blit).
+      nebula.width = canvas.width * 2;
       nebula.height = canvas.height;
       nebulaCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
       const blobs = [
         { x: 0.22, y: 0.16, r: 0.5, color: 'rgba(46,110,255,0.10)' },
         { x: 0.85, y: 0.30, r: 0.42, color: 'rgba(139,92,246,0.10)' },
-        { x: 0.50, y: 0.85, r: 0.55, color: 'rgba(16,185,129,0.07)' }
+        { x: 0.50, y: 0.85, r: 0.55, color: 'rgba(16,185,129,0.07)' },
+        { x: 1.22, y: 0.16, r: 0.5, color: 'rgba(46,110,255,0.10)' },
+        { x: 1.85, y: 0.30, r: 0.42, color: 'rgba(139,92,246,0.10)' },
+        { x: 1.50, y: 0.85, r: 0.55, color: 'rgba(16,185,129,0.07)' }
       ];
       blobs.forEach((b) => {
         const radius = Math.max(width, height) * b.r;
@@ -112,8 +157,20 @@ export default function SpaceBackground() {
         g.addColorStop(0, b.color);
         g.addColorStop(1, 'rgba(0,0,0,0)');
         nebulaCtx.fillStyle = g;
-        nebulaCtx.fillRect(0, 0, width, height);
+        nebulaCtx.fillRect(0, 0, width * 2, height);
       });
+      // 🌈 Aurora ribbon — one wide horizontal band with a soft vertical fade.
+      const band = nebulaCtx.createLinearGradient(0, height * 0.08, 0, height * 0.5);
+      band.addColorStop(0, 'rgba(56,189,248,0)');
+      band.addColorStop(0.45, 'rgba(56,189,248,0.035)');
+      band.addColorStop(0.6, 'rgba(167,139,250,0.035)');
+      band.addColorStop(1, 'rgba(167,139,250,0)');
+      nebulaCtx.fillStyle = band;
+      for (let k = 0; k < 2; k += 1) {
+        nebulaCtx.setTransform(dpr, 0, 0, dpr, k * width * dpr, 0);
+        nebulaCtx.fillRect(0, 0, width, height);
+      }
+      nebulaCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
 
     const resize = () => {
@@ -129,11 +186,16 @@ export default function SpaceBackground() {
       paintNebula();
     };
 
-    const drawNebula = () => {
+    const drawNebula = (dt = 0) => {
       if (nebula && nebula.width > 0) {
+        // Slow horizontal drift — one cached layer, two blits, zero gradients.
+        auroraDrift = (auroraDrift + dt * 6) % width; // ~6px/s, wraps every width
+        const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
         ctx.save();
         ctx.setTransform(1, 0, 0, 1, 0, 0); // blit at device-pixel scale
-        ctx.drawImage(nebula, 0, 0);
+        const offset = Math.round(auroraDrift * dpr);
+        ctx.drawImage(nebula, -offset, 0);
+        if (offset > 0) ctx.drawImage(nebula, canvas.width - offset, 0);
         ctx.restore();
       }
     };
@@ -219,15 +281,16 @@ export default function SpaceBackground() {
       const dt = Math.min((now - last) / 1000, 0.05); // clamp tab-switch spikes
       last = now;
       ctx.clearRect(0, 0, width, height);
-      drawNebula();
+      drawNebula(dt);
       drawStars(now / 1000);
+      drawSparkles(dt, now);
       drawFloaters(dt, now);
       drawMeteors(dt, now);
     };
 
     const drawStaticFrame = (now) => {
       ctx.clearRect(0, 0, width, height);
-      drawNebula();
+      drawNebula(0);
       drawStars(now / 1000);
     };
 

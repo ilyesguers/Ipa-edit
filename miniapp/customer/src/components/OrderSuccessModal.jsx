@@ -12,7 +12,14 @@ export default function OrderSuccessModal({ data, onClose }) {
   const [copiedAll, setCopiedAll] = useState(false);
   const keys = data?.keys || [];
 
-  useEffect(() => { haptic.success(); playSound('success'); }, []);
+  // 🎉 Triple-layer celebration: chime + fanfare staggered for extra delight.
+  useEffect(() => {
+    haptic.success();
+    playSound('success');
+    const t1 = window.setTimeout(() => playSound('levelup'), 160);
+    const t2 = window.setTimeout(() => playSound('sparkle'), 420);
+    return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
+  }, []);
 
   const copy = (key, index) => navigator.clipboard.writeText(key).then(() => {
     haptic.light();
@@ -33,8 +40,14 @@ export default function OrderSuccessModal({ data, onClose }) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4" role="dialog" aria-modal="true" aria-label={t(locale, 'purchaseSuccess')}>
       <section className="w-full max-w-sm overflow-hidden rounded-3xl border border-[#10b981]/30 bg-[#161922]">
-        <header className="p-5 text-center border-b border-[#2d3748]">
-          <PremiumIcon name="checkmark" size="2rem" className="text-[#10b981]" />
+        <header className="relative p-5 text-center border-b border-[#2d3748]">
+          {/* ✨ celebration confetti — pure CSS, transform/opacity only */}
+          <span className="confetti confetti--1" aria-hidden="true">🎉</span>
+          <span className="confetti confetti--2" aria-hidden="true">⭐</span>
+          <span className="confetti confetti--3" aria-hidden="true">💎</span>
+          <span className="confetti confetti--4" aria-hidden="true">🎊</span>
+          <span className="confetti confetti--5" aria-hidden="true">🔥</span>
+          <PremiumIcon name="checkmark" size="2rem" className="text-[#10b981] success-pop" />
           <h2 className="mt-2 text-xl font-black text-white">{t(locale, 'purchaseSuccess')}</h2>
           <p className="m-0 mt-1 text-xs text-[#9ca3af]">{t(locale, 'instantDelivery')}</p>
         </header>

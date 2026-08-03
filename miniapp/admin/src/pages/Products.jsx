@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
 import ImagePicker from '../components/ImagePicker';
+import Sheet, { SheetActions } from '../components/Sheet';
+import { haptic } from '../utils/haptic';
 
 const emptyProduct = { name: '', nameAr: '', game: '', category: '', description: '', features: [], durations: [], isActive: true, isFeatured: false, productType: 'panel_key', logo: null, banner: null };
 const emptyDuration = { name: '', nameAr: '', days: 1, price: '', isActive: true };
@@ -19,6 +21,7 @@ export default function Products() {
   const [editingDurationIndex, setEditingDurationIndex] = useState(null); // inline duration editing
   const [showDurationForm, setShowDurationForm] = useState(false);
   const [featureInput, setFeatureInput] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const load = async () => {
     const [pr, gr, cr] = await Promise.all([
@@ -35,6 +38,7 @@ export default function Products() {
 
   const handleSave = async () => {
     if (!form.name || !form.game) return toast.error('اسم المنتج واللعبة مطلوبان');
+    setSaving(true);
     try {
       const data = { ...form, slug: form.name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now() };
       if (editing) {
@@ -44,9 +48,11 @@ export default function Products() {
         await api.post('/admin/products', data);
         toast.success('✅ تم الإنشاء');
       }
+      haptic.success();
       setShowForm(false); setForm(emptyProduct); setEditing(null);
       load();
-    } catch (err) { toast.error(err.response?.data?.error || 'فشل'); }
+    } catch (err) { haptic.error(); toast.error(err.response?.data?.error || 'فشل'); }
+    setSaving(false);
   };
 
   const handleDelete = async (id) => {
@@ -146,16 +152,15 @@ export default function Products() {
         ))}
       </div>
 
-      {/* Product Form Modal */}
-      <AnimatePresence>
-        {showForm && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowForm(false)} className="fixed inset-0 bg-black/80 z-40" />
-            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-              className="fixed bottom-0 left-0 right-0 z-50 bg-panel border-t border-border rounded-t-3xl max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-border" /></div>
-              <div className="p-4 space-y-4 pb-8">
-                <h3 className="font-black text-white text-lg">{editing ? '✏️ تعديل المنتج' : '+ إنشاء منتج جديد'}</h3>
+      {/* Product Form Sheet — the save button lives in the sticky footer so it
+          is always reachable from a phone, no matter how long the form gets. */}
+      <Sheet
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        title={editing ? '✏️ تعديل المنتج' : '➕ إنشاء منتج جديد'}
+        wide
+        footer={<SheetActions saveLabel="💾 حفظ ونشر" onSave={handleSave} saving={saving} onCancel={() => setShowForm(false)} />}
+      >
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div><label className="label-admin">اسم المنتج (EN)</label><input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="input-admin mt-1" placeholder="Silent Cheats" /></div>
@@ -257,15 +262,7 @@ export default function Products() {
                   ))}
                 </div>
 
-                <div className="flex gap-2 pt-2">
-                  <motion.button whileTap={{ scale: 0.95 }} onClick={handleSave} className="flex-1 py-3 rounded-xl font-black text-black bg-neon text-sm">💾 حفظ ونشر</motion.button>
-                  <button onClick={() => setShowForm(false)} className="px-4 py-3 border border-border rounded-xl text-muted font-bold text-sm">إلغاء</button>
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      </Sheet>
     </div>
   );
 }

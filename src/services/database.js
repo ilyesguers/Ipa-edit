@@ -60,6 +60,13 @@ const seedDefaults = async () => {
     // ⭐ Telegram Stars payments — price is fully controlled by the admin here
     { key: 'stars_enabled', value: true, description: 'Enable Telegram Stars (XTR) payments' },
     { key: 'stars_per_usd', value: 50, description: 'How many Telegram Stars equal 1 USD' },
+    // 🎁 Balance-for-offers: customers trade accounts/keys for wallet balance with support
+    { key: 'balance_offers_enabled', value: true, description: 'Show the "balance for offers" support button in checkout' },
+    { key: 'balance_offers_note_ar', value: 'رصيد مقابل عروض — تواصل مع الدعم', description: 'Offers button label (Arabic)' },
+    { key: 'balance_offers_note_en', value: 'Balance for offers — contact support', description: 'Offers button label (English)' },
+    // ✨ Premium emoji pack (admin-panel managed)
+    { key: 'premium_emoji_enabled', value: false, description: 'Render bot emojis with the owner premium pack' },
+    { key: 'premium_emoji_map', value: {}, description: 'Custom premium emoji IDs per emoji key' },
     { key: 'referral_bonus', value: 0.5, description: 'Referral bonus in USD' },
     { key: 'shop_title', value: '🔑 متجر المفاتيح الرقمية', description: 'Shop title' },
     { key: 'shop_description', value: 'أفضل الأسعار وأسرع التسليم', description: 'Shop description' },

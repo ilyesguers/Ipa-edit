@@ -121,7 +121,13 @@ const FX = {
   error: () => { tone({ freq: 220, freqEnd: 180, type: 'sawtooth', dur: 0.16, gain: 0.16 }); tone({ freq: 164, freqEnd: 140, type: 'sawtooth', start: 0.12, dur: 0.2, gain: 0.14 }); },
   coin: () => { tone({ freq: 987.77, type: 'square', dur: 0.09, gain: 0.12 }); tone({ freq: 1318.5, start: 0.08, type: 'square', dur: 0.18, gain: 0.12 }); },
   toggle: () => tone({ freq: 440, freqEnd: 660, type: 'triangle', dur: 0.09, gain: 0.18 }),
-  star: () => { tone({ freq: 1174.7, dur: 0.1, gain: 0.16 }); tone({ freq: 1568, start: 0.07, dur: 0.26, gain: 0.18 }); }
+  star: () => { tone({ freq: 1174.7, dur: 0.1, gain: 0.16 }); tone({ freq: 1568, start: 0.07, dur: 0.26, gain: 0.18 }); },
+  // ✨ New effects — same synthesized approach, still zero asset files.
+  sparkle: () => { tone({ freq: 1568, dur: 0.07, gain: 0.14 }); tone({ freq: 2093, start: 0.05, dur: 0.08, gain: 0.12 }); tone({ freq: 2637, start: 0.11, dur: 0.14, gain: 0.12 }); },
+  pop: () => tone({ freq: 330, freqEnd: 760, type: 'sine', dur: 0.06, gain: 0.2 }),
+  whoosh: () => swoosh({ dur: 0.28, from: 240, to: 2600, gain: 0.16 }),
+  levelup: () => { tone({ freq: 392, dur: 0.1, gain: 0.2 }); tone({ freq: 523.25, start: 0.08, dur: 0.1, gain: 0.2 }); tone({ freq: 659.25, start: 0.16, dur: 0.1, gain: 0.2 }); tone({ freq: 783.99, start: 0.24, dur: 0.24, gain: 0.24 }); },
+  notification: () => { tone({ freq: 880, dur: 0.08, gain: 0.16 }); tone({ freq: 1108.7, start: 0.09, dur: 0.12, gain: 0.16 }); }
 };
 
 export const playSound = (name) => {

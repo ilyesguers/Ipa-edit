@@ -82,10 +82,14 @@ router.get('/featured', async (req, res) => {
   }
 });
 
+// Escape regex-special characters — a raw user-controlled pattern here is a
+// classic ReDoS hole (e.g. "(a+)+$") that could freeze the public shop API.
+const escapeRegExp = (s) => String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&').slice(0, 48);
+
 // GET search products
 router.get('/search', async (req, res) => {
   try {
-    const q = req.query.q;
+    const q = escapeRegExp(req.query.q || '');
     if (!q || q.length < 2) return res.json({ success: true, data: [] });
 
     const products = await Product.find({

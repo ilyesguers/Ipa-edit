@@ -10,11 +10,12 @@ const balanceHandler = async (ctx) => {
     return sendGamerError(ctx, 'userNotFound');
   }
   const lang = user.preferredLanguage || 'ar';
-  const [wallet, minDeposit, supportUsername, starsEnabled] = await Promise.all([
+  const [wallet, minDeposit, supportUsername, starsEnabled, offersEnabled] = await Promise.all([
     Settings.get('usdt_wallet_trc20', ''),
     Settings.get('min_deposit', 1),
     Settings.get('support_username', 'support'),
-    Settings.get('stars_enabled', true)
+    Settings.get('stars_enabled', true),
+    Settings.get('balance_offers_enabled', true)
   ]);
 
   const starsLine = starsEnabled
@@ -30,14 +31,25 @@ const balanceHandler = async (ctx) => {
       `1. <b>USDT (TRC20) — manual</b>\n   Minimum: $${minDeposit}\n   ${wallet ? `Address: <code>${wallet}</code>` : `Contact support @${supportUsername}`}\n\n` +
       `2. <b>Binance Pay — automatic</b>\n   Verified automatically through the web store\n\n` +
       `${starsLine ? `${starsLine}\n\n` : ''}` +
-      `${emojiHtml('shield')} After sending, paste the transaction hash here — verification is fast.`
+      `${emojiHtml('shield')} After sending, paste the transaction hash here — verification is fast.` +
+      `${offersEnabled ? `\n\n${emojiHtml('gift')} <b>Balance for offers:</b> trade game accounts or keys for wallet balance — message @${supportUsername}.` : ''}`
     : `${emojiHtml('wallet')} <b>شحن الرصيد</b>\n\n` +
       `${emojiHtml('fire')} رصيدك الحالي: <b>$${user.balance.toFixed(2)}</b>\n\n` +
       `${emojiHtml('rocket')} <b>طرق الدفع المتاحة:</b>\n\n` +
       `1. <b>USDT (TRC20) — يدوي</b>\n   الحد الأدنى: $${minDeposit}\n   ${wallet ? `العنوان: <code>${wallet}</code>` : `تواصل مع الدعم @${supportUsername}`}\n\n` +
       `2. <b>Binance Pay — آلي</b>\n   يُتحقق منه تلقائياً عبر المتجر الإلكتروني\n\n` +
       `${starsLine ? `${starsLine}\n\n` : ''}` +
-      `${emojiHtml('shield')} بعد الإرسال، الصق رقم المعاملة (TxHash) هنا وسيُتحقق منه سريعاً.`;
+      `${emojiHtml('shield')} بعد الإرسال، الصق رقم المعاملة (TxHash) هنا وسيُتحقق منه سريعاً.` +
+      `${offersEnabled ? `\n\n${emojiHtml('gift')} <b>رصيد مقابل عروض:</b> بِع حسابات ألعاب أو مفاتيح مقابل رصيد داخل محفظتك — راسل @${supportUsername} مباشرة.` : ''}`;
+
+  const offersRow = offersEnabled
+    ? [[{
+        text: buttonLabel('gift', lang === 'en' ? '🎁 Balance for offers — contact support' : '🎁 رصيد مقابل عروض — تواصل مع الدعم'),
+        url: `https://t.me/${supportUsername}`,
+        style: 'success',
+        icon_custom_emoji_id: buttonEmojiId('gift')
+      }]]
+    : [];
 
   const buttons = Markup.inlineKeyboard([
     [{
@@ -46,6 +58,7 @@ const balanceHandler = async (ctx) => {
       style: 'primary',
       icon_custom_emoji_id: buttonEmojiId('rocket')
     }],
+    ...offersRow,
     [{
       text: buttonLabel('ghost', lang === 'en' ? '⬅️ Home' : '⬅️ الرئيسية'),
       callback_data: 'main_menu',

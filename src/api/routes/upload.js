@@ -8,11 +8,38 @@ const { authMiddleware, adminOnly } = require('../../middlewares/auth');
 const uploadDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
+// File type is decided by magic bytes, NEVER by the client-supplied mimetype
+// or extension. Without this, anyone could upload "shell.html" as image/png
+// and get a stored-XSS page on the origin the admin panel lives on.
+const MAGIC_TYPES = [
+  { type: 'png', ext: '.png', bytes: [0x89, 0x50, 0x4e, 0x47] },
+  { type: 'jpeg', ext: '.jpg', bytes: [0xff, 0xd8, 0xff] },
+  { type: 'gif', ext: '.gif', bytes: [0x47, 0x49, 0x46, 0x38] },
+  { type: 'webp', ext: '.webp', bytes: [0x52, 0x49, 0x46, 0x46] } // RIFF….WEBP
+];
+
+const detectImageType = (filePath) => {
+  try {
+    const fd = fs.openSync(filePath, 'r');
+    const head = Buffer.alloc(16);
+    fs.readSync(fd, head, 0, 16, 0);
+    fs.closeSync(fd);
+    for (const t of MAGIC_TYPES) {
+      if (t.bytes.every((b, i) => head[i] === b)) {
+        if (t.type === 'webp' && head.toString('ascii', 8, 12) !== 'WEBP') continue;
+        return t;
+      }
+    }
+  } catch (_) { /* fall through */ }
+  return null;
+};
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+    // The extension is assigned AFTER magic-byte validation (see handler) —
+    // here we generate the safe random basename only.
+    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}.tmp`);
   }
 });
 
@@ -26,8 +53,21 @@ const upload = multer({ storage, fileFilter, limits: { fileSize: 5 * 1024 * 1024
 
 router.post('/image', authMiddleware, adminOnly, upload.single('image'), (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, error: 'No file uploaded' });
-  const url = `${process.env.BASE_URL}/uploads/${req.file.filename}`;
-  res.json({ success: true, url });
+  const detected = detectImageType(req.file.path);
+  if (!detected) {
+    fs.unlink(req.file.path, () => {});
+    return res.status(400).json({ success: false, error: 'الملف ليس صورة صالحة / Invalid image file' });
+  }
+  const finalName = `${req.file.filename.replace(/\.tmp$/, '')}${detected.ext}`;
+  const finalPath = path.join(uploadDir, finalName);
+  try {
+    fs.renameSync(req.file.path, finalPath);
+  } catch (err) {
+    fs.unlink(req.file.path, () => {});
+    return res.status(500).json({ success: false, error: 'Upload failed' });
+  }
+  const base = (process.env.BASE_URL || '').replace(/\/$/, '');
+  res.json({ success: true, url: `${base}/uploads/${finalName}` });
 });
 
 // Import keys from txt file

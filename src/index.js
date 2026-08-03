@@ -265,6 +265,7 @@ const bootstrapServices = async () => {
         await seedDefaults();
         dbHealthy = true;
         logger.info(`Database connected on attempt ${attempt}`);
+        try { require('./utils/customEmoji').initPremiumEmoji(); } catch (_) {}
         break;
       } catch (dbErr) {
         logger.warn(`Database connection attempt ${attempt} failed: ${dbErr.message}`);

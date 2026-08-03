@@ -33,6 +33,21 @@ export default function CheckoutSheet() {
 
   const starsEnabled = publicSettings?.stars_enabled !== false && String(publicSettings?.stars_enabled) !== 'false';
   const starsPerUsd = Number(publicSettings?.stars_per_usd) > 0 ? Number(publicSettings.stars_per_usd) : 50;
+  // 🎁 Balance-for-offers: customers who prefer trading game accounts/keys
+  // for wallet balance go straight to the support account — the same support
+  // username shown everywhere else in the store.
+  const offersEnabled = publicSettings?.balance_offers_enabled !== false && String(publicSettings?.balance_offers_enabled) !== 'false';
+  const supportUsername = String(publicSettings?.support_username || 'support').replace(/^@/, '');
+  const offersLabel = ((locale === 'ar' ? publicSettings?.balance_offers_note_ar : publicSettings?.balance_offers_note_en) || t(locale, 'offersBalance')).trim();
+  const openSupportChat = () => {
+    haptic.medium();
+    playSound('sparkle');
+    const url = `https://t.me/${supportUsername}`;
+    try {
+      if (window.Telegram?.WebApp?.openTelegramLink) { window.Telegram.WebApp.openTelegramLink(url); return; }
+    } catch (_) { /* fall back to window.open */ }
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
 
   const maxQty = selectedDuration ? Math.min(Math.max(1, Number(selectedDuration.stockCount || 1)), 99) : 1;
   const subtotal = Number(selectedDuration?.price || 0) * quantity;
@@ -223,8 +238,24 @@ export default function CheckoutSheet() {
                 <p className="m-0 text-center text-[10.5px] leading-5 text-[#788195]">{t(locale, 'starPaymentNote')}</p>
               </>
             )}
-            <PaymentButton icon="wallet" label={t(locale, 'payWallet')} suffix={`$${Number(user?.balance || 0).toFixed(2)}`} disabled={!hasBalance || loading || starsBusy} loading={loading} onClick={buyWallet} />
-            <PaymentButton icon="coin" label={t(locale, 'payBinance')} suffix="USDT" disabled={binanceLoading || starsBusy} loading={binanceLoading} onClick={buyBinance} gold />
+            <PaymentButton icon="wallet" label={t(locale, 'payWallet')} suffix={`$${Number(user?.balance || 0).toFixed(2)}`} disabled={!hasBalance || loading || starsBusy} loading={loading} onClick={buyWallet} sheen />
+            <PaymentButton icon="coin" label={t(locale, 'payBinance')} suffix="USDT" disabled={binanceLoading || starsBusy} loading={binanceLoading} onClick={buyBinance} gold sheen />
+            {offersEnabled && (
+              <>
+                <button
+                  type="button"
+                  onClick={openSupportChat}
+                  className="offers-balance-btn w-full min-h-0 py-3 px-4 rounded-xl border border-[#a855f7]/40 bg-gradient-to-l from-[#a855f7]/15 to-[#7c3aed]/5 text-[#d8b4fe] flex items-center justify-between gap-3 font-black text-[13px] active:scale-[.985] transition-transform"
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="offers-balance-btn__gift" aria-hidden="true">🎁</span>
+                    {offersLabel}
+                  </span>
+                  <span dir="ltr" className="text-[11px] opacity-80">@{supportUsername}</span>
+                </button>
+                <p className="m-0 text-center text-[10.5px] leading-5 text-[#788195]">{t(locale, 'offersBalanceNote')}</p>
+              </>
+            )}
           </div>
           {!hasBalance && <p className="m-0 text-center text-[12px] text-[#fca5a5]">{t(locale, 'insufficient')}</p>}
         </div>
@@ -242,9 +273,9 @@ function Summary({ label, value, icon, accent = false }) {
   );
 }
 
-function PaymentButton({ icon, label, suffix, disabled, loading, onClick, gold = false }) {
+function PaymentButton({ icon, label, suffix, disabled, loading, onClick, gold = false, sheen = false }) {
   return (
-    <button type="button" onClick={onClick} disabled={disabled} className={`w-full min-h-0 py-3 px-4 rounded-xl border flex items-center justify-between gap-3 font-black text-[13px] disabled:opacity-45 ${gold ? 'border-[#f0b90b]/40 bg-[#f0b90b]/10 text-[#f5d06f]' : 'border-[#10b981]/35 bg-[#10b981]/10 text-[#6ee7b7]'}`}>
+    <button type="button" onClick={onClick} disabled={disabled} className={`btn-sheen w-full min-h-0 py-3 px-4 rounded-xl border flex items-center justify-between gap-3 font-black text-[13px] disabled:opacity-45 active:scale-[.985] transition-transform ${gold ? 'border-[#f0b90b]/40 bg-[#f0b90b]/10 text-[#f5d06f]' : 'border-[#10b981]/35 bg-[#10b981]/10 text-[#6ee7b7]'} ${sheen ? 'btn-sheen--on' : ''}`}>
       <span className="flex items-center gap-2"><PremiumIcon name={icon} /> {loading ? '…' : label}</span>
       <span>{suffix}</span>
     </button>

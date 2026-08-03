@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
 import { haptic } from '../utils/haptic';
+import Sheet, { SheetActions } from '../components/Sheet';
 
 const STATUS = {
   pending: { label: 'انتظار', color: 'text-warning bg-warning/10 border-warning/20' },
@@ -171,7 +172,7 @@ export default function Orders({ routeQuery = {}, setRouteQuery }) {
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="font-black text-neon">${order.finalPrice?.toFixed(2)}</p>
-                  <p className="text-[10px] text-muted">{new Date(order.createdAt).toLocaleDateString('ar-IQ')}</p>
+                  <p className="text-[10px] text-muted">{new Date(order.createdAt).toLocaleDateString('ar-IQ-u-nu-latn')}</p>
                 </div>
               </div>
 
@@ -213,17 +214,20 @@ export default function Orders({ routeQuery = {}, setRouteQuery }) {
         <button onClick={() => { const p = page + 1; setPage(p); load(p); }} className="w-full py-2 text-sm text-muted border border-border rounded-xl">تحميل المزيد</button>
       )}
 
-      {/* Order detail modal */}
-      <AnimatePresence>
+      {/* Order detail sheet */}
+      <Sheet
+        open={Boolean(detail)}
+        onClose={() => setDetail(null)}
+        title="📋 تفاصيل الطلب"
+        footer={detail && (
+          <div className="flex gap-2">
+            <button onClick={() => { const target = detail.user; setDetail(null); window.dispatchEvent(new CustomEvent('admin-navigate', { detail: { page: 'users', query: { search: target } } })); }} className="flex-1 min-h-[48px] rounded-xl border border-neon/30 bg-neon/10 text-neon text-sm font-black">👤 ملف المستخدم</button>
+            <button onClick={() => setDetail(null)} className="admin-sheet__cancel">إغلاق</button>
+          </div>
+        )}
+      >
         {detail && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDetail(null)} className="fixed inset-0 bg-black/80 z-40" />
-            <motion.div initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.92, opacity: 0 }}
-              className="fixed left-4 right-4 top-1/2 -translate-y-1/2 z-50 bg-panel border border-border rounded-3xl p-5 max-w-md mx-auto space-y-3 max-h-[85vh] overflow-y-auto">
-              <div className="flex items-center justify-between">
-                <h3 className="font-black text-white">📋 تفاصيل الطلب</h3>
-                <button onClick={() => setDetail(null)} className="text-muted hover:text-white text-sm">✕</button>
-              </div>
               <InfoRow label="رقم الطلب" value={detail.orderNumber} mono onCopy={() => copy(detail.orderNumber)} />
               <InfoRow label="الحالة" value={STATUS[detail.status]?.label || detail.status} />
               <InfoRow label="طريقة الدفع" value={PAYMENT_LABELS[detail.paymentMethod] || detail.paymentMethod} />
@@ -233,48 +237,35 @@ export default function Orders({ routeQuery = {}, setRouteQuery }) {
               {detail.couponCode && <InfoRow label="الكوبون" value={detail.couponCode} />}
               {detail.paymentTxHash && <InfoRow label="TxHash" value={detail.paymentTxHash} mono onCopy={() => copy(detail.paymentTxHash)} />}
               {detail.adminNotes && <InfoRow label="ملاحظة الإدارة" value={detail.adminNotes} />}
-              <InfoRow label="التاريخ" value={new Date(detail.createdAt).toLocaleString('ar-IQ')} />
-              <div className="flex gap-2 pt-2">
-                <button onClick={() => { setDetail(null); window.dispatchEvent(new CustomEvent('admin-navigate', { detail: { page: 'users', query: { search: detail.user } } })); }} className="flex-1 py-2.5 rounded-xl border border-neon/30 bg-neon/10 text-neon text-xs font-bold">👤 ملف المستخدم</button>
-                <button onClick={() => setDetail(null)} className="px-4 py-2.5 border border-border rounded-xl text-muted text-xs font-bold">إغلاق</button>
-              </div>
-            </motion.div>
+              <InfoRow label="التاريخ" value={new Date(detail.createdAt).toLocaleString('ar-IQ-u-nu-latn')} />
           </>
         )}
-      </AnimatePresence>
+      </Sheet>
 
-      {/* Reject modal */}
-      {rejecting && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-md rounded-3xl border border-border bg-panel p-5 space-y-4">
-            <h3 className="text-white font-black">❌ رفض الطلب</h3>
-            <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={4} className="input-admin resize-none" placeholder="اكتب سبب الرفض الذي سيصل للمستخدم" />
-            <div className="flex gap-2">
-              <button onClick={handleReject} className="danger-btn flex-1 py-3 rounded-xl font-bold text-sm">تأكيد الرفض</button>
-              <button onClick={() => { setRejecting(null); setRejectReason(''); }} className="border border-border text-muted rounded-xl px-4">إلغاء</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Reject sheet */}
+      <Sheet
+        open={Boolean(rejecting)}
+        onClose={() => { setRejecting(null); setRejectReason(''); }}
+        title="❌ رفض الطلب"
+        footer={<SheetActions danger saveLabel="تأكيد الرفض" onSave={handleReject} onCancel={() => { setRejecting(null); setRejectReason(''); }} />}
+      >
+        <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={4} className="input-admin resize-none" placeholder="اكتب سبب الرفض الذي سيصل للمستخدم" />
+      </Sheet>
 
-      {/* Refund modal */}
-      {refunding && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-md rounded-3xl border border-border bg-panel p-5 space-y-4">
-            <h3 className="text-white font-black">💰 استرجاع الطلب</h3>
-            <p className="text-xs text-muted">
-              {orders.find((o) => o._id === refunding)?.paymentMethod === 'telegram_stars'
-                ? '⭐ سيعيد تيليجرام النجوم إلى رصيد المستخدم مباشرة، وستُبطل المفاتيح المسلّمة.'
-                : 'سيتم تحويل المبلغ إلى محفظة المستخدم وإبطال المفاتيح المسلّمة.'}
-            </p>
-            <textarea value={refundReason} onChange={(e) => setRefundReason(e.target.value)} rows={3} className="input-admin resize-none" placeholder="سبب الاسترجاع (اختياري)" />
-            <div className="flex gap-2">
-              <button onClick={handleRefund} className="flex-1 py-3 rounded-xl font-bold text-sm bg-gold/10 border border-gold/30 text-gold">تأكيد الاسترجاع</button>
-              <button onClick={() => { setRefunding(null); setRefundReason(''); }} className="border border-border text-muted rounded-xl px-4">إلغاء</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Refund sheet */}
+      <Sheet
+        open={Boolean(refunding)}
+        onClose={() => { setRefunding(null); setRefundReason(''); }}
+        title="💰 استرجاع الطلب"
+        footer={<SheetActions saveLabel="💰 تأكيد الاسترجاع" onSave={handleRefund} onCancel={() => { setRefunding(null); setRefundReason(''); }} />}
+      >
+        <p className="text-xs text-muted m-0">
+          {orders.find((o) => o._id === refunding)?.paymentMethod === 'telegram_stars'
+            ? '⭐ سيعيد تيليجرام النجوم إلى رصيد المستخدم مباشرة، وستُبطل المفاتيح المسلّمة.'
+            : 'سيتم تحويل المبلغ إلى محفظة المستخدم وإبطال المفاتيح المسلّمة.'}
+        </p>
+        <textarea value={refundReason} onChange={(e) => setRefundReason(e.target.value)} rows={3} className="input-admin resize-none" placeholder="سبب الاسترجاع (اختياري)" />
+      </Sheet>
     </div>
   );
 }

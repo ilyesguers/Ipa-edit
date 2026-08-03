@@ -40,7 +40,7 @@ const keysHandler = async (ctx) => {
     msg += `<b>${i + 1}. ${emojiHtml('gem')} ${order.productName}</b> — ${order.durationName}\n`;
     order.keyValues.slice(0, 2).forEach(key => { msg += `   ${emojiHtml('fire')} <code>${key}</code>\n`; });
     if (order.keyValues.length > 2) msg += `   ${emojiHtml('rocket')} +${order.keyValues.length - 2} ${lang === 'en' ? 'more inside the store' : 'أخرى داخل المتجر'}...\n`;
-    msg += `   ${emojiHtml('trophy')} $${order.finalPrice.toFixed(2)} | ${order.createdAt.toLocaleDateString(lang === 'en' ? 'en-US' : 'ar-IQ')}\n\n`;
+    msg += `   ${emojiHtml('trophy')} $${order.finalPrice.toFixed(2)} | ${order.createdAt.toLocaleDateString(lang === 'en' ? 'en-US' : 'ar-IQ-u-nu-latn')}\n\n`;
   });
   msg += `${emojiHtml('rocket')} ${lang === 'en' ? 'Open the store to view all your keys anytime.' : 'افتح المتجر لعرض جميع مفاتيحك في أي وقت.'}`;
 
