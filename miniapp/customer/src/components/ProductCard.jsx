@@ -7,6 +7,8 @@ export default function ProductCard({ product, locale = 'ar', onSelect, compact 
   const activeDurations = product.durations?.filter((duration) => duration.isActive) || [];
   const minPrice = activeDurations.reduce((min, duration) => Math.min(min, Number(duration.price)), Infinity);
   const hasStock = activeDurations.some((duration) => duration.stockCount > 0 || duration.inStock);
+  const featured = Boolean(product.isFeatured);
+  const featuredLabel = locale === 'ar' ? 'مميز' : 'VIP';
   const select = () => {
     haptic.light();
     onSelect?.();
@@ -14,7 +16,8 @@ export default function ProductCard({ product, locale = 'ar', onSelect, compact 
 
   if (compact) {
     return (
-      <button type="button" onClick={select} className="product-card product-card--compact">
+      <button type="button" onClick={select} className={`product-card product-card--compact ${featured ? 'product-card--featured' : ''}`}>
+        {featured && <span className="product-card__featured-badge" aria-hidden="true">🔥</span>}
         <ProductVisual product={product} locale={locale} />
         <span className="product-card__copy">
           <strong>{localizedName(product, locale)}</strong>
@@ -26,7 +29,8 @@ export default function ProductCard({ product, locale = 'ar', onSelect, compact 
   }
 
   return (
-    <button type="button" onClick={select} className="product-card">
+    <button type="button" onClick={select} className={`product-card ${featured ? 'product-card--featured' : ''}`}>
+      {featured && <span className="product-card__featured-badge"><span>🔥</span>{featuredLabel}</span>}
       <ProductVisual product={product} locale={locale} />
       <span className="product-card__copy">
         <span className="product-card__topline">
@@ -46,10 +50,14 @@ export default function ProductCard({ product, locale = 'ar', onSelect, compact 
 }
 
 function ProductVisual({ product, locale }) {
-  return product.logo ? (
-    <img src={product.logo} alt={localizedName(product, locale)} className="product-card__image" />
-  ) : (
-    <span className="product-card__image product-card__image--fallback" aria-hidden="true"><PremiumIcon name="key" size="1.5rem" /></span>
+  return (
+    <span className="product-card__visual" aria-hidden={!product.logo}>
+      {product.logo ? (
+        <img src={product.logo} alt={localizedName(product, locale)} className="product-card__image" loading="lazy" />
+      ) : (
+        <span className="product-card__image product-card__image--fallback"><PremiumIcon name="key" size="1.55rem" /></span>
+      )}
+    </span>
   );
 }
 

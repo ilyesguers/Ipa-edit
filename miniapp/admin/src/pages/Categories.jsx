@@ -6,8 +6,8 @@ import ImagePicker from '../components/ImagePicker';
 import Sheet, { SheetActions } from '../components/Sheet';
 import { haptic } from '../utils/haptic';
 
-const EMPTY_CAT = { name: '', nameAr: '', icon: '🎮', slug: '', image: null };
-const EMPTY_GAME = { name: '', nameAr: '', icon: null, category: '' };
+const EMPTY_CAT = { name: '', nameAr: '', icon: '🎮', slug: '', image: null, description: '' };
+const EMPTY_GAME = { name: '', nameAr: '', icon: null, image: null, category: '', description: '' };
 
 export default function Categories() {
   const [categories, setCategories] = useState([]);
@@ -160,7 +160,8 @@ export default function Categories() {
         <input value={catForm.name} onChange={e => setCatForm(f => ({ ...f, name: e.target.value }))} placeholder="Category Name (EN)" className="input-admin" />
         <input value={catForm.nameAr} onChange={e => setCatForm(f => ({ ...f, nameAr: e.target.value }))} placeholder="اسم القسم (AR)" className="input-admin" />
         <input value={catForm.icon} onChange={e => setCatForm(f => ({ ...f, icon: e.target.value }))} placeholder="الأيقونة (emoji عند عدم وجود صورة)" className="input-admin" />
-        <ImagePicker label="🖼️ صورة القسم" value={catForm.image} onChange={(url) => setCatForm(f => ({ ...f, image: url }))} hint="تظهر بدلاً من الإيموجي في متجر العميل." />
+        <textarea value={catForm.description || ''} onChange={e => setCatForm(f => ({ ...f, description: e.target.value }))} placeholder="وصف قصير يظهر بشكل أجمل في المتجر (اختياري)" className="input-admin resize-none" rows={2} />
+        <ImagePicker label="🖼️ صورة القسم" value={catForm.image} onChange={(url) => setCatForm(f => ({ ...f, image: url }))} hint="تظهر بحجم أكبر داخل بطاقة القسم في متجر العميل." />
       </Sheet>
 
       {/* Game Form Sheet */}
@@ -176,7 +177,9 @@ export default function Categories() {
           <option value="">اختر القسم</option>
           {categories.map(c => <option key={c._id} value={c._id}>{c.nameAr || c.name}</option>)}
         </select>
-        <ImagePicker label="🖼️ أيقونة اللعبة" value={gameForm.icon} onChange={(url) => setGameForm(f => ({ ...f, icon: url }))} hint="تظهر داخل بطاقة اللعبة في المتجر." />
+        <textarea value={gameForm.description || ''} onChange={e => setGameForm(f => ({ ...f, description: e.target.value }))} placeholder="وصف قصير للعبة (اختياري)" className="input-admin resize-none" rows={2} />
+        <ImagePicker label="🖼️ أيقونة اللعبة" value={gameForm.icon} onChange={(url) => setGameForm(f => ({ ...f, icon: url }))} hint="تظهر كبيرة داخل بطاقة اللعبة في المتجر." />
+        <ImagePicker label="🌌 صورة/بانر اللعبة (اختياري)" value={gameForm.image} onChange={(url) => setGameForm(f => ({ ...f, image: url }))} hint="احتياطية إذا أردت صورة مختلفة عن الأيقونة." aspect="wide" />
       </Sheet>
     </div>
   );

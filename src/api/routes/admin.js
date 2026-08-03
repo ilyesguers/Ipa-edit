@@ -28,6 +28,47 @@ const pick = (obj, allowed) => Object.fromEntries(
 const clampPage = (v, def = 1, max = 10000) => Math.min(Math.max(parseInt(v, 10) || def, 1), max);
 const clampLimit = (v, def = 20, max = 100) => Math.min(Math.max(parseInt(v, 10) || def, 1), max);
 
+const toNullableString = (value) => {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const text = String(value).trim();
+  return text || null;
+};
+
+const toCleanNumber = (value, fallback = 0) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+};
+
+const normalizeDurations = (durations) => {
+  if (!Array.isArray(durations)) return undefined;
+  return durations
+    .map((duration) => ({
+      ...(duration._id ? { _id: duration._id } : {}),
+      name: String(duration.name || duration.nameAr || '').trim(),
+      nameAr: String(duration.nameAr || '').trim(),
+      days: Math.max(1, Math.trunc(toCleanNumber(duration.days, 1))),
+      price: Math.max(0, toCleanNumber(duration.price, 0)),
+      originalPrice: duration.originalPrice === '' || duration.originalPrice === undefined || duration.originalPrice === null ? null : Math.max(0, toCleanNumber(duration.originalPrice, 0)),
+      isActive: duration.isActive !== false,
+      stockCount: Math.max(0, Math.trunc(toCleanNumber(duration.stockCount, 0))),
+      soldCount: Math.max(0, Math.trunc(toCleanNumber(duration.soldCount, 0))),
+      order: Math.trunc(toCleanNumber(duration.order, 0))
+    }))
+    .filter((duration) => duration.name);
+};
+
+const normalizeFeatures = (features) => {
+  if (!Array.isArray(features)) return undefined;
+  return features
+    .map((feature) => ({
+      text: String(feature.text || '').trim(),
+      icon: String(feature.icon || '✅').trim() || '✅',
+      isHighlighted: Boolean(feature.isHighlighted)
+    }))
+    .filter((feature) => feature.text);
+};
+
 // ── Granular section permissions (empty permissions = full access) ──
 router.use('/stats', requirePermission('dashboard'));
 router.use('/recent-orders', requirePermission('dashboard'));
@@ -69,8 +110,18 @@ router.get('/categories', async (req, res) => {
 
 router.post('/categories', async (req, res) => {
   try {
-    const { name, nameAr, icon, image, slug, order } = req.body;
-    const cat = await Category.create({ name, nameAr, icon, image: image || null, slug: slug || name.toLowerCase().replace(/\s+/g, '-'), order: order || 0 });
+    const { name, nameAr, icon, image, slug, order, description, isActive, isHidden } = req.body;
+    const cat = await Category.create({
+      name,
+      nameAr,
+      icon,
+      image: toNullableString(image),
+      description: String(description || ''),
+      slug: slug || name.toLowerCase().replace(/\s+/g, '-'),
+      order: order || 0,
+      isActive: isActive !== undefined ? Boolean(isActive) : true,
+      isHidden: Boolean(isHidden)
+    });
     res.json({ success: true, data: cat });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -79,8 +130,9 @@ router.post('/categories', async (req, res) => {
 
 router.put('/categories/:id', async (req, res) => {
   try {
-    const updates = pick(req.body, ['name', 'nameAr', 'icon', 'image', 'slug', 'order', 'isActive']);
-    const cat = await Category.findByIdAndUpdate(req.params.id, updates, { new: true });
+    const updates = pick(req.body, ['name', 'nameAr', 'icon', 'image', 'slug', 'description', 'order', 'isActive', 'isHidden']);
+    if (updates.image !== undefined) updates.image = toNullableString(updates.image);
+    const cat = await Category.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true });
     res.json({ success: true, data: cat });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -102,8 +154,20 @@ router.get('/games', async (req, res) => {
 
 router.post('/games', async (req, res) => {
   try {
-    const { name, nameAr, category, icon, image, slug, order } = req.body;
-    const game = await Game.create({ name, nameAr, category, icon, image, slug: slug || name.toLowerCase().replace(/\s+/g, '-'), order: order || 0 });
+    const { name, nameAr, category, icon, image, slug, order, description, isActive, isHidden, isFeatured } = req.body;
+    const game = await Game.create({
+      name,
+      nameAr,
+      category,
+      icon: toNullableString(icon),
+      image: toNullableString(image),
+      description: String(description || ''),
+      slug: slug || name.toLowerCase().replace(/\s+/g, '-'),
+      order: order || 0,
+      isActive: isActive !== undefined ? Boolean(isActive) : true,
+      isHidden: Boolean(isHidden),
+      isFeatured: Boolean(isFeatured)
+    });
     await Category.findByIdAndUpdate(category, { $inc: { gamesCount: 1 } });
     res.json({ success: true, data: game });
   } catch (err) {
@@ -113,8 +177,10 @@ router.post('/games', async (req, res) => {
 
 router.put('/games/:id', async (req, res) => {
   try {
-    const updates = pick(req.body, ['name', 'nameAr', 'category', 'icon', 'image', 'slug', 'order', 'isActive', 'isFeatured']);
-    const game = await Game.findByIdAndUpdate(req.params.id, updates, { new: true });
+    const updates = pick(req.body, ['name', 'nameAr', 'category', 'icon', 'image', 'description', 'slug', 'order', 'isActive', 'isHidden', 'isFeatured']);
+    if (updates.icon !== undefined) updates.icon = toNullableString(updates.icon);
+    if (updates.image !== undefined) updates.image = toNullableString(updates.image);
+    const game = await Game.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true });
     res.json({ success: true, data: game });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -137,7 +203,18 @@ router.get('/products', async (req, res) => {
 
 router.post('/products', async (req, res) => {
   try {
-    const product = await Product.create(req.body);
+    const payload = pick(req.body, [
+      'name', 'nameAr', 'slug', 'game', 'category', 'logo', 'banner', 'description', 'features', 'durations',
+      'productType', 'isActive', 'isHidden', 'isFeatured', 'order', 'tags', 'shareMessage'
+    ]);
+    payload.logo = toNullableString(payload.logo);
+    payload.banner = toNullableString(payload.banner);
+    payload.features = normalizeFeatures(payload.features) || [];
+    payload.durations = normalizeDurations(payload.durations) || [];
+    if (payload.tags !== undefined) payload.tags = Array.isArray(payload.tags)
+      ? payload.tags.map((tag) => String(tag).trim()).filter(Boolean)
+      : [];
+    const product = await Product.create(payload);
     await Game.findByIdAndUpdate(req.body.game, { $inc: { productsCount: 1 } });
     res.json({ success: true, data: product });
   } catch (err) {
@@ -148,10 +225,17 @@ router.post('/products', async (req, res) => {
 router.put('/products/:id', async (req, res) => {
   try {
     const updates = pick(req.body, [
-      'name', 'nameAr', 'game', 'category', 'logo', 'banner', 'description', 'features',
+      'name', 'nameAr', 'slug', 'game', 'category', 'logo', 'banner', 'description', 'features', 'durations',
       'productType', 'isActive', 'isHidden', 'isFeatured', 'order', 'tags', 'shareMessage'
     ]);
-    const product = await Product.findByIdAndUpdate(req.params.id, updates, { new: true });
+    if (updates.logo !== undefined) updates.logo = toNullableString(updates.logo);
+    if (updates.banner !== undefined) updates.banner = toNullableString(updates.banner);
+    if (updates.features !== undefined) updates.features = normalizeFeatures(updates.features);
+    if (updates.durations !== undefined) updates.durations = normalizeDurations(updates.durations);
+    if (updates.tags !== undefined) updates.tags = Array.isArray(updates.tags)
+      ? updates.tags.map((tag) => String(tag).trim()).filter(Boolean)
+      : [];
+    const product = await Product.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true });
     res.json({ success: true, data: product });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
