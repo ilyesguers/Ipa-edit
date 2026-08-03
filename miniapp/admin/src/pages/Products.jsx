@@ -9,6 +9,61 @@ import { haptic } from '../utils/haptic';
 const emptyProduct = { name: '', nameAr: '', game: '', category: '', description: '', features: [], durations: [], isActive: true, isFeatured: false, productType: 'panel_key', logo: null, banner: null };
 const emptyDuration = { name: '', nameAr: '', days: 1, price: '', isActive: true };
 
+const makeSlug = (name) => String(name || '')
+  .trim()
+  .toLowerCase()
+  .replace(/[^a-z0-9\u0600-\u06ff]+/gi, '-')
+  .replace(/^-+|-+$/g, '') || `product-${Date.now()}`;
+
+const normalizeDuration = (duration) => ({
+  ...(duration._id ? { _id: duration._id } : {}),
+  name: String(duration.name || duration.nameAr || '').trim(),
+  nameAr: String(duration.nameAr || '').trim(),
+  days: Math.max(1, parseInt(duration.days, 10) || 1),
+  price: Math.max(0, Number.parseFloat(duration.price) || 0),
+  originalPrice: duration.originalPrice === '' || duration.originalPrice === undefined || duration.originalPrice === null ? null : Math.max(0, Number.parseFloat(duration.originalPrice) || 0),
+  isActive: duration.isActive !== false,
+  stockCount: Math.max(0, parseInt(duration.stockCount, 10) || 0),
+  soldCount: Math.max(0, parseInt(duration.soldCount, 10) || 0),
+  order: parseInt(duration.order, 10) || 0
+});
+
+const buildProductPayload = (form, games, editing) => {
+  const selectedGame = games.find((game) => game._id === form.game);
+  const category = form.category || selectedGame?.category?._id || selectedGame?.category || '';
+  return {
+    name: String(form.name || '').trim(),
+    nameAr: String(form.nameAr || '').trim(),
+    slug: editing ? (form.slug || makeSlug(form.name)) : `${makeSlug(form.name)}-${Date.now()}`,
+    game: form.game,
+    category,
+    description: String(form.description || ''),
+    features: (form.features || []).map((feature) => ({
+      text: String(feature.text || '').trim(),
+      icon: feature.icon || '✅',
+      isHighlighted: Boolean(feature.isHighlighted)
+    })).filter((feature) => feature.text),
+    durations: (form.durations || []).map(normalizeDuration).filter((duration) => duration.name),
+    productType: form.productType || 'panel_key',
+    logo: form.logo || null,
+    banner: form.banner || null,
+    isActive: form.isActive !== false,
+    isFeatured: Boolean(form.isFeatured),
+    isHidden: Boolean(form.isHidden),
+    order: parseInt(form.order, 10) || 0,
+    tags: Array.isArray(form.tags) ? form.tags : [],
+    shareMessage: form.shareMessage || ''
+  };
+};
+
+const getMinPrice = (durations = []) => {
+  const prices = durations
+    .filter((duration) => duration.isActive !== false)
+    .map((duration) => Number(duration.price))
+    .filter(Number.isFinite);
+  return prices.length ? Math.min(...prices) : 0;
+};
+
 export default function Products() {
   const [products, setProducts] = useState([]);
   const [games, setGames] = useState([]);
@@ -38,20 +93,23 @@ export default function Products() {
 
   const handleSave = async () => {
     if (!form.name || !form.game) return toast.error('اسم المنتج واللعبة مطلوبان');
+    const data = buildProductPayload(form, games, editing);
+    if (!data.category) return toast.error('اختر لعبة مرتبطة بقسم صالح');
     setSaving(true);
     try {
-      const data = { ...form, slug: form.name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now() };
       if (editing) {
         await api.put(`/admin/products/${editing}`, data);
-        toast.success('✅ تم التحديث');
+        toast.success('✅ تم حفظ كل التعديلات');
       } else {
         await api.post('/admin/products', data);
         toast.success('✅ تم الإنشاء');
       }
       haptic.success();
-      setShowForm(false); setForm(emptyProduct); setEditing(null);
-      load();
-    } catch (err) { haptic.error(); toast.error(err.response?.data?.error || 'فشل'); }
+      setShowForm(false);
+      setForm(emptyProduct);
+      setEditing(null);
+      await load();
+    } catch (err) { haptic.error(); toast.error(err.response?.data?.error || 'فشل الحفظ'); }
     setSaving(false);
   };
 
@@ -141,7 +199,7 @@ export default function Products() {
                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${p.isActive ? 'bg-green/10 text-green border-green/20' : 'bg-red/10 text-red border-red/20'}`}>{p.isActive ? 'نشط' : 'معطّل'}</span>
               </div>
               <p className="text-xs text-muted">{p.game?.nameAr || p.game?.name || '—'} · {p.durations?.length} مدة</p>
-              <p className="text-xs text-neon font-semibold">من ${Math.min(...(p.durations?.filter(d => d.isActive).map(d => d.price) || [0])).toFixed(2)}</p>
+              <p className="text-xs text-neon font-semibold">من ${getMinPrice(p.durations).toFixed(2)}</p>
             </div>
             <div className="flex flex-col gap-1 flex-shrink-0">
               <button onClick={() => handleEdit(p)} className="text-xs text-neon border border-neon/20 rounded-lg px-2 py-1">✏️</button>

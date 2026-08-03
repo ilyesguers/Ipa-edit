@@ -254,25 +254,37 @@ function Breadcrumb({ locale }) {
 
 function CategoryCard({ category, locale, onSelect }) {
   const showImage = isImageUrl(category.image);
+  const description = cleanMarkdown(category.description || '');
   return (
-    <button type="button" onClick={onSelect} className="category-card">
-      {showImage ? (
-        <img src={category.image} alt="" className="category-card__img" loading="lazy" />
-      ) : (
-        <span className="category-card__icon">{category.icon && !isImageUrl(category.icon) ? <span aria-hidden="true">{category.icon}</span> : <PremiumIcon name="gamepad" />}</span>
-      )}
-      <span>{localizedName(category, locale)}</span>
+    <button type="button" onClick={onSelect} className={`category-card ${showImage ? 'category-card--with-image' : ''}`}>
+      <span className="category-card__visual">
+        {showImage ? (
+          <img src={category.image} alt="" className="category-card__img" loading="lazy" />
+        ) : (
+          <span className="category-card__icon">{category.icon && !isImageUrl(category.icon) ? <span aria-hidden="true">{category.icon}</span> : <PremiumIcon name="gamepad" />}</span>
+        )}
+      </span>
+      <span className="category-card__content">
+        <strong>{localizedName(category, locale)}</strong>
+        {description && <small>{description}</small>}
+      </span>
       <PremiumIcon name={locale === 'ar' ? 'left' : 'right'} className="category-card__arrow" />
     </button>
   );
 }
 
 function GameCard({ game, locale, onSelect }) {
-  const showImage = isImageUrl(game.icon) || isImageUrl(game.image);
+  const image = isImageUrl(game.icon) ? game.icon : (isImageUrl(game.image) ? game.image : null);
+  const description = cleanMarkdown(game.description || '');
   return (
-    <button type="button" onClick={onSelect} className="game-card">
-      {showImage ? <img src={game.icon || game.image} alt="" loading="lazy" /> : <PremiumIcon name="gamepad" size="1.7rem" />}
-      <span>{localizedName(game, locale)}</span>
+    <button type="button" onClick={onSelect} className={`game-card ${image ? 'game-card--with-image' : ''}`}>
+      <span className="game-card__visual">
+        {image ? <img src={image} alt="" loading="lazy" /> : <PremiumIcon name="gamepad" size="1.8rem" />}
+      </span>
+      <span className="game-card__content">
+        <strong>{localizedName(game, locale)}</strong>
+        {description && <small>{description}</small>}
+      </span>
     </button>
   );
 }

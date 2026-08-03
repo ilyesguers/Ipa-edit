@@ -502,3 +502,306 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* ── 2026 polish pass: bigger images, colored aura, featured flame ─────── */
+.store-header__actions { min-width: max-content; }
+.store-header__icon-button { flex: 0 0 42px; position: relative; z-index: 2; }
+.store-header__balance { flex: 0 1 auto; max-width: 92px; overflow: hidden; }
+.store-header__balance span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.volume-control { flex: 0 0 42px; }
+
+.store-page .product-card,
+.store-page .category-card,
+.store-page .game-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(145deg, rgba(22,25,34,.94), rgba(12,16,24,.9)) padding-box,
+    linear-gradient(135deg, rgba(16,185,129,.58), rgba(96,165,250,.34), rgba(168,85,247,.36)) border-box;
+  box-shadow:
+    0 14px 34px rgba(0,0,0,.30),
+    0 0 24px rgba(16,185,129,.07),
+    inset 0 1px 0 rgba(255,255,255,.04);
+}
+.store-page .product-card::after,
+.store-page .category-card::after,
+.store-page .game-card::after {
+  content: "";
+  position: absolute;
+  inset: -35% -20% auto;
+  height: 120px;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 20% 45%, rgba(16,185,129,.24), transparent 34%),
+    radial-gradient(circle at 72% 35%, rgba(96,165,250,.20), transparent 36%),
+    radial-gradient(circle at 48% 62%, rgba(168,85,247,.17), transparent 42%);
+  opacity: .95;
+}
+.store-page .product-card > *,
+.store-page .category-card > *,
+.store-page .game-card > * { position: relative; z-index: 1; }
+
+.category-grid { gap: 12px; }
+.category-card {
+  min-height: 104px;
+  align-items: center;
+  padding: 14px;
+  gap: 12px;
+}
+.category-card__visual {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(16,185,129,.16), rgba(96,165,250,.10));
+  box-shadow: 0 10px 22px rgba(0,0,0,.22), 0 0 20px rgba(16,185,129,.12);
+}
+.category-card__icon,
+.category-card__img {
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
+  border-radius: 18px;
+}
+.category-card__icon {
+  display: grid;
+  place-items: center;
+  color: #6ee7b7;
+  background: rgba(16,185,129,.14);
+  font-size: 24px;
+}
+.category-card__img {
+  object-fit: cover;
+  border: 1px solid rgba(255,255,255,.10);
+}
+.category-card__content {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 3px;
+}
+.category-card__content strong,
+.game-card__content strong {
+  overflow: hidden;
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.category-card__content small,
+.game-card__content small {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #94a3b8;
+  font-size: 10px;
+  line-height: 1.55;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.category-card--with-image .category-card__visual { transform: rotate(-1deg); }
+[dir="rtl"] .category-card--with-image .category-card__visual { transform: rotate(1deg); }
+
+.game-grid { gap: 12px; }
+.game-card {
+  min-height: 146px;
+  justify-content: center;
+  padding: 15px 12px;
+  gap: 10px;
+}
+.game-card__visual {
+  display: grid;
+  place-items: center;
+  width: 74px;
+  height: 74px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(16,185,129,.15), rgba(96,165,250,.11));
+  color: #6ee7b7;
+  box-shadow: 0 12px 26px rgba(0,0,0,.26), 0 0 24px rgba(96,165,250,.12);
+}
+.game-card__visual img {
+  width: 74px;
+  height: 74px;
+  object-fit: cover;
+  border-radius: 22px;
+  border: 1px solid rgba(255,255,255,.10);
+}
+.game-card__content {
+  min-width: 0;
+  width: 100%;
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  text-align: center;
+}
+.game-card--with-image .game-card__visual { transform: rotate(-2deg); }
+[dir="rtl"] .game-card--with-image .game-card__visual { transform: rotate(2deg); }
+
+.product-card {
+  align-items: center;
+  min-height: 96px;
+  padding: 14px;
+  gap: 13px;
+}
+.product-card__visual {
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  flex: 0 0 68px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(16,185,129,.14), rgba(96,165,250,.10));
+  box-shadow: 0 12px 24px rgba(0,0,0,.28), 0 0 22px rgba(16,185,129,.12);
+}
+.product-card__image {
+  width: 68px;
+  height: 68px;
+  flex: 0 0 68px;
+  object-fit: cover;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 20px;
+}
+.product-card__image--fallback {
+  display: grid;
+  place-items: center;
+  color: #6ee7b7;
+  background: rgba(16,185,129,.12);
+}
+.product-card__copy { gap: 5px; }
+.product-card__copy strong { font-size: 14px; }
+.product-card__footer b { color: #7dd3fc; font-size: 17px; text-shadow: 0 0 16px rgba(96,165,250,.28); }
+.product-card__select { background: linear-gradient(135deg, #6ee7b7, #60a5fa); box-shadow: 0 8px 18px rgba(16,185,129,.18); }
+.product-card--compact { min-height: 78px; }
+.product-card--compact .product-card__visual,
+.product-card--compact .product-card__image { width: 58px; height: 58px; flex-basis: 58px; border-radius: 17px; }
+
+.product-card--featured {
+  background:
+    linear-gradient(145deg, rgba(34,22,14,.96), rgba(18,16,20,.92) 54%, rgba(12,18,24,.92)) padding-box,
+    linear-gradient(135deg, #fb923c, #facc15 26%, #f97316 48%, #a855f7 72%, #10b981) border-box;
+  box-shadow:
+    0 18px 42px rgba(0,0,0,.36),
+    0 0 28px rgba(249,115,22,.20),
+    0 0 34px rgba(250,204,21,.10),
+    inset 0 1px 0 rgba(255,255,255,.06);
+}
+.product-card--featured::before {
+  content: "";
+  position: absolute;
+  inset: -28% -18%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 20% 88%, rgba(249,115,22,.40), transparent 34%),
+    radial-gradient(ellipse at 50% 100%, rgba(250,204,21,.26), transparent 32%),
+    radial-gradient(ellipse at 82% 86%, rgba(239,68,68,.30), transparent 34%);
+  opacity: .85;
+  transform: translate3d(0, 4px, 0) scale(1);
+  animation: featured-flame 4.8s ease-in-out infinite;
+}
+@keyframes featured-flame {
+  0%, 100% { transform: translate3d(0, 5px, 0) scale(1); opacity: .72; }
+  50% { transform: translate3d(0, -3px, 0) scale(1.035); opacity: .95; }
+}
+.product-card--featured .product-card__visual {
+  box-shadow: 0 14px 28px rgba(0,0,0,.32), 0 0 24px rgba(249,115,22,.28);
+}
+.product-card__featured-badge {
+  position: absolute;
+  inset-block-start: 9px;
+  inset-inline-end: 9px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 0;
+  padding: 3px 7px;
+  border: 1px solid rgba(250,204,21,.38);
+  border-radius: 999px;
+  background: rgba(24,18,12,.72);
+  color: #fde68a;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 8px 20px rgba(0,0,0,.24);
+  backdrop-filter: blur(6px);
+}
+.product-card--compact .product-card__featured-badge {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  font-size: 13px;
+}
+.featured-row { gap: 12px; padding-block: 2px 8px; }
+.featured-row__item { width: min(320px, 84vw); }
+.featured-row .product-card { min-height: 112px; }
+
+@media (max-width: 420px) {
+  .category-grid, .game-grid { gap: 9px; }
+  .category-card { min-height: 98px; padding: 12px; gap: 10px; }
+  .category-card__visual, .category-card__icon, .category-card__img { width: 52px; height: 52px; flex-basis: 52px; border-radius: 16px; }
+  .game-card { min-height: 136px; }
+  .game-card__visual, .game-card__visual img { width: 66px; height: 66px; border-radius: 20px; }
+  .product-card__visual, .product-card__image { width: 62px; height: 62px; flex-basis: 62px; border-radius: 18px; }
+}
+@media (max-width: 380px) {
+  .store-header__balance { width: 42px; flex-basis: 42px; padding: 0; }
+  .store-header__balance span { display: none; }
+}
+@media (max-width: 330px) {
+  .store-header { gap: 6px; }
+  .store-header__copy { display: none; }
+  .store-header__identity { flex: 0 0 auto; }
+}
+/* Override older simple-card selectors after the richer markup above. */
+.category-card > .category-card__visual { flex: 0 0 58px; overflow: visible; white-space: normal; }
+.category-card > .category-card__content { flex: 1 1 auto; overflow: visible; white-space: normal; text-overflow: clip; }
+.game-card > .game-card__visual { max-width: none; overflow: visible; white-space: normal; }
+.game-card > .game-card__content { max-width: 100%; overflow: visible; white-space: normal; text-overflow: clip; }
+@media (max-width: 420px) {
+  .category-card > .category-card__visual { flex-basis: 52px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .product-card--featured::before { animation: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+.duration-banner {
+  position: relative;
+  max-height: 168px;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(#11141a, #11141a) padding-box,
+    linear-gradient(135deg, rgba(16,185,129,.55), rgba(96,165,250,.34), rgba(249,115,22,.34)) border-box;
+  box-shadow: 0 16px 34px rgba(0,0,0,.32), 0 0 28px rgba(96,165,250,.10);
+}
+.duration-banner::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 48%;
+  pointer-events: none;
+  background: linear-gradient(to top, rgba(13,15,18,.72), transparent);
+}
+.duration-banner img { height: 160px; }
+.duration-row.duration-row {
+  position: relative;
+  overflow: hidden;
+  border-color: transparent !important;
+  background:
+    linear-gradient(145deg, rgba(22,25,34,.94), rgba(12,16,24,.9)) padding-box,
+    linear-gradient(135deg, rgba(16,185,129,.48), rgba(96,165,250,.25), rgba(168,85,247,.22)) border-box !important;
+  box-shadow: 0 10px 24px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.04);
+}
+.duration-row.duration-row:disabled {
+  background: linear-gradient(145deg, rgba(17,20,26,.82), rgba(13,15,20,.82)) padding-box,
+    linear-gradient(135deg, rgba(45,55,72,.8), rgba(31,36,48,.8)) border-box !important;
+}
