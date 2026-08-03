@@ -3,6 +3,7 @@ import useStore from '../store/useStore';
 import { t } from '../i18n';
 import PremiumIcon from './PremiumIcon';
 import { haptic } from '../utils/haptic';
+import { playSound } from '../utils/sound';
 
 // Four clear destinations fit comfortably on narrow Telegram webviews. Support
 // remains available from the store landing card and the account section.
@@ -18,6 +19,7 @@ export default function BottomNav() {
 
   const navigate = (tab) => {
     haptic.light();
+    playSound(activeTab === tab ? 'tap' : 'tab');
     setActiveTab(tab);
     if (tab !== 'products') reset();
   };

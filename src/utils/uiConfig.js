@@ -57,17 +57,17 @@ const THEME_PRESETS = {
 // Clean, minimal highlights — no emoji spam
 const DEFAULT_HIGHLIGHTS = [
   { id: 'rocket', emojiKey: 'rocket', textAr: 'تسليم فوري', textEn: 'Instant delivery' },
-  { id: 'shield', emojiKey: 'shield', textAr: 'مفاتيح أصلية 100%', textEn: '100% legit keys' },
-  { id: 'fire', emojiKey: 'fire', textAr: 'أقوى العروض', textEn: 'Best deals' },
-  { id: 'support', emojiKey: 'support', textAr: 'دعم 24/7', textEn: 'Support 24/7' }
+  { id: 'shield', emojiKey: 'shield', textAr: 'منتجات أصلية 100%', textEn: '100% genuine products' },
+  { id: 'fire', emojiKey: 'fire', textAr: 'أسعار منافسة', textEn: 'Competitive prices' },
+  { id: 'support', emojiKey: 'support', textAr: 'دعم متواصل', textEn: 'Continuous support' }
 ];
 
 // MINIMAL WEB-FOCUSED KEYBOARD - Bot focuses on website, not old shop callbacks
 // The old keyboard with shop/mykeys/history/profile/balance/help is removed
 // Now only 3-4 buttons max, all pointing to webapp or support
 const DEFAULT_QUICK_LINKS = [
-  { id: 'customer_app', emojiKey: 'rocket', textAr: 'فتح المتجر', textEn: 'Open store', type: 'webapp', value: '/customer', row: 1, visibility: 'all', style: 'primary' },
-  { id: 'support', emojiKey: 'support', textAr: 'الدعم', textEn: 'Support', type: 'url', value: 'https://t.me/{support}', row: 2, visibility: 'all', style: 'secondary' },
+  { id: 'customer_app', emojiKey: 'rocket', textAr: '🛍️ فتح المتجر', textEn: '🛍️ Open Store', type: 'webapp', value: '/customer', row: 1, visibility: 'all', style: 'primary' },
+  { id: 'support', emojiKey: 'support', textAr: '💬 الدعم الفني', textEn: '💬 Support', type: 'url', value: 'https://t.me/{support}', row: 2, visibility: 'all', style: 'secondary' },
   { id: 'channel', emojiKey: 'megaphone', textAr: 'قناة العروض', textEn: 'Deals channel', type: 'url', value: 'https://t.me/{channel}', row: 2, visibility: 'all', style: 'secondary' },
   { id: 'language', emojiKey: 'globe', textAr: 'تغيير اللغة', textEn: 'Change language', type: 'callback', value: 'language', row: 3, visibility: 'all', style: 'secondary' },
 ];
@@ -208,14 +208,14 @@ const getUiSettings = async () => {
     Settings.get('support_username', 'support'),
     Settings.get('channel_username', process.env.CHANNEL_USERNAME || ''),
     Settings.get('ui_theme_preset', 'midnight'),
-    Settings.get('ui_welcome_badge_ar', 'متجر الألعاب الرقمية'),
-    Settings.get('ui_welcome_badge_en', 'Digital game store'),
-    Settings.get('ui_welcome_title_ar', 'متجر الألعاب'),
-    Settings.get('ui_welcome_title_en', 'Game Store'),
-    Settings.get('ui_welcome_subtitle_ar', 'الألعاب والشحنات والمفاتيح الرقمية مع تسليم سريع.'),
-    Settings.get('ui_welcome_subtitle_en', 'Games, top-ups and digital keys with quick delivery.'),
-    Settings.get('ui_footer_note_ar', 'العروض والدعم في مكان واحد'),
-    Settings.get('ui_footer_note_en', 'Deals and support in one place'),
+    Settings.get('ui_welcome_badge_ar', 'كل ما يحتاجه اللاعب في مكان واحد'),
+    Settings.get('ui_welcome_badge_en', 'Everything a player needs in one place'),
+    Settings.get('ui_welcome_title_ar', 'متجر الألعاب الرقمي'),
+    Settings.get('ui_welcome_title_en', 'Digital Game Store'),
+    Settings.get('ui_welcome_subtitle_ar', 'مفاتيح وشحنات وخدمات الألعاب في مكان واحد — تسليم فوري ودعم متواصل.'),
+    Settings.get('ui_welcome_subtitle_en', 'Game keys, top-ups and services in one place — instant delivery and continuous support.'),
+    Settings.get('ui_footer_note_ar', 'عروض وتحديثات يومية في القناة'),
+    Settings.get('ui_footer_note_en', 'Daily deals and updates in the channel'),
     Settings.get('bot_quick_links', DEFAULT_QUICK_LINKS),
     Settings.get('ui_home_highlights', DEFAULT_HIGHLIGHTS),
     Settings.get('admin_portal_label_ar', 'لوحة التحكم 👑'),

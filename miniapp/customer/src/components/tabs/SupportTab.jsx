@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import useStore from '../../store/useStore';
 import { cleanMarkdown, t } from '../../i18n';
 import PremiumIcon from '../PremiumIcon';
+import { haptic } from '../../utils/haptic';
+import { playSound } from '../../utils/sound';
 
 const FAQ_KEYS = [
   ['faqBuy', 'faqBuyA'],
@@ -26,7 +28,7 @@ export default function SupportTab() {
         <PremiumIcon name="support" size="2rem" />
         <h1>{title}</h1>
         <p>{subtitle}</p>
-        <a href={`https://t.me/${supportUsername}`} target="_blank" rel="noreferrer">
+        <a href={`https://t.me/${supportUsername}`} target="_blank" rel="noreferrer" onClick={() => playSound('tap')}>
           <PremiumIcon name="chat" /> {t(locale, 'directContact')}
         </a>
       </section>
@@ -38,11 +40,19 @@ export default function SupportTab() {
             const open = openFaq === index;
             return (
               <article key={question} className="faq-list__item">
-                <button type="button" onClick={() => setOpenFaq(open ? null : index)} aria-expanded={open}>
+                <button
+                  type="button"
+                  onClick={() => { haptic.light(); playSound('toggle'); setOpenFaq(open ? null : index); }}
+                  aria-expanded={open}
+                >
                   <span>{t(locale, question)}</span>
-                  <PremiumIcon name={open ? 'down' : (locale === 'ar' ? 'left' : 'right')} />
+                  <PremiumIcon name="down" className={`collapsible__chevron ${open ? 'rotate-180' : ''}`} />
                 </button>
-                {open && <p>{t(locale, answer)}</p>}
+                <div className={`collapsible ${open ? 'is-open' : ''}`}>
+                  <div className="collapsible__inner">
+                    <p className="faq-list__answer">{t(locale, answer)}</p>
+                  </div>
+                </div>
               </article>
             );
           })}

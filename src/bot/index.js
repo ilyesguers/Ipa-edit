@@ -4,7 +4,6 @@ const User = require('../models/User');
 const Settings = require('../models/Settings');
 
 const { startHandler } = require('./handlers/start');
-const { shopHandler } = require('./handlers/shop');
 const { profileHandler } = require('./handlers/profile');
 const { keysHandler } = require('./handlers/keys');
 const { historyHandler } = require('./handlers/history');
@@ -13,6 +12,7 @@ const { helpHandler } = require('./handlers/help');
 const { openAdminPortal } = require('./handlers/admin');
 const { callbackHandler } = require('./handlers/callbacks');
 const { paymentHandler } = require('./handlers/payment');
+const { preCheckoutHandler, successfulPaymentHandler } = require('./handlers/starsPayment');
 const { showLanguagePicker, isLanguageChoiceCallback, botLocale } = require('./handlers/language');
 
   const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim())).filter(Boolean);
@@ -105,7 +105,7 @@ const { showLanguagePicker, isLanguageChoiceCallback, botLocale } = require('./h
           preferredLanguage: String(ctx.from.language_code || '').toLowerCase().startsWith('en') ? 'en' : 'ar',
           role: isAdmin ? 'admin' : 'customer'
         });
-        logger.info(`🆕 New gamer: ${user.fullName} (${telegramId}) 🔥`);
+        logger.info(`🆕 New user: ${user.fullName} (${telegramId})`);
       } else {
         let needsSave = false;
         const newUsername = ctx.from.username || null;
@@ -127,15 +127,15 @@ const { showLanguagePicker, isLanguageChoiceCallback, botLocale } = require('./h
 
       if (user.isBanned) {
         return ctx.reply(
-          `${emojiHtml('skull')} حسابك محظور يا برو / Your account is banned bro\n` +
-          `السبب / Reason: ${user.banReason || 'مخالفة'}\n\n` +
-          `تواصل / Contact: @${process.env.SUPPORT_USERNAME || 'support'}`
+          `${emojiHtml('skull')} تم إيقاف حسابك / Your account has been suspended\n` +
+          `السبب / Reason: ${user.banReason || 'مخالفة الشروط'}\n\n` +
+          `للاعتراض تواصل مع الدعم / Contact: @${process.env.SUPPORT_USERNAME || 'support'}`
         );
       }
 
       const maintenance = await Settings.get('maintenance_mode', false);
       if (maintenance && !ctx.isAdmin) {
-        const maintenanceMsg = await Settings.get('maintenance_message', `${emojiHtml('gear')} المتجر تحت الصيانة السريعة - بنرجع بسرعة الصاروخ / Quick maintenance - coming back rocket fast`);
+        const maintenanceMsg = await Settings.get('maintenance_message', `${emojiHtml('gear')} المتجر حالياً في صيانة مجدولة، وسنعود للعمل خلال وقت قصير. / Scheduled maintenance — we will be back shortly.`);
         return ctx.reply(maintenanceMsg);
       }
 
@@ -166,9 +166,9 @@ const { showLanguagePicker, isLanguageChoiceCallback, botLocale } = require('./h
                 : (memberStatus ? fallback : '');
               const isEn = botLocale(user.preferredLanguage) === 'en';
               return ctx.reply(
-                `${emojiHtml('lock')} <b>${isEn ? 'Join our channel first bro!' : 'اشترك في القناة أولاً يا بطل!'}</b>\n\n` +
-                `${emojiHtml('explosion')} ${isEn ? 'You must join the deals channel to keep playing:' : 'لازم تكون مشترك في قناة العروض عشان تكمل:'}\n\n` +
-                `${emojiHtml('rocket')} ${isEn ? 'Join, then hit /start - EZ!' : 'اشترك، وبعدها اضغط /start - سهلة!'}`,
+                `${emojiHtml('lock')} <b>${isEn ? 'Please join our channel first' : 'يرجى الاشتراك في قناتنا أولاً'}</b>\n\n` +
+                `${emojiHtml('explosion')} ${isEn ? 'Membership in our deals channel is required to continue:' : 'يُشترط الاشتراك في قناة العروض للمتابعة:'}\n\n` +
+                `${emojiHtml('rocket')} ${isEn ? 'Join the channel, then press /start' : 'اشترك في القناة، ثم أرسل /start للمتابعة'}`,
                 {
                   parse_mode: 'HTML',
                   ...(channelLink ? Markup.inlineKeyboard([[
@@ -224,13 +224,13 @@ const { showLanguagePicker, isLanguageChoiceCallback, botLocale } = require('./h
     // Redirect to webapp instead of old inline shop
     const lang = botLocale(ctx.dbUser?.preferredLanguage || 'ar');
     return ctx.reply(
-      `${emojiHtml('rocket')} <b>${lang === 'en' ? 'Open the Store for fastest shopping' : 'افتح المتجر للتسوق السريع'}</b>\n\n` +
-      `${emojiHtml('fire')} ${lang === 'en' ? 'All products inside the web app now!' : 'كل المنتجات صارت داخل المتجر الإلكتروني!'}`,
+      `${emojiHtml('rocket')} <b>${lang === 'en' ? 'The full store is one tap away' : 'المتجر الكامل على بُعد ضغطة واحدة'}</b>\n\n` +
+      `${emojiHtml('fire')} ${lang === 'en' ? 'Browse products, pay instantly, and receive your keys automatically.' : 'تصفح المنتجات، وادفع بسهولة، واستلم مفاتيحك تلقائياً.'}`,
       {
         parse_mode: 'HTML',
         ...Markup.inlineKeyboard([[
           {
-            text: buttonLabel('rocket', lang === 'en' ? 'PLAY NOW' : 'افتح المتجر'),
+            text: buttonLabel('rocket', lang === 'en' ? '🛍️ Open Store' : '🛍️ فتح المتجر'),
             web_app: { url: `${process.env.BASE_URL}/customer` },
             style: 'primary',
             icon_custom_emoji_id: buttonEmojiId('rocket')
@@ -244,18 +244,18 @@ const { showLanguagePicker, isLanguageChoiceCallback, botLocale } = require('./h
   bot.command('history', historyHandler);
   bot.command('balance', balanceHandler);
   bot.command('help', helpHandler);
-  // /store and /menu — quick webapp link (fixed: old version sent a broken https://{username} link)
+  // /store and /menu — quick webapp link
   bot.command(['store', 'menu'], async (ctx) => {
     const lang = botLocale(ctx.dbUser?.preferredLanguage || 'ar');
     const url = `${(process.env.BASE_URL || '').replace(/\/$/, '')}/customer`;
     return ctx.reply(
-      `${emojiHtml('rocket')} <b>${lang === 'en' ? 'Open the store' : 'افتح المتجر'}</b>: <code>${url}</code>\n` +
-      `${emojiHtml('fire')} ${lang === 'en' ? 'Or hit PLAY NOW below' : 'أو اضغط PLAY NOW تحت'}`,
+      `${emojiHtml('rocket')} <b>${lang === 'en' ? 'Store link' : 'رابط المتجر'}</b>: <code>${url}</code>\n` +
+      `${emojiHtml('fire')} ${lang === 'en' ? 'Or open it directly from the button below' : 'أو افتحه مباشرة من الزر بالأسفل'}`,
       {
         parse_mode: 'HTML',
         ...Markup.inlineKeyboard([[
           {
-            text: buttonLabel('rocket', lang === 'en' ? 'PLAY NOW 🚀' : 'افتح المتجر 🚀'),
+            text: buttonLabel('rocket', lang === 'en' ? '🛍️ Open Store' : '🛍️ فتح المتجر'),
             web_app: { url },
             style: 'primary',
             icon_custom_emoji_id: buttonEmojiId('rocket')
@@ -306,6 +306,10 @@ const { showLanguagePicker, isLanguageChoiceCallback, botLocale } = require('./h
 
   bot.on('callback_query', callbackHandler);
 
+  // Telegram Stars checkout pipeline (invoice validation + key delivery)
+  bot.on('pre_checkout_query', preCheckoutHandler);
+  bot.on('successful_payment', successfulPaymentHandler);
+
   bot.on('text', async (ctx, next) => {
     const user = ctx.dbUser;
     if (!user) return next();
@@ -318,7 +322,7 @@ const { showLanguagePicker, isLanguageChoiceCallback, botLocale } = require('./h
       const answer = parseInt(text);
 
       if (isNaN(answer)) {
-        return ctx.reply(`${emojiHtml('target')} ${lang === 'en' ? 'Numbers only bro!' : 'بس أرقام يا برو!'}`);
+        return ctx.reply(`${emojiHtml('target')} ${lang === 'en' ? 'Please answer with a number only.' : 'يرجى الإجابة برقم فقط.'}`);
       }
 
       const result = verifyCaptcha(user.telegramId, answer);
@@ -329,8 +333,8 @@ const { showLanguagePicker, isLanguageChoiceCallback, botLocale } = require('./h
         await user.save();
 
         await ctx.reply(
-          `${emojiHtml('trophy')} ${lang === 'en' ? 'EZ! Verified - Welcome to legend zone' : 'تم! مرحباً بك في منطقة الأساطير'}\n\n` +
-          `${emojiHtml('rocket')} ${lang === 'en' ? 'Send /start to PLAY NOW' : 'ارسل /start عشان تبدأ اللعب'}`
+          `${emojiHtml('trophy')} ${lang === 'en' ? 'Verification completed — welcome aboard.' : 'تم التحقق بنجاح — مرحباً بك.'}\n\n` +
+          `${emojiHtml('rocket')} ${lang === 'en' ? 'Send /start to open the store.' : 'أرسل /start لفتح المتجر.'}`
         );
       } else {
         await ctx.reply(result.message);
@@ -361,7 +365,7 @@ const { showLanguagePicker, isLanguageChoiceCallback, botLocale } = require('./h
       sendGamerError(ctx, errorType).catch(() => {
         // Fallback if even that fails
         ctx.reply(
-          `${emojiHtml('explosion')} ${lang === 'en' ? 'LAG! Try /start to respawn' : 'لك lag! جرب /start عشان تعيد التشغيل'}`
+          `${emojiHtml('explosion')} ${lang === 'en' ? 'Something went wrong. Try /start again.' : 'حدث خلل ما. أرسل /start من جديد.'}`
         ).catch(() => {});
       });
     }

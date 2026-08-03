@@ -11,23 +11,23 @@ const helpHandler = async (ctx) => {
 
   const msg = lang === 'en'
     ? `<b>${botName}</b>\n` +
-      `${emojiHtml('rocket')} How to buy:\n` +
-      `  1. Tap PLAY NOW\n` +
-      `  2. Pick game → product → pay\n` +
-      `  3. Get your key instantly\n\n` +
-      `${emojiHtml('shield')} 100% legit • ${emojiHtml('bolt')} Instant delivery\n\n` +
-      `${emojiHtml('chat')} Need help? <b>@${supportUsername}</b> — 24/7`
+      `${emojiHtml('rocket')} <b>How to buy:</b>\n` +
+      `  1. Open the store from the button below\n` +
+      `  2. Choose the category, game, then product\n` +
+      `  3. Pay and receive your key instantly\n\n` +
+      `${emojiHtml('shield')} Genuine products • ${emojiHtml('bolt')} Automatic delivery\n\n` +
+      `${emojiHtml('chat')} Need help? <b>@${supportUsername}</b>`
     : `<b>${botName}</b>\n` +
-      `${emojiHtml('rocket')} طريقة الشراء:\n` +
-      `  1. اضغط PLAY NOW\n` +
-      `  2. اختر اللعبة → المنتج → ادفع\n` +
-      `  3. استلم مفتاحك فوراً\n\n` +
-      `${emojiHtml('shield')} مضمون 100% • ${emojiHtml('bolt')} تسليم فوري\n\n` +
-      `${emojiHtml('chat')} تحتاج مساعدة؟ <b>@${supportUsername}</b> — 24/7`;
+      `${emojiHtml('rocket')} <b>طريقة الشراء:</b>\n` +
+      `  1. افتح المتجر من الزر بالأسفل\n` +
+      `  2. اختر القسم ثم اللعبة ثم المنتج\n` +
+      `  3. ادفع واستلم مفتاحك فوراً\n\n` +
+      `${emojiHtml('shield')} منتجات أصلية • ${emojiHtml('bolt')} تسليم آلي\n\n` +
+      `${emojiHtml('chat')} تحتاج مساعدة؟ <b>@${supportUsername}</b>`;
 
   const buttons = Markup.inlineKeyboard([
     [{
-      text: buttonLabel('rocket', lang === 'en' ? 'PLAY NOW - STORE' : 'افتح المتجر - PLAY NOW'),
+      text: buttonLabel('rocket', lang === 'en' ? '🛍️ Open Store' : '🛍️ فتح المتجر'),
       web_app: { url: `${process.env.BASE_URL}/customer` },
       style: 'primary',
       icon_custom_emoji_id: buttonEmojiId('rocket')
@@ -39,7 +39,7 @@ const helpHandler = async (ctx) => {
       icon_custom_emoji_id: buttonEmojiId('fire')
     }],
     [{
-      text: buttonLabel('ghost', lang === 'en' ? 'Home' : 'الرئيسية'),
+      text: buttonLabel('ghost', lang === 'en' ? '⬅️ Home' : '⬅️ الرئيسية'),
       callback_data: 'main_menu',
       style: 'primary',
       icon_custom_emoji_id: buttonEmojiId('ghost')

@@ -6,6 +6,7 @@ import { t } from '../i18n';
 import PremiumIcon from './PremiumIcon';
 import api from '../utils/api';
 import { haptic } from '../utils/haptic';
+import { playSound } from '../utils/sound';
 
 export default function BinancePaySheet() {
   const { currentOrder, submitPaymentProof, selectedDuration, locale } = useStore();
@@ -14,7 +15,9 @@ export default function BinancePaySheet() {
   const [copied, setCopied] = useState(false);
   const [walletInfo, setWalletInfo] = useState(null);
   const [countdown, setCountdown] = useState(900);
-  const close = () => useStore.setState({ showBinanceSheet: false });
+  const close = () => { playSound('close'); useStore.setState({ showBinanceSheet: false }); };
+
+  useEffect(() => { playSound('open'); }, []);
 
   useEffect(() => {
     api.get('/payment/info').then((res) => {
@@ -34,6 +37,7 @@ export default function BinancePaySheet() {
   const checkoutUrl = currentOrder?.checkoutUrl || address;
   const copy = (value) => navigator.clipboard.writeText(value).then(() => {
     haptic.light();
+    playSound('tap');
     setCopied(true);
     toast.success(t(locale, 'copied'));
     window.setTimeout(() => setCopied(false), 1800);
@@ -50,10 +54,12 @@ export default function BinancePaySheet() {
     try {
       await submitPaymentProof(txHash);
       haptic.success();
+      playSound('success');
       toast.success(t(locale, 'submitted'));
       close();
     } catch (error) {
       haptic.error();
+      playSound('error');
       toast.error(error.response?.data?.error || t(locale, 'failed'));
     } finally {
       setLoading(false);
@@ -78,10 +84,10 @@ export default function BinancePaySheet() {
           </div>
           <div className="grid justify-items-center gap-2">
             <div className="rounded-2xl bg-white p-3"><QRCodeSVG value={checkoutUrl} size={170} bgColor="#fff" fgColor="#000" level="H" /></div>
-            <small className="text-[#9ca3af]">{locale === 'ar' ? 'امسح الرمز بتطبيق Binance' : 'Scan with Binance'}</small>
+            <small className="text-[#9ca3af]">{t(locale, 'scanQr')}</small>
           </div>
           <div>
-            <p className="mb-2 text-xs text-[#9ca3af]">{locale === 'ar' ? 'أو أرسل يدوياً إلى' : 'Or send manually to'}</p>
+            <p className="mb-2 text-xs text-[#9ca3af]">{t(locale, 'orSendManually')}</p>
             <div className="flex items-center gap-2 rounded-xl border border-[#2d3748] bg-[#11141a] p-2">
               <code className="min-w-0 flex-1 break-all text-[11px] text-white">{address}</code>
               <button type="button" onClick={() => copy(address)} className="w-10 h-10 min-h-0 flex-none rounded-lg border border-[#10b981]/25 text-[#6ee7b7]">{copied ? <PremiumIcon name="checkmark" /> : <PremiumIcon name="copy" />}</button>
@@ -89,7 +95,7 @@ export default function BinancePaySheet() {
           </div>
           {currentOrder?.checkoutUrl && <a href={currentOrder.checkoutUrl} target="_blank" rel="noreferrer" className="block rounded-xl bg-[#f0b90b] py-3 text-center text-sm font-black text-[#16110a]">{locale === 'ar' ? 'فتح Binance' : 'Open Binance'}</a>}
           <div>
-            <label htmlFor="tx-hash" className="mb-2 block text-sm font-bold text-white">{locale === 'ar' ? 'إثبات الدفع' : 'Payment proof'}</label>
+            <label htmlFor="tx-hash" className="mb-2 block text-sm font-bold text-white">{t(locale, 'paymentProof')}</label>
             <input id="tx-hash" type="text" placeholder={t(locale, 'txHash')} value={txHash} onChange={(event) => setTxHash(event.target.value)} className="w-full h-11 rounded-xl border border-[#2d3748] bg-[#11141a] px-3 text-sm text-white outline-none focus:border-[#10b981]" />
           </div>
           <button type="button" onClick={submit} disabled={loading || !txHash.trim()} className="w-full rounded-xl bg-[#10b981] py-3 font-black text-[#06110b] disabled:opacity-45">{loading ? t(locale, 'loading') : t(locale, 'submit')}</button>

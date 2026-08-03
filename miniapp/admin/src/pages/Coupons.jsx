@@ -67,7 +67,7 @@ export default function Coupons() {
               </p>
               <div className="flex gap-3 mt-1 text-[10px] text-muted">
                 <span>🔢 {coupon.currentUses}/{coupon.maxUses || '∞'}</span>
-                {coupon.expiresAt && <span>📅 {new Date(coupon.expiresAt).toLocaleDateString('ar-SA')}</span>}
+                {coupon.expiresAt && <span>📅 {new Date(coupon.expiresAt).toLocaleDateString('ar-IQ')}</span>}
               </div>
             </div>
             <div className="flex gap-1.5 flex-shrink-0">

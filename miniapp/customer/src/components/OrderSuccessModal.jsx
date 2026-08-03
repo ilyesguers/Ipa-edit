@@ -4,6 +4,7 @@ import useStore from '../store/useStore';
 import { cleanDisplayText, t } from '../i18n';
 import PremiumIcon from './PremiumIcon';
 import { haptic } from '../utils/haptic';
+import { playSound } from '../utils/sound';
 
 export default function OrderSuccessModal({ data, onClose }) {
   const { locale } = useStore();
@@ -11,10 +12,11 @@ export default function OrderSuccessModal({ data, onClose }) {
   const [copiedAll, setCopiedAll] = useState(false);
   const keys = data?.keys || [];
 
-  useEffect(() => { haptic.success(); }, []);
+  useEffect(() => { haptic.success(); playSound('success'); }, []);
 
   const copy = (key, index) => navigator.clipboard.writeText(key).then(() => {
     haptic.light();
+    playSound('tap');
     setCopied(index);
     toast.success(t(locale, 'toastCopied'));
     window.setTimeout(() => setCopied(null), 1800);
@@ -22,6 +24,7 @@ export default function OrderSuccessModal({ data, onClose }) {
 
   const copyAll = useCallback(() => navigator.clipboard.writeText(keys.join('\n')).then(() => {
     haptic.light();
+    playSound('tap');
     setCopiedAll(true);
     toast.success(t(locale, 'copied'));
     window.setTimeout(() => setCopiedAll(false), 1800);
@@ -49,6 +52,9 @@ export default function OrderSuccessModal({ data, onClose }) {
             </div>
           ))}
           <p className="m-0 text-center text-xs text-[#9ca3af]">{cleanDisplayText(data?.order?.productName)} · {cleanDisplayText(data?.order?.durationName)}</p>
+          {data?.via === 'stars' && data?.starsAmount ? (
+            <p className="m-0 text-center text-[11px] text-[#fde68a]">⭐ {data.starsAmount} {t(locale, 'starsLabel')}</p>
+          ) : null}
           <button type="button" onClick={onClose} className="w-full rounded-xl bg-[#10b981] py-3 font-black text-[#06110b]">{t(locale, 'thankYou')}</button>
         </div>
       </section>

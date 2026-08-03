@@ -5,6 +5,7 @@ const Order = require('../../models/Order');
 const Coupon = require('../../models/Coupon');
 const orderService = require('../../services/orderService');
 const binanceService = require('../../services/binanceService');
+const starsService = require('../../services/starsService');
 const Settings = require('../../models/Settings');
 const { getAdminPortalUrl } = require('../../utils/uiConfig');
 
@@ -103,7 +104,11 @@ router.post('/wallet', async (req, res) => {
       // Send key to user via bot too
       const keysText = result.keys.map(k => `<code>${k.keyValue}</code>`).join('\n');
       await bot.telegram.sendMessage(req.telegramId,
-        `✅ <b>تم الشراء بنجاح!</b>\n\n📦 ${result.order.productName} - ${result.order.durationName}\n\n🔑 مفتاحك:\n${keysText}\n\n📋 رقم الطلب: ${result.order.orderNumber}`,
+        `✅ <b>تم إتمام الشراء بنجاح</b>\n\n` +
+        `📦 ${result.order.productName} — ${result.order.durationName}\n\n` +
+        `🔑 <b>مفاتيحك:</b>\n${keysText}\n\n` +
+        `🧾 رقم الطلب: <code>${result.order.orderNumber}</code>\n` +
+        `تجد نسخة دائمة منها داخل المتجر في قسم «مفاتيحي».`,
         { parse_mode: 'HTML' }
       ).catch(() => {});
     }
@@ -177,6 +182,81 @@ router.post('/binance', async (req, res) => {
     });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// Create a Telegram Stars order and return the XTR invoice link.
+// The mini app hands the link to Telegram.WebApp.openInvoice(); delivery
+// happens in the bot's successful_payment handler the moment Telegram
+// confirms the payment.
+router.post('/stars', async (req, res) => {
+  try {
+    const config = await starsService.getStarsConfig();
+    if (!config.enabled) {
+      return res.status(403).json({ success: false, error: 'الدفع بالنجوم متوقف حالياً / Stars payments are currently disabled' });
+    }
+
+    const { productId, durationId, quantity = 1, couponCode } = req.body;
+    const { order, finalPrice } = await orderService.createOrder({
+      telegramId: req.telegramId,
+      productId, durationId, quantity, paymentMethod: 'telegram_stars', couponCode
+    });
+
+    const starsAmount = starsService.usdToStars(finalPrice, config.perUsd);
+    order.starsAmount = starsAmount;
+    await order.save();
+
+    let invoiceUrl;
+    try {
+      ({ invoiceUrl } = await starsService.createInvoiceLink(order, starsAmount));
+    } catch (invoiceErr) {
+      // Never leave a dangling pending order when the invoice could not be created.
+      try {
+        order.status = 'cancelled';
+        order.adminNotes = `تعذر إنشاء رابط النجوم: ${invoiceErr.message}`;
+        await order.save();
+      } catch (_) {}
+      throw invoiceErr;
+    }
+
+    notifyAdminPanel(req, {
+      type: 'stars_order',
+      orderNumber: order.orderNumber,
+      productName: order.productName,
+      durationName: order.durationName,
+      amount: finalPrice,
+      starsAmount,
+      username: req.user.username || req.user.fullName,
+      telegramId: req.telegramId,
+      createdAt: new Date().toISOString()
+    });
+
+    res.json({
+      success: true,
+      data: {
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        amount: finalPrice,
+        starsAmount,
+        starsPerUsd: config.perUsd,
+        invoiceUrl
+      }
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// Public-order lookup (own orders only) — the mini app polls this after a
+// Stars checkout until the bot's successful_payment handler delivers the keys.
+router.get('/lookup/:orderNumber', async (req, res) => {
+  try {
+    const order = await Order.findOne({ orderNumber: req.params.orderNumber, user: req.telegramId })
+      .select('orderNumber productName durationName status finalPrice starsAmount keyValues paymentMethod quantity');
+    if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
+    res.json({ success: true, data: order });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

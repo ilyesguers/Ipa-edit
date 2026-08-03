@@ -18,7 +18,7 @@ const orderSchema = new mongoose.Schema({
   keyValues: [{ type: String }],
   paymentMethod: {
     type: String,
-    enum: ['wallet', 'binance', 'manual_crypto', 'admin_gift'],
+    enum: ['wallet', 'binance', 'manual_crypto', 'admin_gift', 'telegram_stars'],
     required: true
   },
   status: {
@@ -30,6 +30,11 @@ const orderSchema = new mongoose.Schema({
   paymentTxHash: { type: String, default: null },
   paymentOrderId: { type: String, default: null },
   binancePayId: { type: String, default: null },
+  // Telegram Stars payment fields (currency is always 'XTR')
+  starsAmount: { type: Number, default: null },
+  telegramPaymentChargeId: { type: String, default: null },
+  providerPaymentChargeId: { type: String, default: null },
+  starsRefundedAt: { type: Date, default: null },
   paymentProof: { type: String, default: null },
   paymentVerifiedAt: { type: Date, default: null },
   paymentVerifiedBy: { type: Number, default: null },

@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import useStore from '../store/useStore';
 import { localizedName, t } from '../i18n';
 import PremiumIcon from './PremiumIcon';
 import { haptic } from '../utils/haptic';
+import { playSound } from '../utils/sound';
 
 export default function CheckoutSheet() {
   const {
@@ -15,20 +16,32 @@ export default function CheckoutSheet() {
     couponDiscount,
     applyCoupon,
     purchaseWithWallet,
-    purchaseWithBinance
+    purchaseWithBinance,
+    purchaseWithStars,
+    pollOrder,
+    completeStarsOrder,
+    publicSettings
   } = useStore();
   const [couponInput, setCouponInput] = useState('');
   const [couponState, setCouponState] = useState('idle');
   const [couponError, setCouponError] = useState('');
   const [loading, setLoading] = useState(false);
   const [binanceLoading, setBinanceLoading] = useState(false);
-  if (!selectedProduct || !selectedDuration) return null;
+  const [starsState, setStarsState] = useState('idle'); // idle | invoice | waiting
 
-  const maxQty = Math.min(Math.max(1, Number(selectedDuration.stockCount || 1)), 99);
-  const subtotal = Number(selectedDuration.price || 0) * quantity;
+  useEffect(() => { playSound('open'); }, []);
+
+  const starsEnabled = publicSettings?.stars_enabled !== false && String(publicSettings?.stars_enabled) !== 'false';
+  const starsPerUsd = Number(publicSettings?.stars_per_usd) > 0 ? Number(publicSettings.stars_per_usd) : 50;
+
+  const maxQty = selectedDuration ? Math.min(Math.max(1, Number(selectedDuration.stockCount || 1)), 99) : 1;
+  const subtotal = Number(selectedDuration?.price || 0) * quantity;
   const final = Math.max(0, subtotal - couponDiscount);
+  const starsEstimate = useMemo(() => Math.max(1, Math.ceil(final * starsPerUsd)), [final, starsPerUsd]);
   const hasBalance = Number(user?.balance || 0) >= final;
-  const close = () => useStore.setState({ showCheckout: false, showDurationSheet: true });
+  const close = () => { playSound('close'); useStore.setState({ showCheckout: false, showDurationSheet: true }); };
+
+  if (!selectedProduct || !selectedDuration) return null;
 
   const apply = async () => {
     if (!couponInput.trim()) return;
@@ -39,12 +52,14 @@ export default function CheckoutSheet() {
       useStore.setState({ couponCode: couponInput });
       setCouponState('success');
       haptic.success();
+      playSound('success');
       toast.success(t(locale, 'applied'));
     } catch (error) {
       setCouponState('error');
       const message = error.response?.data?.error || t(locale, 'couponError');
       setCouponError(message);
       haptic.error();
+      playSound('error');
       toast.error(message);
     }
   };
@@ -52,6 +67,7 @@ export default function CheckoutSheet() {
   const buyWallet = async () => {
     if (!hasBalance) {
       haptic.error();
+      playSound('error');
       toast.error(t(locale, 'insufficient'));
       return;
     }
@@ -60,9 +76,11 @@ export default function CheckoutSheet() {
     try {
       await purchaseWithWallet();
       haptic.success();
+      playSound('success');
       toast.success(t(locale, 'purchaseSuccess'));
     } catch (error) {
       haptic.error();
+      playSound('error');
       toast.error(error.response?.data?.error || t(locale, 'failed'));
     } finally {
       setLoading(false);
@@ -75,13 +93,78 @@ export default function CheckoutSheet() {
     try {
       await purchaseWithBinance();
       haptic.success();
+      playSound('open');
     } catch (error) {
       haptic.error();
+      playSound('error');
       toast.error(error.response?.data?.error || t(locale, 'failed'));
     } finally {
       setBinanceLoading(false);
     }
   };
+
+  /**
+   * ⭐ Telegram Stars — fully native checkout:
+   *  1. our API creates the order + XTR invoice link
+   *  2. Telegram.WebApp.openInvoice renders Telegram's payment sheet
+   *  3. on 'paid' we poll until the bot's successful_payment handler delivers
+   *     the keys, then show the same success modal as wallet purchases.
+   */
+  const buyStars = async () => {
+    const tg = window.Telegram?.WebApp;
+    if (!tg?.openInvoice) {
+      toast.error(locale === 'ar' ? 'الدفع بالنجوم متاح فقط من داخل تيليجرام' : 'Stars payments work inside Telegram only');
+      return;
+    }
+    haptic.medium();
+    playSound('star');
+    setStarsState('invoice');
+    let data;
+    try {
+      data = await purchaseWithStars();
+    } catch (error) {
+      setStarsState('idle');
+      haptic.error();
+      playSound('error');
+      toast.error(error.response?.data?.error || t(locale, 'paymentFailed'));
+      return;
+    }
+
+    tg.openInvoice(data.invoiceUrl, async (status) => {
+      if (status === 'cancelled') {
+        setStarsState('idle');
+        toast(t(locale, 'paymentCancelled'), { icon: 'ℹ️' });
+        return;
+      }
+      if (status === 'failed') {
+        setStarsState('idle');
+        haptic.error();
+        playSound('error');
+        toast.error(t(locale, 'paymentFailed'));
+        return;
+      }
+      // paid / pending → wait for the bot to deliver
+      setStarsState('waiting');
+      try {
+        const order = await pollOrder(data.orderNumber, { timeoutMs: 22000, intervalMs: 1500 });
+        if (order?.status === 'completed') {
+          haptic.success();
+          playSound('coin');
+          completeStarsOrder(order);
+          setStarsState('idle');
+          return;
+        }
+        toast(t(locale, 'orderPending'), { icon: '⏳', duration: 5000 });
+        useStore.setState({ showCheckout: false, showDurationSheet: false, selectedProduct: null, selectedDuration: null });
+      } catch (_) {
+        toast(t(locale, 'orderPending'), { icon: '⏳', duration: 5000 });
+      } finally {
+        setStarsState('idle');
+      }
+    });
+  };
+
+  const starsBusy = starsState !== 'idle';
 
   return (
     <>
@@ -100,9 +183,9 @@ export default function CheckoutSheet() {
             <div className="flex items-center justify-between gap-3 pt-2 border-t border-[#2d3748]">
               <span className="text-[#9ca3af] text-[13px] font-bold flex items-center gap-2"><PremiumIcon name="orders" /> {t(locale, 'quantity')}</span>
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() => { haptic.light(); useStore.setState((state) => ({ quantity: Math.max(1, state.quantity - 1) })); }} disabled={quantity <= 1} className="w-10 h-10 min-h-0 rounded-xl bg-[#1f2430] text-white border border-[#2d3748] disabled:opacity-40">−</button>
+                <button type="button" onClick={() => { haptic.light(); playSound('tap'); useStore.setState((state) => ({ quantity: Math.max(1, state.quantity - 1) })); }} disabled={quantity <= 1} className="w-10 h-10 min-h-0 rounded-xl bg-[#1f2430] text-white border border-[#2d3748] disabled:opacity-40">−</button>
                 <strong className="w-7 text-center">{quantity}</strong>
-                <button type="button" onClick={() => { haptic.light(); useStore.setState((state) => ({ quantity: Math.min(maxQty, state.quantity + 1) })); }} disabled={quantity >= maxQty} className="w-10 h-10 min-h-0 rounded-xl bg-[#1f2430] text-white border border-[#2d3748] disabled:opacity-40">+</button>
+                <button type="button" onClick={() => { haptic.light(); playSound('tap'); useStore.setState((state) => ({ quantity: Math.min(maxQty, state.quantity + 1) })); }} disabled={quantity >= maxQty} className="w-10 h-10 min-h-0 rounded-xl bg-[#1f2430] text-white border border-[#2d3748] disabled:opacity-40">+</button>
               </div>
             </div>
             <Summary label={t(locale, 'subtotal')} value={`$${subtotal.toFixed(2)}`} />
@@ -122,8 +205,26 @@ export default function CheckoutSheet() {
           {couponError && <p className="m-0 text-xs text-[#fca5a5]">{couponError}</p>}
 
           <div className="space-y-2">
-            <PaymentButton icon="wallet" label={t(locale, 'payWallet')} suffix={`$${Number(user?.balance || 0).toFixed(2)}`} disabled={!hasBalance || loading} loading={loading} onClick={buyWallet} />
-            <PaymentButton icon="coin" label={t(locale, 'payBinance')} suffix="USDT" disabled={binanceLoading} loading={binanceLoading} onClick={buyBinance} gold />
+            {starsEnabled && (
+              <>
+                <StarsButton
+                  label={t(locale, 'payWithStars')}
+                  stars={starsState === 'invoice' ? t(locale, 'preparingInvoice') : `${starsEstimate} ⭐`}
+                  state={starsState}
+                  onClick={buyStars}
+                  disabled={starsBusy || loading || binanceLoading}
+                />
+                {starsState === 'waiting' && (
+                  <p className="m-0 flex items-center justify-center gap-2 text-center text-[12px] text-[#9ca3af]">
+                    <span className="stars-waiting-dot" aria-hidden="true" />
+                    {t(locale, 'waitingPayment')}
+                  </p>
+                )}
+                <p className="m-0 text-center text-[10.5px] leading-5 text-[#788195]">{t(locale, 'starPaymentNote')}</p>
+              </>
+            )}
+            <PaymentButton icon="wallet" label={t(locale, 'payWallet')} suffix={`$${Number(user?.balance || 0).toFixed(2)}`} disabled={!hasBalance || loading || starsBusy} loading={loading} onClick={buyWallet} />
+            <PaymentButton icon="coin" label={t(locale, 'payBinance')} suffix="USDT" disabled={binanceLoading || starsBusy} loading={binanceLoading} onClick={buyBinance} gold />
           </div>
           {!hasBalance && <p className="m-0 text-center text-[12px] text-[#fca5a5]">{t(locale, 'insufficient')}</p>}
         </div>
@@ -146,6 +247,23 @@ function PaymentButton({ icon, label, suffix, disabled, loading, onClick, gold =
     <button type="button" onClick={onClick} disabled={disabled} className={`w-full min-h-0 py-3 px-4 rounded-xl border flex items-center justify-between gap-3 font-black text-[13px] disabled:opacity-45 ${gold ? 'border-[#f0b90b]/40 bg-[#f0b90b]/10 text-[#f5d06f]' : 'border-[#10b981]/35 bg-[#10b981]/10 text-[#6ee7b7]'}`}>
       <span className="flex items-center gap-2"><PremiumIcon name={icon} /> {loading ? '…' : label}</span>
       <span>{suffix}</span>
+    </button>
+  );
+}
+
+function StarsButton({ label, stars, state, onClick, disabled }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="stars-pay-btn w-full min-h-0 py-3 px-4 rounded-xl border flex items-center justify-between gap-3 font-black text-[13px] disabled:opacity-60"
+    >
+      <span className={`flex items-center gap-2 ${state !== 'idle' ? 'stars-thinking' : ''}`}>
+        <span className="stars-pay-btn__icon" aria-hidden="true">⭐</span>
+        {state === 'waiting' ? '…' : label}
+      </span>
+      <span dir="ltr">{stars}</span>
     </button>
   );
 }

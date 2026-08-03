@@ -2,6 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
+import ImagePicker from '../components/ImagePicker';
+
+const EMPTY_CAT = { name: '', nameAr: '', icon: '🎮', slug: '', image: null };
+const EMPTY_GAME = { name: '', nameAr: '', icon: null, category: '' };
 
 export default function Categories() {
   const [categories, setCategories] = useState([]);
@@ -9,11 +13,10 @@ export default function Categories() {
   const [selectedCat, setSelectedCat] = useState(null);
   const [showCatForm, setShowCatForm] = useState(false);
   const [showGameForm, setShowGameForm] = useState(false);
-  const [catForm, setCatForm] = useState({ name: '', nameAr: '', icon: '🎮', slug: '' });
-  const [gameForm, setGameForm] = useState({ name: '', nameAr: '', icon: null, category: '' });
+  const [catForm, setCatForm] = useState(EMPTY_CAT);
+  const [gameForm, setGameForm] = useState(EMPTY_GAME);
   const [editingCat, setEditingCat] = useState(null);
   const [editingGame, setEditingGame] = useState(null);
-  const [uploading, setUploading] = useState(false);
 
   const load = async () => {
     const [cr, gr] = await Promise.all([api.get('/admin/categories'), api.get('/admin/games')]);
@@ -31,7 +34,7 @@ export default function Categories() {
     try {
       if (editingCat) { await api.put(`/admin/categories/${editingCat}`, { ...catForm, slug }); toast.success('✅ تم التحديث'); }
       else { await api.post('/admin/categories', { ...catForm, slug }); toast.success('✅ تم إنشاء القسم'); }
-      setShowCatForm(false); setCatForm({ name: '', nameAr: '', icon: '🎮', slug: '' }); setEditingCat(null);
+      setShowCatForm(false); setCatForm(EMPTY_CAT); setEditingCat(null);
       load();
     } catch (err) { toast.error(err.response?.data?.error || 'فشل'); }
   };
@@ -42,7 +45,7 @@ export default function Categories() {
       const slug = gameForm.name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
       if (editingGame) { await api.put(`/admin/games/${editingGame}`, gameForm); toast.success('✅ تم التحديث'); }
       else { await api.post('/admin/games', { ...gameForm, slug }); toast.success('✅ تم إنشاء اللعبة'); }
-      setShowGameForm(false); setGameForm({ name: '', nameAr: '', icon: null, category: '' }); setEditingGame(null);
+      setShowGameForm(false); setGameForm(EMPTY_GAME); setEditingGame(null);
       load();
     } catch (err) { toast.error(err.response?.data?.error || 'فشل'); }
   };
@@ -67,22 +70,14 @@ export default function Categories() {
     load();
   };
 
-  const handleGameIconUpload = async (e) => {
-    const file = e.target.files?.[0]; if (!file) return;
-    setUploading(true);
-    const fd = new FormData(); fd.append('image', file);
-    const r = await api.post('/upload/image', fd);
-    setGameForm(f => ({ ...f, icon: r.data.url }));
-    setUploading(false);
-  };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h2 className="text-xl font-black text-white">📂 الأقسام والألعاب</h2>
         <div className="flex gap-2">
-          <motion.button whileTap={{ scale: 0.95 }} onClick={() => { setCatForm({ name: '', nameAr: '', icon: '🎮', slug: '' }); setEditingCat(null); setShowCatForm(true); }} className="neon-btn">➕ قسم جديد</motion.button>
-          <motion.button whileTap={{ scale: 0.95 }} onClick={() => { setGameForm({ name: '', nameAr: '', icon: null, category: selectedCat?._id || '' }); setEditingGame(null); setShowGameForm(true); }} className="success-btn">➕ لعبة جديدة</motion.button>
+          <motion.button whileTap={{ scale: 0.95 }} onClick={() => { setCatForm(EMPTY_CAT); setEditingCat(null); setShowCatForm(true); }} className="neon-btn">➕ قسم جديد</motion.button>
+          <motion.button whileTap={{ scale: 0.95 }} onClick={() => { setGameForm({ ...EMPTY_GAME, category: selectedCat?._id || '' }); setEditingGame(null); setShowGameForm(true); }} className="success-btn">➕ لعبة جديدة</motion.button>
         </div>
       </div>
 
@@ -104,7 +99,11 @@ export default function Categories() {
               onClick={() => setSelectedCat(selectedCat?._id === cat._id ? null : cat)}
               className={`admin-card border cursor-pointer transition-all text-center relative
                 ${selectedCat?._id === cat._id ? 'border-neon/40 bg-neon/5' : 'border-border hover:border-border/80'}`}>
-              <div className="text-2xl mb-1">{cat.icon}</div>
+              {cat.image ? (
+                <img src={cat.image} alt={cat.name} className="w-10 h-10 rounded-xl object-cover mx-auto mb-1" />
+              ) : (
+                <div className="text-2xl mb-1">{cat.icon}</div>
+              )}
               <p className="text-xs font-bold text-white truncate">{cat.nameAr || cat.name}</p>
               <p className="text-[10px] text-muted">{games.filter(g => (g.category?._id || g.category) === cat._id).length} لعبة</p>
               <div className="flex justify-center gap-1 mt-2">
@@ -147,11 +146,12 @@ export default function Categories() {
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowCatForm(false)} className="fixed inset-0 bg-black/80 z-40" />
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="fixed left-4 right-4 top-1/2 -translate-y-1/2 z-50 bg-panel border border-border rounded-2xl p-5 max-w-sm mx-auto space-y-3">
+              className="fixed left-4 right-4 top-1/2 -translate-y-1/2 z-50 bg-panel border border-border rounded-2xl p-5 max-w-sm mx-auto space-y-3 max-h-[90dvh] overflow-y-auto">
               <h3 className="font-black text-white">{editingCat ? '✏️ تعديل قسم' : '+ قسم جديد'}</h3>
               <input value={catForm.name} onChange={e => setCatForm(f => ({ ...f, name: e.target.value }))} placeholder="Category Name (EN)" className="input-admin" />
               <input value={catForm.nameAr} onChange={e => setCatForm(f => ({ ...f, nameAr: e.target.value }))} placeholder="اسم القسم (AR)" className="input-admin" />
-              <input value={catForm.icon} onChange={e => setCatForm(f => ({ ...f, icon: e.target.value }))} placeholder="الأيقونة (emoji)" className="input-admin" />
+              <input value={catForm.icon} onChange={e => setCatForm(f => ({ ...f, icon: e.target.value }))} placeholder="الأيقونة (emoji عند عدم وجود صورة)" className="input-admin" />
+              <ImagePicker label="🖼️ صورة القسم" value={catForm.image} onChange={(url) => setCatForm(f => ({ ...f, image: url }))} hint="تظهر بدلاً من الإيموجي في متجر العميل." />
               <div className="flex gap-2">
                 <motion.button whileTap={{ scale: 0.95 }} onClick={saveCat} className="flex-1 neon-btn py-3 rounded-xl font-bold">حفظ</motion.button>
                 <button onClick={() => setShowCatForm(false)} className="px-4 py-3 border border-border rounded-xl text-muted text-sm">إلغاء</button>
@@ -167,7 +167,7 @@ export default function Categories() {
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowGameForm(false)} className="fixed inset-0 bg-black/80 z-40" />
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="fixed left-4 right-4 top-1/2 -translate-y-1/2 z-50 bg-panel border border-border rounded-2xl p-5 max-w-sm mx-auto space-y-3">
+              className="fixed left-4 right-4 top-1/2 -translate-y-1/2 z-50 bg-panel border border-border rounded-2xl p-5 max-w-sm mx-auto space-y-3 max-h-[90dvh] overflow-y-auto">
               <h3 className="font-black text-white">{editingGame ? '✏️ تعديل لعبة' : '+ لعبة جديدة'}</h3>
               <input value={gameForm.name} onChange={e => setGameForm(f => ({ ...f, name: e.target.value }))} placeholder="Game Name (EN)" className="input-admin" />
               <input value={gameForm.nameAr} onChange={e => setGameForm(f => ({ ...f, nameAr: e.target.value }))} placeholder="اسم اللعبة (AR)" className="input-admin" />
@@ -175,13 +175,7 @@ export default function Categories() {
                 <option value="">اختر القسم</option>
                 {categories.map(c => <option key={c._id} value={c._id}>{c.nameAr || c.name}</option>)}
               </select>
-              <div className="flex items-center gap-3">
-                {gameForm.icon && <img src={gameForm.icon} alt="icon" className="w-10 h-10 rounded-xl object-cover" />}
-                <label className="neon-btn cursor-pointer text-sm">
-                  {uploading ? '⏳...' : '📁 أيقونة'}
-                  <input type="file" accept="image/*" onChange={handleGameIconUpload} className="hidden" />
-                </label>
-              </div>
+              <ImagePicker label="🖼️ أيقونة اللعبة" value={gameForm.icon} onChange={(url) => setGameForm(f => ({ ...f, icon: url }))} hint="تظهر داخل بطاقة اللعبة في المتجر." />
               <div className="flex gap-2">
                 <motion.button whileTap={{ scale: 0.95 }} onClick={saveGame} className="flex-1 neon-btn py-3 rounded-xl font-bold">حفظ</motion.button>
                 <button onClick={() => setShowGameForm(false)} className="px-4 py-3 border border-border rounded-xl text-muted text-sm">إلغاء</button>

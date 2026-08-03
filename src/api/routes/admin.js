@@ -55,8 +55,8 @@ router.get('/categories', async (req, res) => {
 
 router.post('/categories', async (req, res) => {
   try {
-    const { name, nameAr, icon, slug, order } = req.body;
-    const cat = await Category.create({ name, nameAr, icon, slug: slug || name.toLowerCase().replace(/\s+/g, '-'), order: order || 0 });
+    const { name, nameAr, icon, image, slug, order } = req.body;
+    const cat = await Category.create({ name, nameAr, icon, image: image || null, slug: slug || name.toLowerCase().replace(/\s+/g, '-'), order: order || 0 });
     res.json({ success: true, data: cat });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -433,10 +433,10 @@ router.post('/users/:id/role', async (req, res) => {
     const bot = req.app.get('bot');
     if (bot) {
       await bot.telegram.sendMessage(target.telegramId,
-        `👑 <b>${role === 'admin' ? 'مبروك! صرت أدمن في المتجر 🎉' : 'تم إلغاء صلاحية الأدمن'}</b>\n\n` +
+        `👑 <b>${role === 'admin' ? 'تمت ترقيتك إلى إدارة المتجر' : 'تم إلغاء صلاحية الإدارة عن حسابك'}</b>\n\n` +
         `${role === 'admin'
-          ? 'دخولك للوحة التحكم مفعّل الآن بكل الصلاحيات. يقدر المالك يضبط لك صلاحيات محددة من لوحة التحكم.'
-          : 'إذا كان عندك سؤال تواصل مع الدعم'}`,
+          ? 'تم تفعيل دخولك إلى لوحة التحكم بكامل الصلاحيات، ويمكن للمالك تحديد صلاحيات معيّنة لك من داخل اللوحة.'
+          : 'لأي استفسار، يرجى التواصل مع الدعم.'}`,
         { parse_mode: 'HTML' }
       ).catch(() => {});
     }
@@ -705,11 +705,11 @@ router.post('/orders/:id/verify-payment', async (req, res) => {
     if (bot) {
       const keysText = result.keys.map(k => `<code>${k.keyValue}</code>`).join('\n');
       await bot.telegram.sendMessage(order.user,
-        `✅ <b>تم تأكيد دفعتك يا أسطورة!</b>\n\n` +
-        `📦 ${order.productName} - ${order.durationName}\n` +
-        `📋 رقم الطلب: <code>${order.orderNumber}</code>\n\n` +
-        `🔑 <b>مفتاحك:</b>\n${keysText}\n\n` +
-        `🔥 GG WP - استمتع! 🏆`,
+        `✅ <b>تم تأكيد عملية الدفع</b>\n\n` +
+        `📦 ${order.productName} — ${order.durationName}\n` +
+        `🧾 رقم الطلب: <code>${order.orderNumber}</code>\n\n` +
+        `🔑 <b>مفاتيحك:</b>\n${keysText}\n\n` +
+        `تجد نسخة دائمة منها داخل المتجر في قسم «مفاتيحي».`,
         { parse_mode: 'HTML' }
       ).catch(() => {});
     }
@@ -762,6 +762,48 @@ router.post('/orders/:id/refund', async (req, res) => {
 
     const user = await User.findOne({ telegramId: order.user });
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+
+    // Telegram Stars orders are refunded through Telegram itself (Stars go
+    // back to the buyer's Stars balance) — no wallet credit, which avoids
+    // compensating the user twice.
+    if (order.paymentMethod === 'telegram_stars') {
+      if (!order.telegramPaymentChargeId) {
+        return res.status(400).json({ success: false, error: 'لا يوجد معرّف دفع للنجوم — لا يمكن الاسترجاع تلقائياً' });
+      }
+      const { refundStarPayment } = require('../../services/starsService');
+      const Key = require('../../models/Key');
+      const Product = require('../../models/Product');
+      try {
+        await refundStarPayment(order.user, order.telegramPaymentChargeId);
+      } catch (starsErr) {
+        return res.status(400).json({ success: false, error: `فشل استرجاع النجوم من تيليجرام: ${starsErr.message}` });
+      }
+      await Key.updateMany({ orderId: order._id }, { status: 'invalid', notes: `Stars refund: ${reason || 'استرجاع من الإدارة'}` });
+      order.status = 'refunded';
+      order.refundedAt = new Date();
+      order.starsRefundedAt = new Date();
+      order.refundReason = reason || 'استرجاع نجوم من الإدارة';
+      await order.save();
+      await Product.findByIdAndUpdate(order.product, { $inc: { totalSales: -order.quantity, totalRevenue: -order.finalPrice } }).catch(() => {});
+      await Product.findOneAndUpdate(
+        { _id: order.product, 'durations._id': order.duration },
+        { $inc: { 'durations.$.soldCount': -order.quantity } }
+      ).catch(() => {});
+
+      const bot = req.app.get('bot');
+      if (bot) {
+        await bot.telegram.sendMessage(order.user,
+          `⭐ <b>تم استرجاع نجومك بالكامل</b>\n\n` +
+          `📦 ${order.productName} — ${order.durationName}\n` +
+          `🧾 رقم الطلب: <code>${order.orderNumber}</code>\n` +
+          `⭐ النجوم المسترجعة: <b>${order.starsAmount || ''} Stars</b>\n` +
+          `📝 السبب: ${reason || 'استرجاع من الإدارة'}\n\n` +
+          `أعاد تيليجرام النجوم إلى رصيدك مباشرة.`,
+          { parse_mode: 'HTML' }
+        ).catch(() => {});
+      }
+      return res.json({ success: true, data: { order, starsRefunded: true } });
+    }
 
     const { refundedOrder } = await orderService.refundOrder(order, user, reason || 'استرجاع من الإدارة', req.telegramId);
 

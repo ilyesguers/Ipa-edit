@@ -63,7 +63,7 @@ export default function Dashboard() {
         <div>
           <p>نظرة عامة</p>
           <h2>مرحباً، {stats ? 'هذه أهم الأرقام الآن.' : 'جاري تجهيز الملخص.'}</h2>
-          <small>{updatedAt ? `آخر تحديث: ${updatedAt.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}` : 'يتم تحديث البيانات عند الطلب.'}</small>
+          <small>{updatedAt ? `آخر تحديث: ${updatedAt.toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' })}` : 'يتم تحديث البيانات عند الطلب.'}</small>
         </div>
         <button type="button" onClick={() => load({ silent: true })} disabled={refreshing} className="neon-btn inline-flex items-center gap-2"><AdminIcon name="refresh" /> {refreshing ? 'جاري التحديث' : 'تحديث البيانات'}</button>
       </section>
