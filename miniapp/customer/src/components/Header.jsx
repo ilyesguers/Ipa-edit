@@ -14,27 +14,29 @@ export default function Header() {
   const balance = Number(user?.balance || 0).toFixed(2);
 
   return (
-    <header className="store-header">
+    <header className="store-header halo-container interactive-glow glass-card-pro" style={{ border: '1px solid rgba(255,255,255,.08)', background: 'rgba(13,15,18,.92)' }}>
       <button
         type="button"
         onClick={() => setActiveTab('profile')}
         className="store-header__identity"
         aria-label={t(locale, 'navProfile')}
+        style={{ background: 'transparent', border: 'none' }}
       >
         {avatar ? (
-          <img src={avatar} alt="" className="store-header__avatar" />
+          <img src={avatar} alt="" className="store-header__avatar" style={{ borderColor: 'rgba(16,185,129,.5)' }} />
         ) : (
-          <span className="store-header__avatar store-header__avatar--fallback" aria-hidden="true">
+          <span className="store-header__avatar store-header__avatar--fallback" aria-hidden="true"
+            style={{ borderColor: 'rgba(16,185,129,.5)', color: '#10b981', background: 'rgba(16,185,129,.15)' }}>
             {user?.firstName?.[0] || 'G'}
           </span>
         )}
         <span className="store-header__copy">
-          <strong>{brand}</strong>
+          <strong className="text-glow-pro" style={{ fontWeight: 800 }}>{brand}</strong>
           <small>{user?.firstName || t(locale, 'user')}</small>
         </span>
       </button>
 
-      <div className="store-header__actions">
+      <div className="store-header__actions" style={{ gap: '8px' }}>
         <VolumeControl />
         <button
           type="button"
@@ -43,7 +45,7 @@ export default function Header() {
             playSound('tap');
             useStore.getState().openLanguagePicker();
           }}
-          className="store-header__icon-button"
+          className="store-header__icon-button interactive-glow halo-btn"
           aria-label={t(locale, 'language')}
           title={t(locale, 'language')}
         >
@@ -52,11 +54,11 @@ export default function Header() {
         <button
           type="button"
           onClick={() => { playSound('tap'); setActiveTab('profile'); }}
-          className="store-header__balance"
+          className="store-header__balance interactive-glow halo-btn"
           aria-label={t(locale, 'balance')}
         >
           <PremiumIcon name="wallet" size="1em" />
-          <span>${balance}</span>
+          <span style={{ fontWeight: 900 }}>${balance}</span>
         </button>
       </div>
     </header>

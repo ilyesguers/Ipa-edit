@@ -67,6 +67,34 @@ const callbackHandler = async (ctx) => {
       );
     }
 
+    if (data === 'verify_subscription') {
+      if (!ctx.dbUser) return ctx.answerCbQuery('❌ Not found. Send /start.', { show_alert: true });
+      try {
+        const { getCached } = require('../utils/settingsCache');
+        const [forceJoin, channelId] = await Promise.all([
+          getCached('force_join_channel', false),
+          getCached('channel_id', '')
+        ]);
+        if (!forceJoin || !channelId) {
+          return ctx.answerCbQuery(`${emojiHtml('checkmark')} ${t(lang, 'الاشتراك غير مطلوب حالياً. تابع!', 'Subscription not required.')}`, { show_alert: false });
+        }
+        let memberStatus = null;
+        try {
+          const member = await ctx.telegram.getChatMember(channelId, ctx.dbUser.telegramId);
+          memberStatus = member?.status;
+        } catch (_) { /* ignore */ }
+        const isMember = ['member', 'administrator', 'creator'].includes(memberStatus);
+        if (isMember) {
+          return ctx.answerCbQuery(`${emojiHtml('checkmark')} ${t(lang, 'تم التحقق — مرحباً بك من جديد!', 'Verified — welcome back!')}`, { show_alert: false });
+        } else {
+          return ctx.answerCbQuery(`${emojiHtml('lock')} ${t(lang, 'ما زلت غير مشترك. الرجاء الاشتراك أولاً.', 'Still not a member. Please join first.')}`, { show_alert: true });
+        }
+      } catch (err) {
+        logger.error('Subscription verification error:', err);
+        return ctx.answerCbQuery('⚠️ Try again.', { show_alert: true });
+      }
+    }
+
     const isLegacyAdminRoute = data.startsWith('admin_') || data === 'toggle_maintenance' || data.startsWith('inv_') || data.startsWith('verify_') || data.startsWith('reject_') || data.startsWith('broadcast_');
     if (isLegacyAdminRoute) {
       if (!ctx.isAdmin) return ctx.answerCbQuery(`${emojiHtml('alert')} ${t(lang, 'غير مصرح لك', 'No permission')}`, { show_alert: true });

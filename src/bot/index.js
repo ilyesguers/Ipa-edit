@@ -169,27 +169,53 @@ const { showLanguagePicker, isLanguageChoiceCallback, botLocale } = require('./h
             const isMember = ['member', 'administrator', 'creator'].includes(memberStatus);
             if (isMember) {
               forceJoinOkCache.set(telegramId, Date.now());
-            } else if (memberStatus && memberStatus !== 'restricted') {
+            } else if (memberStatus && memberStatus !== 'restricted' && memberStatus !== 'kicked' && memberStatus !== 'left') {
               const channelUsername = await Settings.get('channel_username', '');
-              const fallback = `https://t.me/${String(channelId).replace(/^-100/, '')}`;
-              const channelLink = channelUsername
-                ? `https://t.me/${channelUsername}`
-                : (memberStatus ? fallback : '');
+              const channelTitle = await Settings.get('channel_title', '');
+              // Build a proper channel link - prioritize username, then fallback to numeric ID
+              let channelLink = null;
+              if (channelUsername && String(channelUsername).trim()) {
+                const cleanUsername = String(channelUsername).trim().replace(/^@/, '');
+                channelLink = `https://t.me/${cleanUsername}`;
+              } else if (channelId) {
+                const numericId = String(channelId).replace(/^-100/, '');
+                channelLink = `https://t.me/c/${numericId}`;
+              }
+              
               const isEn = botLocale(user.preferredLanguage) === 'en';
+              const channelName = channelTitle ? String(channelTitle).trim() : (channelUsername ? '@' + String(channelUsername).trim() : null);
+              
+              const messageText = (isEn
+                ? `<b>📢 Join our official channel</b>\n\n` +
+                  `Membership is required to access the store and receive instant delivery notifications.` +
+                  (channelName ? `\n\nChannel: <b>${channelName}</b>` : '') +
+                  `\n\nAfter joining, press /start to continue.`
+                : `<b>📢 اشترك في قناتنا الرسمية</b>\n\n` +
+                  `الاشتراك إلزامي للوصول إلى المتجر والحصول على إشعارات التسليم الفوري.` +
+                  (channelName ? `\n\nالقناة: <b>${channelName}</b>` : '') +
+                  `\n\nبعد الاشتراك، أرسل /start للمتابعة.`);
+              
+              const keyboardButtons = [];
+              if (channelLink) {
+                keyboardButtons.push([{
+                  text: buttonLabel('megaphone', isEn ? '📢 JOIN CHANNEL' : '📢 اشترك في القناة'),
+                  url: channelLink,
+                  style: 'primary',
+                  icon_custom_emoji_id: buttonEmojiId('megaphone')
+                }]);
+              }
+              keyboardButtons.push([{
+                text: buttonLabel('rocket', isEn ? '✅ I JOINED — CONTINUE' : '✅ اشتركت — متابعة'),
+                callback_data: 'verify_subscription',
+                style: 'success',
+                icon_custom_emoji_id: buttonEmojiId('rocket')
+              }]);
+              
               return ctx.reply(
-                `${emojiHtml('lock')} <b>${isEn ? 'Please join our channel first' : 'يرجى الاشتراك في قناتنا أولاً'}</b>\n\n` +
-                `${emojiHtml('explosion')} ${isEn ? 'Membership in our deals channel is required to continue:' : 'يُشترط الاشتراك في قناة العروض للمتابعة:'}\n\n` +
-                `${emojiHtml('rocket')} ${isEn ? 'Join the channel, then press /start' : 'اشترك في القناة، ثم أرسل /start للمتابعة'}`,
+                messageText,
                 {
                   parse_mode: 'HTML',
-                  ...(channelLink ? Markup.inlineKeyboard([[
-                    {
-                      text: buttonLabel('megaphone', isEn ? 'JOIN CHANNEL' : 'اشترك في القناة'),
-                      url: channelLink,
-                      style: 'primary',
-                      icon_custom_emoji_id: buttonEmojiId('megaphone')
-                    }
-                  ]]) : {})
+                  reply_markup: Markup.inlineKeyboard(keyboardButtons)
                 }
               );
             }
