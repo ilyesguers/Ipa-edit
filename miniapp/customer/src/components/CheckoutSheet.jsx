@@ -18,6 +18,7 @@ export default function CheckoutSheet() {
     purchaseWithWallet,
     purchaseWithBinance,
     purchaseWithStars,
+    purchaseWithPaypal,
     pollOrder,
     completeStarsOrder,
     publicSettings
@@ -27,11 +28,14 @@ export default function CheckoutSheet() {
   const [couponError, setCouponError] = useState('');
   const [loading, setLoading] = useState(false);
   const [binanceLoading, setBinanceLoading] = useState(false);
+  const [paypalLoading, setPaypalLoading] = useState(false);
   const [starsState, setStarsState] = useState('idle'); // idle | invoice | waiting
 
   useEffect(() => { playSound('open'); }, []);
 
   const starsEnabled = publicSettings?.stars_enabled !== false && String(publicSettings?.stars_enabled) !== 'false';
+  const paypalEnabled = publicSettings?.paypal_enabled !== false && String(publicSettings?.paypal_enabled) !== 'false';
+  const paypalAvailable = paypalEnabled && Boolean(publicSettings?.paypal_email || publicSettings?.paypal_link);
   const starsPerUsd = Number(publicSettings?.stars_per_usd) > 0 ? Number(publicSettings.stars_per_usd) : 50;
   // 🎁 Balance-for-offers: customers who prefer trading game accounts/keys
   // for wallet balance go straight to the support account — the same support
@@ -115,6 +119,22 @@ export default function CheckoutSheet() {
       toast.error(error.response?.data?.error || t(locale, 'failed'));
     } finally {
       setBinanceLoading(false);
+    }
+  };
+
+  const buyPaypal = async () => {
+    haptic.medium();
+    setPaypalLoading(true);
+    try {
+      await purchaseWithPaypal();
+      haptic.success();
+      playSound('open');
+    } catch (error) {
+      haptic.error();
+      playSound('error');
+      toast.error(error.response?.data?.error || t(locale, 'failed'));
+    } finally {
+      setPaypalLoading(false);
     }
   };
 
@@ -239,7 +259,10 @@ export default function CheckoutSheet() {
               </>
             )}
             <PaymentButton icon="wallet" label={t(locale, 'payWallet')} suffix={`$${Number(user?.balance || 0).toFixed(2)}`} disabled={!hasBalance || loading || starsBusy} loading={loading} onClick={buyWallet} sheen />
-            <PaymentButton icon="coin" label={t(locale, 'payBinance')} suffix="USDT" disabled={binanceLoading || starsBusy} loading={binanceLoading} onClick={buyBinance} gold sheen />
+            <PaymentButton icon="coin" label={t(locale, 'payBinance')} suffix="USDT" disabled={binanceLoading || starsBusy || paypalLoading} loading={binanceLoading} onClick={buyBinance} gold sheen />
+            {paypalAvailable && (
+              <PaymentButton icon="coin" label={t(locale, 'payPal')} suffix="PayPal" disabled={paypalLoading || loading || binanceLoading || starsBusy} loading={paypalLoading} onClick={buyPaypal} gold sheen />
+            )}
             {offersEnabled && (
               <>
                 <button

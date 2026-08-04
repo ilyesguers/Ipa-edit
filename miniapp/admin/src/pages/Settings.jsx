@@ -159,7 +159,7 @@ export default function Settings() {
   const brandingKeys = ['bot_name', 'bot_username', 'channel_username', 'support_username', 'ui_theme_preset', 'ui_welcome_badge_ar', 'ui_welcome_badge_en', 'ui_welcome_title_ar', 'ui_welcome_title_en', 'ui_welcome_subtitle_ar', 'ui_welcome_subtitle_en', 'ui_footer_note_ar', 'ui_footer_note_en', 'admin_portal_label_ar', 'admin_portal_label_en', 'ui_home_highlights'];
   const navigationKeys = ['bot_quick_links'];
   const messageKeys = ['welcome_message', 'maintenance_message', 'shop_title', 'shop_description', 'footer_text'];
-  const paymentKeys = ['binance_api_key', 'binance_secret_key', 'binance_merchant_id', 'usdt_wallet_trc20', 'min_deposit', 'payment_timeout_minutes', 'stars_enabled', 'stars_per_usd', 'balance_offers_enabled', 'balance_offers_note_ar', 'balance_offers_note_en'];
+  const paymentKeys = ['binance_api_key', 'binance_secret_key', 'binance_merchant_id', 'usdt_wallet_trc20', 'min_deposit', 'payment_timeout_minutes', 'stars_enabled', 'stars_per_usd', 'paypal_enabled', 'paypal_email', 'paypal_link', 'balance_offers_enabled', 'balance_offers_note_ar', 'balance_offers_note_en'];
   const systemKeys = ['referral_bonus', 'auto_verify_payments', 'admin_notification_on_order', 'admin_notification_on_payment', 'force_join_channel', 'channel_id', 'maintenance_mode', 'maintenance_message'];
 
   const themeName = THEME_PRESETS.find((item) => item.id === settings.ui_theme_preset)?.title || 'Aurora';
@@ -476,6 +476,24 @@ export default function Settings() {
             <Field label="محفظة USDT TRC20" value={settings.usdt_wallet_trc20 || ''} onChange={(v) => update('usdt_wallet_trc20', v)} />
             <Field label="الحد الأدنى للإيداع" type="number" value={settings.min_deposit ?? ''} onChange={(v) => update('min_deposit', Number(v))} />
             <Field label="مهلة الدفع بالدقائق" type="number" value={settings.payment_timeout_minutes ?? ''} onChange={(v) => update('payment_timeout_minutes', Number(v))} />
+          </div>
+
+          {/* 💙 PayPal — simple mode: just an email or a PayPal.Me link */}
+          <div className="rounded-2xl border border-[#f0b90b]/25 bg-gradient-to-br from-[#f0b90b]/10 to-transparent p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-black text-white flex items-center gap-2">💙 الدفع عبر PayPal <span className="text-[9px] px-2 py-0.5 rounded-full bg-[#f0b90b]/15 text-[#f0b90b] border border-[#f0b90b]/25">بسيط</span></p>
+                <p className="text-[11px] text-muted mt-1">أبسط ما يمكن: الصق إيميل PayPal أو رابط PayPal.Me فقط، ويظهر زر الدفع للعملاء فوراً.</p>
+              </div>
+              <button onClick={() => update('paypal_enabled', !(settings.paypal_enabled))} className={`w-12 h-6 rounded-full relative transition-colors shrink-0 ${settings.paypal_enabled ? 'bg-[#f0b90b]' : 'bg-border'}`} aria-label="تفعيل الدفع عبر PayPal">
+                <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${settings.paypal_enabled ? 'right-1' : 'left-1'}`} />
+              </button>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="إيميل PayPal" value={settings.paypal_email || ''} onChange={(v) => update('paypal_email', v)} placeholder="your@email.com" />
+              <Field label="رابط PayPal.Me (اختياري)" value={settings.paypal_link || ''} onChange={(v) => update('paypal_link', v)} placeholder="https://paypal.me/yourname" />
+            </div>
+            <p className="text-[10px] text-muted">العميل يضغط زر الدفع ثم يلصق رقم العملية (Transaction ID) للتحقق، ويمكنك تأكيد الطلب يدوياً من تبويب الطلبات.</p>
           </div>
         </motion.div>
       )}

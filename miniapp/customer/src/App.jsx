@@ -19,6 +19,7 @@ const SupportTab = lazy(() => import('./components/tabs/SupportTab'));
 const DurationSheet = lazy(() => import('./components/DurationSheet'));
 const CheckoutSheet = lazy(() => import('./components/CheckoutSheet'));
 const BinancePaySheet = lazy(() => import('./components/BinancePaySheet'));
+const PayPalSheet = lazy(() => import('./components/PayPalSheet'));
 const OrderSuccessModal = lazy(() => import('./components/OrderSuccessModal'));
 
 const TAB_COMPONENTS = {
@@ -47,6 +48,7 @@ export default function App() {
     showDurationSheet,
     showCheckout,
     showBinanceSheet,
+    showPaypalSheet,
     currentOrder,
     needsLanguageSelect,
     showLanguagePicker
@@ -95,11 +97,14 @@ export default function App() {
   }, [locale]);
 
   useEffect(() => {
-    if (currentOrder && !showBinanceSheet) {
+    // Only show the success modal for a completed order. The payment sheets
+    // set `currentOrder` to the *pending* order when they open, so we must not
+    // trigger the celebration just because the sheet was dismissed.
+    if (currentOrder?.order?.status === 'completed' && !showBinanceSheet && !showPaypalSheet) {
       setSuccessData(currentOrder);
       setShowSuccess(true);
     }
-  }, [currentOrder, showBinanceSheet]);
+  }, [currentOrder, showBinanceSheet, showPaypalSheet]);
 
   // This must stay before LoadingScreen and the shell. On first use the
   // language picker is literally the only rendered application interface.
@@ -143,6 +148,7 @@ export default function App() {
       {showDurationSheet && <Suspense fallback={null}><DurationSheet /></Suspense>}
       {showCheckout && <Suspense fallback={null}><CheckoutSheet /></Suspense>}
       {showBinanceSheet && <Suspense fallback={null}><BinancePaySheet /></Suspense>}
+      {showPaypalSheet && <Suspense fallback={null}><PayPalSheet /></Suspense>}
       {showSuccess && (
         <Suspense fallback={null}>
           <OrderSuccessModal

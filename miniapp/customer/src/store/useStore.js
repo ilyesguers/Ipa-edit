@@ -62,7 +62,9 @@ const useStore = create((set, get) => ({
   couponDiscount: 0,
   showCheckout: false,
   showBinanceSheet: false,
+  showPaypalSheet: false,
   currentOrder: null,
+  currentPaypalOrder: null,
 
   // Actions
   setUser: (user) => set({ user }),
@@ -265,10 +267,58 @@ const useStore = create((set, get) => ({
     return res.data;
   },
 
+  // ── PayPal (simple mode) ──
+  purchaseWithPaypal: async () => {
+    const { selectedProduct, selectedDuration, quantity, couponCode } = get();
+    const res = await api.post('/orders/paypal', {
+      productId: selectedProduct._id,
+      durationId: selectedDuration._id,
+      quantity,
+      couponCode: couponCode || undefined
+    });
+    set({ currentPaypalOrder: res.data.data, showPaypalSheet: true, showCheckout: false });
+    return res.data.data;
+  },
+
+  submitPaypalProof: async (txId) => {
+    const { currentPaypalOrder } = get();
+    const res = await api.post('/orders/payment-proof', { orderId: currentPaypalOrder.orderId, txHash: txId });
+    return res.data;
+  },
+
+  // ── Binance USDT (TRC20) automatic verification ──
+  submitBinanceProof: async (txId) => {
+    const { currentOrder } = get();
+    const res = await api.post('/orders/binance/verify', { orderId: currentOrder.orderId, txId });
+    if (res.data?.completed) get()._completeBinance(res.data);
+    return res.data;
+  },
+
+  // Poll for an incoming on-chain transfer (no TxID required).
+  pollBinancePayment: async (orderId) => {
+    const res = await api.post('/orders/binance/verify', { orderId });
+    if (res.data?.completed) get()._completeBinance(res.data);
+    return res.data;
+  },
+
+  _completeBinance: (result) => {
+    const { selectedProduct } = get();
+    invalidateCache('my-keys');
+    invalidateCache('orders:1');
+    if (selectedProduct) invalidateCache(`product:${selectedProduct._id}`);
+    const gameId = selectedProduct?.game?._id || selectedProduct?.game;
+    if (gameId) invalidateCache(`products:${gameId}`);
+    set({
+      currentOrder: { order: result.data.order, keys: result.data.keys, via: 'binance' },
+      showBinanceSheet: false
+    });
+  },
+
   reset: () => set({
     selectedCategory: null, selectedGame: null, games: [], products: [],
     selectedProduct: null, showDurationSheet: false, selectedDuration: null,
-    showCheckout: false, showBinanceSheet: false, currentOrder: null,
+    showCheckout: false, showBinanceSheet: false, showPaypalSheet: false,
+    currentOrder: null, currentPaypalOrder: null,
     couponCode: '', couponDiscount: 0, quantity: 1
   }),
 

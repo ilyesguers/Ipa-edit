@@ -18,7 +18,7 @@ const orderSchema = new mongoose.Schema({
   keyValues: [{ type: String }],
   paymentMethod: {
     type: String,
-    enum: ['wallet', 'binance', 'manual_crypto', 'admin_gift', 'telegram_stars'],
+    enum: ['wallet', 'binance', 'manual_crypto', 'admin_gift', 'telegram_stars', 'paypal'],
     required: true
   },
   status: {
@@ -30,6 +30,9 @@ const orderSchema = new mongoose.Schema({
   paymentTxHash: { type: String, default: null },
   paymentOrderId: { type: String, default: null },
   binancePayId: { type: String, default: null },
+  // Exact on-chain amount the customer should send for USDT (TRC20) payments.
+  // Used by the automatic TronGrid verification to match incoming transfers.
+  paymentAmount: { type: Number, default: null },
   // Telegram Stars payment fields (currency is always 'XTR')
   starsAmount: { type: Number, default: null },
   telegramPaymentChargeId: { type: String, default: null },

@@ -61,7 +61,7 @@ const paymentHandler = async (ctx, next) => {
     const pendingOrder = await Order.findOne({
       user: user.telegramId,
       status: { $in: ['pending', 'processing'] },
-      paymentMethod: { $in: ['binance', 'manual_crypto'] }
+      paymentMethod: { $in: ['binance', 'manual_crypto', 'paypal'] }
     }).sort({ createdAt: -1 });
 
     if (pendingOrder) {
