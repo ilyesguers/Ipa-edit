@@ -805,3 +805,98 @@
   background: linear-gradient(145deg, rgba(17,20,26,.82), rgba(13,15,20,.82)) padding-box,
     linear-gradient(135deg, rgba(45,55,72,.8), rgba(31,36,48,.8)) border-box !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   🌌 INTERACTIVE HALO SYSTEM — Professional Visual Effects (v5.2)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.halo-container {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.halo-container::before {
+  content: ""; position: absolute; inset: -60% -30%; z-index: -2; pointer-events: none;
+  background:
+    radial-gradient(ellipse at 20% 30%, rgba(16,185,129,.22) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 20%, rgba(96,165,250,.18) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 85%, rgba(168,85,247,.16) 0%, transparent 50%),
+    radial-gradient(ellipse at 35% 60%, rgba(249,115,22,.10) 0%, transparent 45%);
+  animation: halo-pulse 6.5s ease-in-out infinite alternate; filter: blur(32px); opacity: .85;
+}
+.halo-container::after {
+  content: ""; position: absolute; inset: -40% -20%; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(circle at 30% 40%, rgba(110,231,183,.12) 0%, transparent 40%),
+    radial-gradient(circle at 70% 50%, rgba(129,140,248,.12) 0%, transparent 40%),
+    radial-gradient(circle at 50% 70%, rgba(216,180,254,.08) 0%, transparent 35%);
+  animation: halo-drift 9s ease-in-out infinite alternate; filter: blur(24px);
+}
+@keyframes halo-pulse {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: .8; }
+  33% { transform: scale(1.05) rotate(1deg); opacity: .95; }
+  66% { transform: scale(.97) rotate(-.5deg); opacity: .85; }
+}
+@keyframes halo-drift {
+  0% { transform: translate(0,0) rotate(0deg); }
+  25% { transform: translate(10px,-8px) rotate(1.5deg); }
+  50% { transform: translate(-6px,12px) rotate(-1deg); }
+  75% { transform: translate(8px,4px) rotate(.5deg); }
+  100% { transform: translate(0,0) rotate(0deg); }
+}
+
+.interactive-glow { position: relative; transition: box-shadow .25s ease, border-color .25s ease, transform .12s ease; }
+.interactive-glow::before {
+  content: ""; position: absolute; inset: -3px; border-radius: inherit; z-index: -1;
+  background: conic-gradient(from var(--glow-angle,0deg), rgba(16,185,129,.45), rgba(96,165,250,.35), rgba(168,85,247,.35), rgba(16,185,129,.45));
+  filter: blur(8px); opacity: 0; transition: opacity .3s ease; animation: glow-rotate 3s linear infinite;
+}
+.interactive-glow:hover::before, .interactive-glow:focus-within::before { opacity: .7; }
+.interactive-glow:hover { border-color: rgba(16,185,129,.6) !important; box-shadow: 0 8px 28px rgba(16,185,129,.15), 0 0 0 1px rgba(16,185,129,.2) !important; transform: translateY(-1px); }
+@property --glow-angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+@keyframes glow-rotate { from { --glow-angle: 0deg; } to { --glow-angle: 360deg; } }
+
+.glass-card-pro {
+  position: relative; border: 1px solid rgba(255,255,255,.06); border-radius: 20px;
+  background: rgba(22,25,34,.72); backdrop-filter: blur(14px) saturate(120%);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  box-shadow: 0 4px 6px rgba(0,0,0,.15), 0 14px 34px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.05);
+  overflow: hidden; transition: transform .2s ease, box-shadow .3s ease, border-color .2s ease;
+}
+.glass-card-pro:hover { border-color: rgba(16,185,129,.35); box-shadow: 0 8px 24px rgba(16,185,129,.08), 0 18px 42px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.08); transform: translateY(-2px); }
+
+.shimmer-overlay { position: absolute; inset: 0; overflow: hidden; pointer-events: none; border-radius: inherit; z-index: 1; }
+.shimmer-overlay::after {
+  content: ""; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+  background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.04) 50%, transparent 65%);
+  animation: shimmer-sweep 4.5s ease-in-out infinite; transform: rotate(25deg);
+}
+@keyframes shimmer-sweep { 0%,30% { transform: translateX(-150%) rotate(25deg); } 60%,100% { transform: translateX(150%) rotate(25deg); } }
+
+.halo-btn {
+  position: relative; overflow: hidden; border-radius: 14px; border: 1px solid rgba(16,185,129,.25);
+  background: linear-gradient(145deg, rgba(22,25,34,.9), rgba(12,16,20,.85)); transition: all .25s ease;
+}
+.halo-btn:hover { border-color: rgba(16,185,129,.6); background: linear-gradient(145deg, rgba(26,29,40,.95), rgba(16,20,26,.9)); box-shadow: 0 6px 20px rgba(16,185,129,.15), 0 0 30px rgba(16,185,129,.08); }
+
+.gradient-border-card {
+  position: relative; border-radius: 20px; padding: 1.5px;
+  background: linear-gradient(135deg, rgba(16,185,129,.5), rgba(96,165,250,.35), rgba(168,85,247,.35), rgba(16,185,129,.5));
+  background-size: 300% 300%; animation: gradient-border-flow 5s ease infinite;
+}
+.gradient-border-card > .card-inner { border-radius: 18.5px; background: rgba(22,25,34,.92); height: 100%; overflow: hidden; }
+@keyframes gradient-border-flow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+
+.text-glow-pro { color: #fff; text-shadow: 0 0 16px rgba(16,185,129,.3), 0 0 32px rgba(16,185,129,.15), 0 0 48px rgba(96,165,250,.1); }
+
+.product-card-pro {
+  position: relative; border-radius: 20px; border: 1px solid rgba(255,255,255,.04);
+  background: linear-gradient(145deg, rgba(22,25,34,.88), rgba(12,16,20,.82)); overflow: hidden; transition: all .3s ease; isolation: isolate;
+}
+.product-card-pro::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: -1;
+  background: radial-gradient(ellipse at 30% 20%, rgba(16,185,129,.12) 0%, transparent 60%), radial-gradient(ellipse at 70% 80%, rgba(96,165,250,.08) 0%, transparent 50%);
+  opacity: .6; transition: opacity .3s ease;
+}
+.product-card-pro:hover { border-color: rgba(16,185,129,.35); transform: translateY(-3px); box-shadow: 0 14px 36px rgba(0,0,0,.35), 0 0 28px rgba(16,185,129,.12); }
+.product-card-pro:hover::before { opacity: 1; }

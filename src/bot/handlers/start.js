@@ -66,27 +66,59 @@ const mainKeyboard = async (language = 'ar', isAdmin = false) => {
 };
 
 const handleReferral = async (ctx, user, language) => {
+  // Enhanced referral system with validation and tracking
   if (!ctx.startPayload || user.referredBy) return;
-  const refId = Number.parseInt(String(ctx.startPayload).replace(/^ref_/, ''), 10);
-  if (!refId || refId === user.telegramId) return;
+  
+  const payloadStr = String(ctx.startPayload || '').trim();
+  const refMatch = payloadStr.match(/^ref_(\d+)$/);
+  if (!refMatch) return;
+  
+  const refId = Number.parseInt(refMatch[1], 10);
+  if (!refId || refId === user.telegramId || isNaN(refId)) return;
+  
+  // Prevent self-referral and invalid IDs
+  if (refId <= 0 || refId === user.telegramId) {
+    logger.info(`Referral blocked: invalid or self-referral from ${user.telegramId}`);
+    return;
+  }
 
-  const referrer = await User.findOne({ telegramId: refId });
-  if (!referrer) return;
+  try {
+    const referrer = await User.findOne({ telegramId: refId, isBanned: false, isActive: true });
+    if (!referrer) {
+      logger.info(`Referral: referrer ${refId} not found or inactive`);
+      return;
+    }
 
-  user.referredBy = refId;
-  await user.save();
-  referrer.referralCount += 1;
-  const bonus = await Settings.get('referral_bonus', 0.5);
-  if (bonus > 0) await referrer.addBalance(bonus, `مكافأة إحالة: ${user.firstName}`);
+    // Double-check user hasn't been referred already (data safety)
+    const freshUser = await User.findOne({ telegramId: user.telegramId });
+    if (freshUser && freshUser.referredBy) return;
 
-  const isEnglish = botLocale(language) === 'en';
-  await ctx.telegram.sendMessage(
-    refId,
-    isEnglish
-      ? `${emojiHtml('trophy')} A new user joined through your link. $${bonus} was added to your balance.`
-      : `${emojiHtml('trophy')} انضم مستخدم جديد من رابطك. تمت إضافة $${bonus} إلى رصيدك.`
-  ).catch(() => {});
-  logger.info(`Referral: ${user.telegramId} referred by ${refId}`);
+    user.referredBy = refId;
+    await user.save();
+    
+    referrer.referralCount = (referrer.referralCount || 0) + 1;
+    const bonus = await Settings.get('referral_bonus', 0.5);
+    
+    if (bonus > 0 && bonus !== null && !isNaN(bonus)) {
+      await referrer.addBalance(Number(bonus), `مكافأة إحالة: ${user.firstName || user.username || user.telegramId}`);
+    }
+
+    const isEnglish = botLocale(language) === 'en';
+    const bonusText = !isNaN(bonus) && bonus > 0 ? ` $${Number(bonus).toFixed(2)}` : '';
+    await ctx.telegram.sendMessage(
+      refId,
+      (isEnglish
+        ? `${emojiHtml('trophy')} A new user joined through your referral link!` + (bonusText ? ` Bonus: ${bonusText}` : '')
+        : `${emojiHtml('trophy')} انضم مستخدم جديد من رابط الدعوة الخاص بك!` + (bonusText ? ` تمت إضافة مكافأة: ${bonusText}` : '')),
+      { parse_mode: 'HTML' }
+    ).catch((err) => {
+      logger.warn(`Failed to notify referrer ${refId}:`, err.message);
+    });
+    
+    logger.info(`✅ Referral completed: user ${user.telegramId} (${user.fullName || 'new'}) referred by ${refId}`);
+  } catch (err) {
+    logger.error('Referral processing error:', err);
+  }
 };
 
 const notifyNewUser = async (ctx, user, language) => {
