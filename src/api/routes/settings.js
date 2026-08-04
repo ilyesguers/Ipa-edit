@@ -39,6 +39,7 @@ const ALLOWED_SETTING_KEYS = new Set([
   'welcome_message', 'maintenance_message', 'shop_title', 'shop_description', 'footer_text',
   'binance_api_key', 'binance_secret_key', 'binance_merchant_id', 'usdt_wallet_trc20',
   'min_deposit', 'payment_timeout_minutes', 'stars_enabled', 'stars_per_usd',
+  'paypal_enabled', 'paypal_email', 'paypal_link',
   'balance_offers_enabled', 'balance_offers_note_ar', 'balance_offers_note_en',
   'referral_bonus', 'auto_verify_payments', 'admin_notification_on_order',
   'admin_notification_on_payment', 'force_join_channel', 'maintenance_mode',

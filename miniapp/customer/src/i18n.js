@@ -71,7 +71,17 @@ const ar = {
   orSendManually: 'أو أرسل يدوياً إلى',
   paymentProof: 'إثبات الدفع',
   orderPending: 'طلبك قيد المعالجة — سيتم التسليم فور تأكيد الدفع.',
-  offersBalance: 'رصيد مقابل عروض 🎁', offersBalanceNote: 'بِع حسابات أو مفاتيح مقابل رصيد — المحادثة مع الدعم مباشرة'
+  offersBalance: 'رصيد مقابل عروض 🎁', offersBalanceNote: 'بِع حسابات أو مفاتيح مقابل رصيد — المحادثة مع الدعم مباشرة',
+  sendExactAmount: 'أرسل المبلغ بالضبط',
+  binanceIdLabel: 'معرّف Binance (للتحويل عبر Binance Pay)',
+  includeOrderId: 'أضف رقم الطلب كملاحظة (Memo)',
+  autoChecking: 'جارٍ التحقق التلقائي من وصول التحويل…',
+  contactSupport: 'تواصل مع الدعم',
+  payPal: 'الدفع عبر PayPal',
+  amountDue: 'المبلغ المستحق',
+  openPaypal: 'فتح PayPal والدفع',
+  paypalInstructions: 'ادفع المبلغ ثم الصق رقم العملية (Transaction ID) للتحقق.',
+  paypalRef: 'رقم عملية PayPal (Transaction ID)'
 };
 
 const en = {
@@ -128,7 +138,17 @@ const en = {
   orSendManually: 'Or send manually to',
   paymentProof: 'Payment proof',
   orderPending: 'Your order is being processed — it will be delivered once payment is confirmed.',
-  offersBalance: 'Balance for offers 🎁', offersBalanceNote: 'Sell accounts or keys for wallet balance — chat with support directly'
+  offersBalance: 'Balance for offers 🎁', offersBalanceNote: 'Sell accounts or keys for wallet balance — chat with support directly',
+  sendExactAmount: 'Send the exact amount',
+  binanceIdLabel: 'Binance ID (for Binance Pay transfers)',
+  includeOrderId: 'Add the order number as a note (Memo)',
+  autoChecking: 'Auto-checking for your transfer…',
+  contactSupport: 'Contact support',
+  payPal: 'Pay with PayPal',
+  amountDue: 'Amount due',
+  openPaypal: 'Open PayPal & pay',
+  paypalInstructions: 'Pay the amount, then paste the Transaction ID to verify.',
+  paypalRef: 'PayPal Transaction ID'
 };
 
 const fr = {
@@ -702,6 +722,14 @@ const zh = {
 };
 
 export const TRANSLATIONS = { ar, en, fr, es, de, tr, ru, ur, hi, id, pt, zh };
+
+// Guarantee every language has every key. Newly added strings are authored in
+// Arabic + English; all other locales fall back to the English wording so no
+// screen ever shows a missing-translation placeholder.
+Object.keys(TRANSLATIONS).forEach((code) => {
+  if (code === 'en') return;
+  TRANSLATIONS[code] = { ...en, ...TRANSLATIONS[code] };
+});
 
 const RTL = ['ar', 'ur'];
 const ALL_CODES = Object.keys(TRANSLATIONS);

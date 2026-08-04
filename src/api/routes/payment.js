@@ -3,21 +3,33 @@ const router = express.Router();
 const Settings = require('../../models/Settings');
 const QRCode = require('qrcode');
 
-// Get payment info (wallet address + QR for manual payment)
+// Get payment info (wallet address + QR for manual payment + PayPal link)
 router.get('/info', async (req, res) => {
   try {
-    const wallet = await Settings.get('usdt_wallet_trc20', '');
-    const minDeposit = await Settings.get('min_deposit', 1);
-    const paymentTimeoutMinutes = await Settings.get('payment_timeout_minutes', 15);
+    const [wallet, minDeposit, paymentTimeoutMinutes, binanceId, paypalEnabled, paypalEmail, paypalLink] = await Promise.all([
+      Settings.get('usdt_wallet_trc20', ''),
+      Settings.get('min_deposit', 1),
+      Settings.get('payment_timeout_minutes', 15),
+      Settings.get('binance_merchant_id', ''),
+      Settings.get('paypal_enabled', false),
+      Settings.get('paypal_email', ''),
+      Settings.get('paypal_link', '')
+    ]);
 
     res.json({
       success: true,
       data: {
         usdtWallet: wallet,
+        binanceId,
         minDeposit,
         network: 'TRC20',
         currency: 'USDT',
-        paymentTimeoutMinutes
+        paymentTimeoutMinutes,
+        paypal: {
+          enabled: Boolean(paypalEnabled) || Boolean(paypalEmail || paypalLink),
+          email: paypalEmail,
+          link: paypalLink
+        }
       }
     });
   } catch (err) {

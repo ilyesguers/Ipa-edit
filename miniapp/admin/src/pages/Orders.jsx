@@ -21,6 +21,7 @@ const PAYMENT_LABELS = {
   manual_crypto: '🔗 يدوي',
   admin_gift: '🎁 هدية',
   telegram_stars: '⭐ نجوم تيليجرام',
+  paypal: '💙 PayPal',
 };
 
 export default function Orders({ routeQuery = {}, setRouteQuery }) {
