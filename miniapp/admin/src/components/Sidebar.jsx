@@ -7,6 +7,7 @@ const NAV = [
   { id: 'categories', icon: 'categories', label: 'الأقسام والألعاب', desc: 'تنظيم المسار' },
   { id: 'products', icon: 'product', label: 'المنتجات', desc: 'أسعار ومدد' },
   { id: 'inventory', icon: 'inventory', label: 'المخزون', desc: 'المفاتيح والتوفر' },
+  { id: 'wheel', icon: 'gift', label: 'عجلة الحظ', desc: 'الجوائز والألعاب' },
   { id: 'orders', icon: 'orders', label: 'الطلبات', desc: 'الدفع والتسليم' },
   { id: 'users', icon: 'users', label: 'المستخدمون', desc: 'الحسابات والأرصدة' },
   { id: 'coupons', icon: 'coupon', label: 'الكوبونات', desc: 'الخصومات' },

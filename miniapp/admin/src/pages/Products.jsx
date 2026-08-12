@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
 import ImagePicker from '../components/ImagePicker';
@@ -78,6 +78,30 @@ export default function Products() {
   const [featureInput, setFeatureInput] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // ── Batch selection & bulk actions ──
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [bulkMode, setBulkMode] = useState(false);
+  const [showBulkSheet, setShowBulkSheet] = useState(false);
+  const [bulkLogo, setBulkLogo] = useState(null);
+  const [bulkBanner, setBulkBanner] = useState(null);
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const selectAll = () => {
+    if (selectedIds.size === products.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(products.map((p) => p._id)));
+    }
+  };
+
   const load = async () => {
     const [pr, gr, cr] = await Promise.all([
       api.get(`/admin/products${filterGame ? `?gameId=${filterGame}` : ''}`),
@@ -131,6 +155,99 @@ export default function Products() {
     setShowForm(true);
   };
 
+  // ── Bulk operations ──
+  const bulkSetActive = async (isActive) => {
+    if (!selectedIds.size) return toast.error('حدد منتجات أولاً');
+    setBulkProcessing(true);
+    haptic.medium();
+    let success = 0;
+    for (const id of selectedIds) {
+      try {
+        await api.put(`/admin/products/${id}`, { isActive });
+        success++;
+      } catch (_) {}
+    }
+    toast.success(`✅ تم ${isActive ? 'تفعيل' : 'تعطيل'} ${success} منتج`);
+    setSelectedIds(new Set());
+    setBulkMode(false);
+    await load();
+    setBulkProcessing(false);
+  };
+
+  const bulkSetFeatured = async (isFeatured) => {
+    if (!selectedIds.size) return toast.error('حدد منتجات أولاً');
+    setBulkProcessing(true);
+    haptic.medium();
+    let success = 0;
+    for (const id of selectedIds) {
+      try {
+        await api.put(`/admin/products/${id}`, { isFeatured });
+        success++;
+      } catch (_) {}
+    }
+    toast.success(`⭐ تم ${isFeatured ? 'جعل' : 'إلغاء'} ${success} منتج كمميز`);
+    setSelectedIds(new Set());
+    setBulkMode(false);
+    await load();
+    setBulkProcessing(false);
+  };
+
+  const bulkApplyImage = async () => {
+    if (!selectedIds.size) return toast.error('حدد منتجات أولاً');
+    if (!bulkLogo && !bulkBanner) return toast.error('اختر صورة واحدة على الأقل');
+    setBulkProcessing(true);
+    haptic.medium();
+    let success = 0;
+    for (const id of selectedIds) {
+      try {
+        const update = {};
+        if (bulkLogo) update.logo = bulkLogo;
+        if (bulkBanner) update.banner = bulkBanner;
+        await api.put(`/admin/products/${id}`, update);
+        success++;
+      } catch (_) {}
+    }
+    toast.success(`🖼️ تم تحديث صور ${success} منتج`);
+    setShowBulkSheet(false);
+    setBulkLogo(null);
+    setBulkBanner(null);
+    setSelectedIds(new Set());
+    setBulkMode(false);
+    await load();
+    setBulkProcessing(false);
+  };
+
+  const bulkDelete = async () => {
+    if (!selectedIds.size) return toast.error('حدد منتجات أولاً');
+    if (!confirm(`⚠️ حذف ${selectedIds.size} منتج نهائياً؟`)) return;
+    setBulkProcessing(true);
+    haptic.medium();
+    let success = 0;
+    for (const id of selectedIds) {
+      try {
+        await api.delete(`/admin/products/${id}`);
+        success++;
+      } catch (_) {}
+    }
+    toast.success(`🗑️ تم حذف ${success} منتج`);
+    setSelectedIds(new Set());
+    setBulkMode(false);
+    await load();
+    setBulkProcessing(false);
+  };
+
+  const duplicateProduct = async (p) => {
+    haptic.light();
+    try {
+      const data = buildProductPayload({ ...p, name: `${p.name} (copy)`, nameAr: `${p.nameAr || p.name} (نسخة)`, slug: '' }, games, false);
+      await api.post('/admin/products', data);
+      toast.success('📋 تم نسخ المنتج');
+      await load();
+    } catch (err) {
+      toast.error('فشل النسخ');
+    }
+  };
+
   const addFeature = () => {
     if (!featureInput.trim()) return;
     setForm(f => ({ ...f, features: [...(f.features || []), { text: featureInput.trim(), icon: '✅' }] }));
@@ -167,10 +284,40 @@ export default function Products() {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h2 className="text-xl font-black text-white">🔑 المنتجات</h2>
-        <motion.button whileTap={{ scale: 0.95 }} onClick={() => { setForm(emptyProduct); setEditing(null); setShowForm(true); }} className="neon-btn">
-          + إنشاء منتج جديد
-        </motion.button>
+        <div className="flex gap-2 flex-wrap">
+          <motion.button whileTap={{ scale: 0.95 }} onClick={() => { setBulkMode(!bulkMode); setSelectedIds(new Set()); }} className={`text-xs px-3 py-2 rounded-xl border font-bold transition-all ${bulkMode ? 'bg-gold/20 border-gold/40 text-gold' : 'bg-card border-border text-muted hover:text-white'}`}>
+            {bulkMode ? '✅ تحديد جماعي' : '☑️ تحديد جماعي'}
+          </motion.button>
+          <motion.button whileTap={{ scale: 0.95 }} onClick={() => { setForm(emptyProduct); setEditing(null); setShowForm(true); }} className="neon-btn">
+            + إنشاء منتج جديد
+          </motion.button>
+        </div>
       </div>
+
+      {/* Bulk actions toolbar */}
+      <AnimatePresence>
+        {bulkMode && selectedIds.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: 'auto' }}
+            exit={{ opacity: 0, y: -10, height: 0 }}
+            className="admin-card bg-gradient-to-r from-gold/10 to-neon/10 border-gold/30 space-y-3"
+          >
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-sm font-black text-white">📦 تم تحديد <span className="text-gold">{selectedIds.size}</span> منتج</p>
+              <div className="flex gap-2 flex-wrap">
+                <button onClick={() => setShowBulkSheet(true)} className="text-xs px-3 py-1.5 rounded-lg bg-neon/20 border border-neon/30 text-neon font-bold">🖼️ تعيين صور</button>
+                <button onClick={() => bulkSetActive(true)} className="text-xs px-3 py-1.5 rounded-lg bg-green/20 border border-green/30 text-green font-bold">✅ تفعيل الكل</button>
+                <button onClick={() => bulkSetActive(false)} className="text-xs px-3 py-1.5 rounded-lg bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 font-bold">⏸️ تعطيل الكل</button>
+                <button onClick={() => bulkSetFeatured(true)} className="text-xs px-3 py-1.5 rounded-lg bg-gold/20 border border-gold/30 text-gold font-bold">⭐ مميز</button>
+                <button onClick={() => bulkDelete()} className="text-xs px-3 py-1.5 rounded-lg bg-red/20 border border-red/30 text-red font-bold">🗑️ حذف المحدد</button>
+                <button onClick={selectAll} className="text-xs px-3 py-1.5 rounded-lg bg-card border border-border text-muted font-bold">{selectedIds.size === products.length ? 'إلغاء الكل' : 'تحديد الكل'}</button>
+              </div>
+            </div>
+            {bulkProcessing && <div className="text-xs text-gold animate-pulse">⏳ جاري المعالجة...</div>}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Quick guide */}
       <div className="rounded-2xl border border-purple/20 bg-gradient-to-br from-purple/10 to-emerald-500/5 p-3 text-xs text-muted space-y-1">
@@ -189,7 +336,15 @@ export default function Products() {
       <div className="grid gap-3 sm:grid-cols-2">
         {products.map((p, i) => (
           <motion.div key={p._id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-            className="admin-card border border-border flex items-start gap-3">
+            className={`admin-card border flex items-start gap-3 transition-all ${bulkMode && selectedIds.has(p._id) ? 'border-gold/60 bg-gold/5' : 'border-border'}`}>
+            {bulkMode && (
+              <button
+                onClick={() => toggleSelect(p._id)}
+                className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 mt-1 transition-all ${selectedIds.has(p._id) ? 'bg-gold border-gold text-white' : 'bg-bg border-border'}`}
+              >
+                {selectedIds.has(p._id) && <span className="text-xs">✓</span>}
+              </button>
+            )}
             {p.logo ? <img src={p.logo} alt={p.name} className="w-12 h-12 rounded-xl object-cover flex-shrink-0" /> :
               <div className="w-12 h-12 rounded-xl bg-neon/10 border border-neon/20 flex items-center justify-center text-xl flex-shrink-0">🔑</div>}
             <div className="flex-1 min-w-0">
@@ -203,6 +358,7 @@ export default function Products() {
             </div>
             <div className="flex flex-col gap-1 flex-shrink-0">
               <button onClick={() => handleEdit(p)} className="text-xs text-neon border border-neon/20 rounded-lg px-2 py-1">✏️</button>
+              <button onClick={() => duplicateProduct(p)} className="text-xs border rounded-lg px-2 py-1 text-muted border-border" title="نسخ المنتج">📋</button>
               <button onClick={() => handleToggle(p)} className="text-xs border rounded-lg px-2 py-1 text-muted border-border">👁</button>
               <button onClick={() => handleDelete(p._id)} className="text-xs text-red border border-red/20 rounded-lg px-2 py-1">🗑</button>
             </div>
@@ -320,6 +476,29 @@ export default function Products() {
                   ))}
                 </div>
 
+      </Sheet>
+
+      {/* Bulk Image Assignment Sheet */}
+      <Sheet
+        open={showBulkSheet}
+        onClose={() => setShowBulkSheet(false)}
+        title={`🖼️ تعيين صور لـ ${selectedIds.size} منتج`}
+        footer={<SheetActions saveLabel="✅ تطبيق على الكل" onSave={bulkApplyImage} saving={bulkProcessing} onCancel={() => setShowBulkSheet(false)} />}
+      >
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-neon/20 bg-neon/5 p-3 text-[11px] text-white leading-6">
+            <p className="font-bold text-neon">💡 كيف يعمل؟</p>
+            <p>• اختر صورة الشعار (الصورة المصغّرة) أو البانر (الصورة العريضة) أو كلاهما.</p>
+            <p>• سيتم تطبيق الصور المختارة على جميع المنتجات المحددة دفعة واحدة.</p>
+            <p>• إذا أردت تغيير صورة واحدة فقط، اترك الحقل الآخر فارغاً.</p>
+          </div>
+          <ImagePicker label="🖼️ شعار جديد للمنتجات المحددة" value={bulkLogo} onChange={setBulkLogo} hint="سيتم تعيينه لجميع المنتجات المحددة" />
+          <ImagePicker label="🌅 بانر جديد للمنتجات المحددة" value={bulkBanner} onChange={setBulkBanner} hint="صورة عريضة تظهر أعلى صفحة المنتج" aspect="wide" />
+          <div className="text-xs text-muted">
+            <p>📦 المنتجات المحددة: {selectedIds.size}</p>
+            <p className="mt-1 text-[10px]">ملاحظة: الصور الفارغة لن يتم تغييرها — فقط الحقول المملوءة ستُطبّق.</p>
+          </div>
+        </div>
       </Sheet>
     </div>
   );

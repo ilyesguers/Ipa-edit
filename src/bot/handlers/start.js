@@ -23,7 +23,7 @@ const buildWelcomeMessage = async (user, language = 'ar') => {
   const locale = botLocale(language);
   const name = cleanBotText(user.firstName || (locale === 'en' ? 'there' : 'بك'));
   const welcome = ui.welcome[locale];
-  const highlights = ui.highlights.slice(0, 2);
+  const highlights = ui.highlights.slice(0, 3);
   const balance = Number(user.balance || 0).toFixed(2);
   const orders = Number(user.totalOrders || 0);
   const customMessage = String(ui.welcomeMessage || '').trim()
@@ -31,22 +31,22 @@ const buildWelcomeMessage = async (user, language = 'ar') => {
     .replace(/\{balance\}/g, balance)
     .replace(/\{orders\}/g, orders);
   const highlightLines = highlights
-    .map((item) => `• ${escapeHtml(locale === 'en' ? item.textEn : item.textAr)}`)
+    .map((item) => `${emojiHtml(item.emojiKey || 'sparkle')} ${escapeHtml(locale === 'en' ? item.textEn : item.textAr)}`)
     .join('\n');
 
   const caption = locale === 'en'
-    ? `${emojiHtml('gamepad')} <b>${escapeHtml(welcome.title)}</b>\n\n` +
+    ? `${emojiHtml('crown')} <b>${escapeHtml(welcome.title)}</b>\n\n` +
       `Welcome, <b>${escapeHtml(name)}</b>.\n${escapeHtml(welcome.subtitle)}\n\n` +
       `${highlightLines}\n\n` +
-      `<b>Balance:</b> $${balance} · <b>Orders:</b> ${orders}\n` +
+      `${emojiHtml('wallet')} Balance: <b>$${balance}</b> · ${emojiHtml('trophy')} Orders: <b>${orders}</b>\n` +
       `${customMessage ? `\n${escapeHtml(customMessage)}\n` : ''}` +
-      `\nChoose “Open Store” below to start.`
-    : `${emojiHtml('gamepad')} <b>${escapeHtml(welcome.title)}</b>\n\n` +
+      `\n${emojiHtml('rocket')} Choose “Open Store” below to start.`
+    : `${emojiHtml('crown')} <b>${escapeHtml(welcome.title)}</b>\n\n` +
       `أهلاً <b>${escapeHtml(name)}</b>.\n${escapeHtml(welcome.subtitle)}\n\n` +
       `${highlightLines}\n\n` +
-      `<b>الرصيد:</b> $${balance} · <b>الطلبات:</b> ${orders}\n` +
+      `${emojiHtml('wallet')} الرصيد: <b>$${balance}</b> · ${emojiHtml('trophy')} الطلبات: <b>${orders}</b>\n` +
       `${customMessage ? `\n${escapeHtml(customMessage)}\n` : ''}` +
-      `\nاختر «فتح المتجر» بالأسفل للبدء.`;
+      `\n${emojiHtml('rocket')} اختر «فتح المتجر» بالأسفل للبدء.`;
 
   return { ui, caption };
 };

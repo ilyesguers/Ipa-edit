@@ -19,12 +19,14 @@ const Coupons = lazy(() => import('./pages/Coupons'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Broadcast = lazy(() => import('./pages/Broadcast'));
 const Media = lazy(() => import('./pages/Media'));
+const Wheel = lazy(() => import('./pages/Wheel'));
 
 const PAGES = {
   dashboard: { component: Dashboard, title: 'لوحة التحكم', subtitle: 'نظرة مركزة على ما يحتاج المتابعة', icon: 'dashboard' },
   categories: { component: Categories, title: 'الأقسام والألعاب', subtitle: 'تنظيم مسار العرض والبيع', icon: 'categories' },
   products: { component: Products, title: 'المنتجات', subtitle: 'الأسعار والمدد والتفاصيل', icon: 'product' },
   inventory: { component: Inventory, title: 'المخزون', subtitle: 'إضافة المفاتيح ومتابعة التوفر', icon: 'inventory' },
+  wheel: { component: Wheel, title: 'عجلة الحظ', subtitle: 'الجوائز والألعاب التفاعلية', icon: 'gift' },
   orders: { component: Orders, title: 'الطلبات', subtitle: 'المدفوعات والتسليم', icon: 'orders' },
   users: { component: Users, title: 'المستخدمون', subtitle: 'الحسابات والأرصدة والدعم', icon: 'users' },
   coupons: { component: Coupons, title: 'الكوبونات', subtitle: 'العروض والخصومات', icon: 'coupon' },

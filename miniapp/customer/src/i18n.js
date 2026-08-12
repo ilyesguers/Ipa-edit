@@ -20,7 +20,7 @@ export const LANGUAGES = [
 const ar = {
   brand: 'GAMER STORE',
   user: 'مستخدم',
-  navProducts: 'المتجر', navKeys: 'مفاتيحي', navHistory: 'طلباتي', navProfile: 'حسابي', navSupport: 'الدعم',
+  navProducts: 'المتجر', navKeys: 'مفاتيحي', navWheel: 'الحظ', navHistory: 'طلباتي', navProfile: 'حسابي', navSupport: 'الدعم',
   balance: 'الرصيد',
   welcomeBadge: 'كل ما يحتاجه اللاعب في مكان واحد',
   welcomeTitle: 'متجر الألعاب الرقمي 🎮',
@@ -87,7 +87,7 @@ const ar = {
 const en = {
   brand: 'GAMER STORE',
   user: 'User',
-  navProducts: 'Store', navKeys: 'My Keys', navHistory: 'Orders', navProfile: 'Account', navSupport: 'Support',
+  navProducts: 'Store', navKeys: 'My Keys', navWheel: 'Luck', navHistory: 'Orders', navProfile: 'Account', navSupport: 'Support',
   balance: 'Balance',
   welcomeBadge: 'Everything a player needs in one place',
   welcomeTitle: 'Digital Game Store 🎮',

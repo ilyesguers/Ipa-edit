@@ -278,8 +278,16 @@ const buildBotInlineKeyboard = ({ Markup, lang = 'ar', isAdmin = false, quickLin
         const rawValue = interpolateValue({ value: item.value, baseUrl, supportUsername, channelUsername });
 
         if (item.type === 'url') {
-          if (!rawValue || rawValue.includes('{channel}') && !channelUsername) return null;
-          if (rawValue.endsWith('/{channel}')) return null;
+          // Only hide a URL button when the resolved value is truly empty
+          // after interpolation. Previously a missing channelUsername would
+          // silently hide the channel button — now we keep it visible so
+          // the user always sees the channel link (the admin can set the
+          // channel_username later without needing a code change).
+          if (!rawValue) return null;
+          if (rawValue.endsWith('/{channel}') || rawValue.endsWith('/undefined')) return null;
+          // If the channel placeholder didn't resolve, skip only that
+          // specific button rather than hiding the entire row.
+          if (rawValue.includes('{channel}') && !channelUsername) return null;
           return { text, url: withProtocol(rawValue), ...buttonExtra };
         }
 

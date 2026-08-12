@@ -137,7 +137,7 @@ const adminOnly = (req, res, next) => {
 // A 'superadmin' (owner in ADMIN_IDS) has every permission. A regular 'admin'
 // with an empty `permissions` array keeps full access (backward compatible).
 // Admins with a non-empty `permissions` array can only touch their sections.
-const ALL_PERMISSIONS = ['dashboard', 'products', 'inventory', 'orders', 'users', 'coupons', 'broadcast', 'settings'];
+const ALL_PERMISSIONS = ['dashboard', 'products', 'inventory', 'orders', 'users', 'coupons', 'broadcast', 'settings', 'wheel'];
 
 const hasPermission = (user, permission) => {
   if (!user) return false;

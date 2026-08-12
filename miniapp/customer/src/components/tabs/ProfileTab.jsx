@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import useStore from '../../store/useStore';
 import { t } from '../../i18n';
 import PremiumIcon from '../PremiumIcon';
@@ -25,6 +26,32 @@ export default function ProfileTab() {
     { label: t(locale, 'totalDeposited'), value: `$${Number(user?.totalDeposited || 0).toFixed(2)}`, icon: 'coin' }
   ];
 
+  // Referral link
+  const botUsername = publicSettings?.bot_username || '';
+  const referralLink = botUsername && user?.telegramId ? `https://t.me/${botUsername}?start=ref_${user.telegramId}` : '';
+
+  const handleCopyReferral = () => {
+    if (!referralLink) return;
+    haptic.light();
+    playSound('tap');
+    navigator.clipboard.writeText(referralLink).then(() => {
+      toast.success(locale === 'ar' ? '✅ تم نسخ رابط الدعوة' : '✅ Invite link copied!');
+    }).catch(() => {
+      // Fallback for WebView
+      const input = document.createElement('input');
+      input.value = referralLink;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+      toast.success(locale === 'ar' ? '✅ تم نسخ رابط الدعوة' : '✅ Invite link copied!');
+    });
+  };
+
+  // Channel link
+  const channelUsername = publicSettings?.channel_username || '';
+  const channelLink = channelUsername ? `https://t.me/${String(channelUsername).replace(/^@/, '')}` : '';
+
   return (
     <div className="store-page space-y-4">
       <section className="profile-summary">
@@ -49,6 +76,44 @@ export default function ProfileTab() {
         ))}
       </section>
 
+      {/* Referral card — always visible and professional */}
+      {referralLink && (
+        <section className="profile-referral-card" style={{
+          background: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(99,102,241,0.08))',
+          border: '1px solid rgba(16,185,129,0.25)',
+          borderRadius: '16px',
+          padding: '14px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <PremiumIcon name="gift" size="1.2rem" />
+            <strong style={{ fontSize: '13px', fontWeight: 800 }}>{locale === 'ar' ? 'نظام الدعوات' : 'Invite System'}</strong>
+          </div>
+          <p style={{ fontSize: '11px', color: '#94a3b8', lineHeight: '1.6' }}>
+            {locale === 'ar'
+              ? 'شارك رابط الدعوة مع أصدقائك واحصل على مكافأة عند تسجيل كل صديق!'
+              : 'Share your invite link with friends and earn a bonus when each friend signs up!'}
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0,0,0,0.2)', borderRadius: '10px', padding: '8px 10px' }}>
+            <code style={{ flex: 1, fontSize: '10px', color: '#10b981', wordBreak: 'break-all', direction: 'ltr', textAlign: 'left' }}>{referralLink}</code>
+            <button
+              type="button"
+              onClick={handleCopyReferral}
+              style={{ background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.4)', borderRadius: '8px', padding: '6px 10px', cursor: 'pointer', color: '#10b981', fontSize: '11px', fontWeight: 700, whiteSpace: 'nowrap' }}
+            >
+              <PremiumIcon name="copy" size="0.9em" /> {locale === 'ar' ? 'نسخ' : 'Copy'}
+            </button>
+          </div>
+          {user?.referralCount > 0 && (
+            <p style={{ fontSize: '11px', color: '#10b981', fontWeight: 600 }}>
+              🎉 {locale === 'ar' ? `${user.referralCount} دعوة ناجحة` : `${user.referralCount} successful invites`}
+            </p>
+          )}
+        </section>
+      )}
+
       <section className="settings-list" aria-label={t(locale, 'profile')}>
         <div className="settings-list__row">
           <span><PremiumIcon name="target" /> {t(locale, 'id')}</span>
@@ -62,6 +127,13 @@ export default function ProfileTab() {
           <span><PremiumIcon name="globe" /> {t(locale, 'language')}</span>
           <PremiumIcon name={locale === 'ar' ? 'left' : 'right'} />
         </button>
+        {/* Channel link — always visible if configured */}
+        {channelLink && (
+          <a href={channelLink} target="_blank" rel="noreferrer" onClick={() => { haptic.light(); playSound('tap'); }} className="settings-list__row settings-list__button">
+            <span><PremiumIcon name="megaphone" /> {locale === 'ar' ? '📢 القناة الرسمية' : '📢 Official Channel'}</span>
+            <PremiumIcon name={locale === 'ar' ? 'left' : 'right'} />
+          </a>
+        )}
         <button type="button" onClick={() => { playSound('tap'); setActiveTab('support'); }} className="settings-list__row settings-list__button">
           <span><PremiumIcon name="support" /> {t(locale, 'support')}</span>
           <PremiumIcon name={locale === 'ar' ? 'left' : 'right'} />

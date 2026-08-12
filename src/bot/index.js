@@ -169,7 +169,10 @@ const { showLanguagePicker, isLanguageChoiceCallback, botLocale } = require('./h
             const isMember = ['member', 'administrator', 'creator'].includes(memberStatus);
             if (isMember) {
               forceJoinOkCache.set(telegramId, Date.now());
-            } else if (memberStatus && memberStatus !== 'restricted' && memberStatus !== 'kicked' && memberStatus !== 'left') {
+            } else {
+              // User is NOT a member — show the join prompt.
+              // This covers all non-member statuses: left, kicked, restricted,
+              // or any future status Telegram might add.
               const channelUsername = await Settings.get('channel_username', '');
               const channelTitle = await Settings.get('channel_title', '');
               // Build a proper channel link - prioritize username, then fallback to numeric ID
@@ -189,11 +192,11 @@ const { showLanguagePicker, isLanguageChoiceCallback, botLocale } = require('./h
                 ? `<b>📢 Join our official channel</b>\n\n` +
                   `Membership is required to access the store and receive instant delivery notifications.` +
                   (channelName ? `\n\nChannel: <b>${channelName}</b>` : '') +
-                  `\n\nAfter joining, press /start to continue.`
+                  `\n\nAfter joining, press the button below to continue.`
                 : `<b>📢 اشترك في قناتنا الرسمية</b>\n\n` +
                   `الاشتراك إلزامي للوصول إلى المتجر والحصول على إشعارات التسليم الفوري.` +
                   (channelName ? `\n\nالقناة: <b>${channelName}</b>` : '') +
-                  `\n\nبعد الاشتراك، أرسل /start للمتابعة.`);
+                  `\n\nبعد الاشتراك، اضغط الزر بالأسفل للمتابعة.`);
               
               const keyboardButtons = [];
               if (channelLink) {

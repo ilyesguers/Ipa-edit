@@ -207,7 +207,13 @@ const configurePremiumEmoji = (enabled, map) => {
 // retries (and duplicated-looking glyphs) when an owner has not configured a
 // valid pack for this bot. The admin-panel flag wins; env is the fallback.
 const premiumEnabled = () => {
-  if (dbState.loaded) return dbState.enabled;
+  // If the admin has explicitly toggled premium ON, honour that.
+  if (dbState.loaded && dbState.enabled) return true;
+  // If any custom emoji IDs are configured (admin pasted IDs into the panel),
+  // treat premium as available so the IDs actually render instead of vanishing.
+  if (dbState.loaded && dbState.map && Object.keys(dbState.map).length > 0) return true;
+  // Environment variable fallback.
+  if (dbState.loaded) return false;
   const flag = String(process.env.USE_PREMIUM_EMOJI || 'false').trim().toLowerCase();
   return ['true', '1', 'yes', 'on'].includes(flag);
 };
