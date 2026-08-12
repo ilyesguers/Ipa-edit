@@ -72,18 +72,20 @@ export default function Media() {
     }
   };
 
-  const setAsBanner = async (url) => {
+  const saveBanner = async (url) => {
     setSavingBanner(true);
     try {
-      await api.put('/settings/banner_image_url', { value: url });
-      setBannerUrl(url);
-      toast.success('🖼️ تم تعيين صورة البانر');
-    } catch (_) {
-      toast.error('فشل الحفظ');
+      await api.put('/settings/banner_image_url', { value: url || '' });
+      setBannerUrl(url || '');
+      toast.success('🖼️ تم حفظ البانر');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'فشل الحفظ');
     } finally {
       setSavingBanner(false);
     }
   };
+
+  const setAsBanner = (url) => saveBanner(url);
 
   return (
     <div className="space-y-5">
@@ -115,7 +117,7 @@ export default function Media() {
                 className="input-admin text-xs"
               />
             </div>
-            <button onClick={async () => { setSavingBanner(true); try { await api.put('/settings/banner_image_url', { value: bannerUrl }); toast.success('🖼️ تم حفظ البانر'); } catch (_) { toast.error('فشل الحفظ'); } finally { setSavingBanner(false); } }} className="success-btn text-xs px-4 py-2">
+            <button type="button" onClick={() => saveBanner(bannerUrl)} disabled={savingBanner} className="success-btn text-xs px-4 py-2">
               {savingBanner ? '⏳...' : '💾 حفظ البانر'}
             </button>
           </div>

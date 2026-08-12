@@ -23,19 +23,27 @@ const wheelGameSchema = new mongoose.Schema({
   createdBy: { type: Number }
 }, { timestamps: true });
 
-// Instance method: weighted random prize selection
+// Weighted random prize. Returns the prize plus its index among ACTIVE prizes
+// so the customer strip (which also hides inactive prizes) lands correctly.
 wheelGameSchema.methods.pickPrize = function () {
-  const activePrizes = this.prizes.filter(p => p.isActive);
-  if (!activePrizes.length) return this.prizes[0];
+  const active = [];
+  this.prizes.forEach((prize, rawIndex) => {
+    if (prize.isActive !== false) {
+      active.push({ prize, activeIndex: active.length, rawIndex });
+    }
+  });
+  if (!active.length) {
+    return { prize: this.prizes[0], activeIndex: 0, rawIndex: 0 };
+  }
 
-  const totalWeight = activePrizes.reduce((sum, p) => sum + (p.weight || 1), 0);
+  const totalWeight = active.reduce((sum, item) => sum + (item.prize.weight || 1), 0);
   let random = Math.random() * totalWeight;
 
-  for (const prize of activePrizes) {
-    random -= (prize.weight || 1);
-    if (random <= 0) return prize;
+  for (const item of active) {
+    random -= (item.prize.weight || 1);
+    if (random <= 0) return item;
   }
-  return activePrizes[activePrizes.length - 1];
+  return active[active.length - 1];
 };
 
 module.exports = mongoose.model('WheelGame', wheelGameSchema);

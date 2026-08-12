@@ -43,8 +43,19 @@ const ALLOWED_SETTING_KEYS = new Set([
   'balance_offers_enabled', 'balance_offers_note_ar', 'balance_offers_note_en',
   'referral_bonus', 'auto_verify_payments', 'admin_notification_on_order',
   'admin_notification_on_payment', 'force_join_channel', 'maintenance_mode',
-  'premium_emoji_enabled', 'premium_emoji_map'
+  'premium_emoji_enabled', 'premium_emoji_map',
+  'banner_image_url'
 ]);
+
+const sanitizeSettingValue = (key, value) => {
+  if (key !== 'banner_image_url') return value;
+  const raw = String(value == null ? '' : value).trim();
+  if (!raw) return '';
+  if (raw.length > 2000) return null;
+  if (/^https?:\/\/\S+$/i.test(raw)) return raw;
+  if (/^\/uploads\/[A-Za-z0-9._-]+$/i.test(raw)) return raw;
+  return null;
+};
 
 const isDangerousValue = (value) => {
   if (value === null || value === undefined) return false;
@@ -65,7 +76,11 @@ router.put('/', authMiddleware, adminOnly, requirePermission('settings'), async 
     for (const [key, value] of Object.entries(updates)) {
       if (!ALLOWED_SETTING_KEYS.has(key)) continue;
       if (value === '***hidden***' || isDangerousValue(value)) continue;
-      await Settings.set(key, value, req.telegramId);
+      const nextValue = sanitizeSettingValue(key, value);
+      if (nextValue === null) {
+        return res.status(400).json({ success: false, error: 'رابط البانر غير صالح' });
+      }
+      await Settings.set(key, nextValue, req.telegramId);
       require('../../utils/settingsCache').invalidateSettings(key);
     }
     // Keep the in-bot premium emoji cache in sync when edited from there.
@@ -92,7 +107,11 @@ router.put('/:key', authMiddleware, adminOnly, requirePermission('settings'), as
     if (isDangerousValue(value)) {
       return res.status(400).json({ success: false, error: 'Invalid value' });
     }
-    await Settings.set(req.params.key, value, req.telegramId);
+    const nextValue = sanitizeSettingValue(req.params.key, value);
+    if (nextValue === null) {
+      return res.status(400).json({ success: false, error: 'رابط البانر غير صالح' });
+    }
+    await Settings.set(req.params.key, nextValue, req.telegramId);
     require('../../utils/settingsCache').invalidateSettings(req.params.key);
     res.json({ success: true });
   } catch (err) {

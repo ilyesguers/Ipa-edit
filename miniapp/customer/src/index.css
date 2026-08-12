@@ -990,10 +990,11 @@
 
 /* Viewport — the strip container */
 .wheel-viewport {
-  position: relative; overflow: hidden; height: 130px;
-  border-radius: 20px; border: 1px solid rgba(255,255,255,.08);
+  position: relative; overflow: hidden; height: 210px;
+  border-radius: 22px; border: 1px solid rgba(255,255,255,.08);
   background: linear-gradient(180deg, rgba(17,20,26,.95), rgba(10,12,18,.98));
   box-shadow: 0 0 40px rgba(16,185,129,.08), inset 0 0 60px rgba(0,0,0,.3);
+  direction: ltr;
 }
 .wheel-viewport__glow {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -1023,17 +1024,17 @@
 .wheel-fade--l { left: 0; background: linear-gradient(to right, rgba(13,15,18,.98), transparent); }
 .wheel-fade--r { right: 0; background: linear-gradient(to left, rgba(13,15,18,.98), transparent); }
 
-/* Pointer arrow */
+/* Small pointer at the top, tip facing down onto the winning card */
 .wheel-pointer {
-  position: absolute; top: -8px; left: 50%; transform: translateX(-50%); z-index: 10;
-  width: 34px; height: 44px; pointer-events: none;
+  position: absolute; top: 6px; left: 50%; transform: translateX(-50%); z-index: 10;
+  width: 22px; height: 28px; pointer-events: none;
   animation: pointer-idle 2s ease-in-out infinite;
 }
-@keyframes pointer-idle { 0%, 100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(4px); } }
+@keyframes pointer-idle { 0%, 100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(3px); } }
 .wheel-pointer-ring {
-  position: absolute; top: -16px; left: 50%; transform: translateX(-50%); z-index: 9;
-  width: 70px; height: 70px; border-radius: 50%; pointer-events: none;
-  background: radial-gradient(circle, rgba(110,231,183,.2) 0%, transparent 70%);
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%); z-index: 9;
+  width: 46px; height: 46px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(110,231,183,.22) 0%, transparent 70%);
   animation: ring-pulse 2.5s ease-in-out infinite;
 }
 @keyframes ring-pulse { 0%, 100% { opacity: .4; transform: translateX(-50%) scale(1); } 50% { opacity: .9; transform: translateX(-50%) scale(1.35); } }

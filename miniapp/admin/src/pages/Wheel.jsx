@@ -18,6 +18,12 @@ export default function Wheel() {
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
   const [newPrize, setNewPrize] = useState(emptyPrize);
+  const [spins, setSpins] = useState([]);
+  const [spinsPage, setSpinsPage] = useState(1);
+  const [spinsPages, setSpinsPages] = useState(1);
+  const [spinsTotal, setSpinsTotal] = useState(0);
+  const [spinsFilter, setSpinsFilter] = useState('');
+  const [loadingSpins, setLoadingSpins] = useState(false);
 
   const load = async () => {
     try {
@@ -27,7 +33,23 @@ export default function Wheel() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  const loadSpins = async (page = 1, wheelId = spinsFilter) => {
+    setLoadingSpins(true);
+    try {
+      const qs = new URLSearchParams({ page: String(page), limit: '25' });
+      if (wheelId) qs.set('wheelId', wheelId);
+      const r = await api.get(`/wheel/spins?${qs.toString()}`);
+      setSpins(r.data.data || []);
+      setSpinsPage(r.data.page || page);
+      setSpinsPages(r.data.totalPages || 1);
+      setSpinsTotal(r.data.total || 0);
+    } catch (_) {
+      setSpins([]);
+    }
+    setLoadingSpins(false);
+  };
+
+  useEffect(() => { load(); loadSpins(1, ''); }, []);
 
   const handleSave = async () => {
     if (!form.name) return toast.error('اسم العجلة مطلوب');
@@ -142,6 +164,72 @@ export default function Wheel() {
           <div className="admin-card border border-border text-center py-8">
             <p className="text-4xl mb-3"> </p>
             <p className="text-muted">لا توجد عجلات بعد — أنشئ عجلتك الأولى</p>
+          </div>
+        )}
+      </div>
+
+      <div className="admin-card border border-border space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h3 className="font-black text-white">سجل الفوز</h3>
+            <p className="text-xs text-muted mt-0.5">{spinsTotal} دوران مسجّل — من فاز وبماذا</p>
+          </div>
+          <select
+            value={spinsFilter}
+            onChange={(e) => { setSpinsFilter(e.target.value); loadSpins(1, e.target.value); }}
+            className="input-admin text-xs w-auto"
+          >
+            <option value="">كل العجلات</option>
+            {wheels.map((w) => <option key={w._id} value={w._id}>{w.nameAr || w.name}</option>)}
+          </select>
+        </div>
+
+        {loadingSpins ? (
+          <div className="text-xs text-muted py-4 text-center">جاري التحميل...</div>
+        ) : spins.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-muted text-right">
+                  <th className="py-2 px-2 font-semibold">الوقت</th>
+                  <th className="py-2 px-2 font-semibold">المستخدم</th>
+                  <th className="py-2 px-2 font-semibold">العجلة</th>
+                  <th className="py-2 px-2 font-semibold">الجائزة</th>
+                  <th className="py-2 px-2 font-semibold">التكلفة</th>
+                  <th className="py-2 px-2 font-semibold">الرصيد بعد</th>
+                </tr>
+              </thead>
+              <tbody>
+                {spins.map((s) => (
+                  <tr key={s._id} className="border-t border-border">
+                    <td className="py-2 px-2 text-muted whitespace-nowrap">{s.createdAt ? new Date(s.createdAt).toLocaleString('ar-IQ-u-nu-latn') : '—'}</td>
+                    <td className="py-2 px-2 text-white">
+                      <div className="font-bold">{s.firstName || 'مستخدم'}</div>
+                      <div className="text-[10px] text-muted">@{s.username || 'N/A'} · {s.telegramId}</div>
+                    </td>
+                    <td className="py-2 px-2 text-muted">{s.wheelName || '—'}</td>
+                    <td className="py-2 px-2">
+                      <span className="font-bold" style={{ color: s.prizeColor || '#10b981' }}>
+                        {s.prizeIcon || '🎁'} {s.prizeLabelAr || s.prizeLabel || '—'}
+                        {s.prizeValue > 0 ? ` · $${Number(s.prizeValue).toFixed(2)}` : ''}
+                      </span>
+                    </td>
+                    <td className="py-2 px-2 text-red">${Number(s.costPaid || 0).toFixed(2)}</td>
+                    <td className="py-2 px-2 text-green font-bold">${Number(s.newBalance || 0).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-xs text-muted text-center py-4">لا توجد دورات بعد</p>
+        )}
+
+        {spinsPages > 1 && (
+          <div className="flex items-center justify-center gap-2">
+            <button type="button" disabled={spinsPage <= 1} onClick={() => loadSpins(spinsPage - 1, spinsFilter)} className="text-xs border border-border rounded-lg px-3 py-1 text-muted disabled:opacity-40">السابق</button>
+            <span className="text-[11px] text-muted">{spinsPage} / {spinsPages}</span>
+            <button type="button" disabled={spinsPage >= spinsPages} onClick={() => loadSpins(spinsPage + 1, spinsFilter)} className="text-xs border border-border rounded-lg px-3 py-1 text-muted disabled:opacity-40">التالي</button>
           </div>
         )}
       </div>

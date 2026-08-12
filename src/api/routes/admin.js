@@ -693,7 +693,7 @@ router.post('/users/:id/permissions', async (req, res) => {
     if (bot) {
       const permLabels = {
         dashboard: 'الإحصائيات', products: 'المنتجات والأقسام', inventory: 'المخزون',
-        orders: 'الطلبات', users: 'المستخدمون', coupons: 'الكوبونات',
+        wheel: 'عجلة الحظ', orders: 'الطلبات', users: 'المستخدمون', coupons: 'الكوبونات',
         broadcast: 'الإذاعة', settings: 'الإعدادات'
       };
       const list = unique.length
