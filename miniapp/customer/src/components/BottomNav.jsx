@@ -10,6 +10,7 @@ import { playSound } from '../utils/sound';
 const TABS = [
   { id: 'products', icon: 'gamepad', key: 'navProducts' },
   { id: 'keys', icon: 'key', key: 'navKeys' },
+  { id: 'wheel', icon: 'gift', key: 'navWheel' },
   { id: 'history', icon: 'orders', key: 'navHistory' },
   { id: 'profile', icon: 'user', key: 'navProfile' }
 ];

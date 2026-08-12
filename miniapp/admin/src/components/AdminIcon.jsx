@@ -26,10 +26,11 @@ const PATHS = {
   chart: <><path d="M4 19V5M4 19h16" /><path d="m7 15 3-4 3 2 5-6" /></>,
   plus: <path d="M12 5v14M5 12h14" />,
   search: <><circle cx="10.5" cy="10.5" r="5.5" /><path d="m15 15 4.5 4.5" /></>,
-  shield: <path d="M12 3 19 6v5c0 4.5-2.8 7.5-7 10-4.2-2.5-7-5.5-7-10V6l7-3Z" />
+  shield: <path d="M12 3 19 6v5c0 4.5-2.8 7.5-7 10-4.2-2.5-7-5.5-7-10V6l7-3Z" />,
+  gift: <><rect x="4" y="10.5" width="16" height="9.5" rx="1.5" /><path d="M12 10.5V20M4 14.5h16" /><path d="M12 10.5C12 8 10.8 4.5 8.4 4.5A1.9 1.9 0 0 0 8.3 8.3c1.9.9 3.7 2.2 3.7 2.2Zm0 0c0-2.5 1.2-6 3.6-6a1.9 1.9 0 0 1 .1 3.8c-1.9.9-3.7 2.2-3.7 2.2Z" /></>
 };
 
-const ALIASES = { home: 'dashboard', products: 'product', keys: 'inventory', user: 'users', image: 'media', gear: 'settings', edit: 'settings' };
+const ALIASES = { home: 'dashboard', products: 'product', keys: 'inventory', user: 'users', image: 'media', gear: 'settings', edit: 'settings', wheel: 'gift' };
 
 export default function AdminIcon({ name = 'dashboard', size = '1em', className = '', style = {} }) {
   const normalized = String(name).trim();

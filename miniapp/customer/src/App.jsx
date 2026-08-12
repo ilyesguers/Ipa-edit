@@ -13,6 +13,7 @@ import { initSoundUnlock } from './utils/sound';
 // what it needs. This matters in Telegram and on Railway cold connections.
 const ProductsTab = lazy(() => import('./components/tabs/ProductsTab'));
 const MyKeysTab = lazy(() => import('./components/tabs/MyKeysTab'));
+const WheelTab = lazy(() => import('./components/tabs/WheelTab'));
 const HistoryTab = lazy(() => import('./components/tabs/HistoryTab'));
 const ProfileTab = lazy(() => import('./components/tabs/ProfileTab'));
 const SupportTab = lazy(() => import('./components/tabs/SupportTab'));
@@ -25,6 +26,7 @@ const OrderSuccessModal = lazy(() => import('./components/OrderSuccessModal'));
 const TAB_COMPONENTS = {
   products: ProductsTab,
   keys: MyKeysTab,
+  wheel: WheelTab,
   history: HistoryTab,
   profile: ProfileTab,
   support: SupportTab

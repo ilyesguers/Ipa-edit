@@ -101,7 +101,11 @@ export default function Settings() {
     try {
       const map = {};
       emojiRows.forEach((row) => { const v = String(row.input || '').trim(); if (v) map[row.key] = v; });
-      await api.put('/admin/emojis', { enabled: emojiEnabled, map });
+      // Auto-enable premium when IDs are configured, even if the toggle
+      // wasn't explicitly set — the old behavior would silently ignore IDs.
+      const hasCustomIds = Object.keys(map).length > 0;
+      const effectiveEnabled = emojiEnabled || hasCustomIds;
+      await api.put('/admin/emojis', { enabled: effectiveEnabled, map });
       haptic.success();
       toast.success('✨ تم حفظ الإيموجي البريميوم — يعمل فوراً في البوت');
     } catch (err) {
@@ -514,10 +518,10 @@ export default function Settings() {
           <div className="bg-bg border border-border rounded-2xl p-3 flex items-center justify-between gap-3">
             <div>
               <p className="text-sm font-bold text-white">حالة الإيموجي البريميوم</p>
-              <p className="text-[11px] text-muted mt-0.5">{emojiEnabled ? 'مفعّل — البوت يرسم الإيموجيات ببريميوم' : 'معطّل — البوت يستخدم الإيموجي العادي'}</p>
+              <p className="text-[11px] text-muted mt-0.5">{emojiEnabled ? 'مفعّل — البوت يرسم الإيموجيات ببريميوم' : (emojiRows.filter(r => String(r.input || '').trim()).length > 0 ? 'مفعّل تلقائياً — تم إدخال IDs مخصصة' : 'معطّل — البوت يستخدم الإيموجي العادي')}</p>
             </div>
-            <button onClick={() => setEmojiEnabled((v) => !v)} className={`w-12 h-6 rounded-full relative transition-colors shrink-0 ${emojiEnabled ? 'bg-gold' : 'bg-border'}`} aria-label="تفعيل الإيموجي البريميوم">
-              <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${emojiEnabled ? 'right-1' : 'left-1'}`} />
+            <button onClick={() => setEmojiEnabled((v) => !v)} className={`w-12 h-6 rounded-full relative transition-colors shrink-0 ${emojiEnabled || emojiRows.filter(r => String(r.input || '').trim()).length > 0 ? 'bg-gold' : 'bg-border'}`} aria-label="تفعيل الإيموجي البريميوم">
+              <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${emojiEnabled || emojiRows.filter(r => String(r.input || '').trim()).length > 0 ? 'right-1' : 'left-1'}`} />
             </button>
           </div>
 

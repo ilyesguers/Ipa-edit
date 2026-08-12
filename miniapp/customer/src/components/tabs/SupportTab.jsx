@@ -22,15 +22,25 @@ export default function SupportTab() {
     ? (publicSettings?.ui_footer_note_ar || t(locale, 'availableNow'))
     : (publicSettings?.ui_footer_note_en || t(locale, 'availableNow')));
 
+  const channelUsername = publicSettings?.channel_username || '';
+  const channelLink = channelUsername ? `https://t.me/${String(channelUsername).replace(/^@/, '')}` : '';
+
   return (
     <div className="store-page space-y-5">
       <section className="support-intro">
         <PremiumIcon name="support" size="2rem" />
         <h1>{title}</h1>
         <p>{subtitle}</p>
-        <a href={`https://t.me/${supportUsername}`} target="_blank" rel="noreferrer" onClick={() => playSound('tap')}>
-          <PremiumIcon name="chat" /> {t(locale, 'directContact')}
-        </a>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <a href={`https://t.me/${supportUsername}`} target="_blank" rel="noreferrer" onClick={() => playSound('tap')}>
+            <PremiumIcon name="chat" /> {t(locale, 'directContact')}
+          </a>
+          {channelLink && (
+            <a href={channelLink} target="_blank" rel="noreferrer" onClick={() => playSound('tap')} style={{ background: 'rgba(99,102,241,0.15)', borderColor: 'rgba(99,102,241,0.3)', color: '#a5b4fc' }}>
+              <PremiumIcon name="megaphone" /> {locale === 'ar' ? '📢 القناة الرسمية' : '📢 Official Channel'}
+            </a>
+          )}
+        </div>
       </section>
 
       <section>
