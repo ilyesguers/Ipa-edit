@@ -74,6 +74,7 @@ const seedDefaults = async () => {
     { key: 'admin_notification_on_order', value: true, description: 'Notify admin on new order' },
     { key: 'admin_notification_on_payment', value: true, description: 'Notify admin on payment proof' },
     { key: 'channel_id', value: '', description: 'Telegram channel ID for announcements' },
+    { key: 'banner_image_url', value: '', description: 'Welcome banner image URL used by the bot' },
     { key: 'force_join_channel', value: false, description: 'Force users to join channel' },
     { key: 'ui_theme_preset', value: 'midnight', description: 'Visual theme preset for bot and mini apps' },
     { key: 'ui_welcome_badge_ar', value: 'كل ما يحتاجه اللاعب في مكان واحد', description: 'Arabic welcome badge' },

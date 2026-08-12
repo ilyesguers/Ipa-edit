@@ -8,14 +8,14 @@ import { cachedFetch } from '../../utils/cache';
 import { haptic } from '../../utils/haptic';
 import { playSound } from '../../utils/sound';
 
-const ITEM_W = 120;
-const GAP = 12;
+const ITEM_W = 168;
+const GAP = 14;
 const TOTAL_W = ITEM_W + GAP;
 const STRIP_COUNT = 250;
 const SPIN_MS = 6000;
 
 export default function WheelTab() {
-  const { user, locale, refreshUser } = useStore();
+  const { user, locale, setUser } = useStore();
   const [wheels, setWheels] = useState([]);
   const [wheel, setWheel] = useState(null);
   const [spinning, setSpinning] = useState(false);
@@ -46,23 +46,24 @@ export default function WheelTab() {
   /* spin */
   const spin = async () => {
     if (spinning || !wheel) return;
-    if (user.balance < cost) {
+    const balance = Number(user?.balance || 0);
+    if (balance < cost) {
       haptic.error();
-      toast.error(isAr ? `رصيدك $${user.balance.toFixed(2)} — تحتاج $${cost.toFixed(2)}` : `Balance $${user.balance.toFixed(2)} — need $${cost.toFixed(2)}`);
+      toast.error(isAr ? `رصيدك $${balance.toFixed(2)} — تحتاج $${cost.toFixed(2)}` : `Balance $${balance.toFixed(2)} — need $${cost.toFixed(2)}`);
       return;
     }
     setSpinning(true); setResult(null); setShowResult(false); setParticles([]);
-    haptic.heavy(); playSound('spin');
+    haptic.heavy(); playSound('whoosh');
 
     try {
       const r = await api.post(`/wheel/${wheel._id}/spin`);
       const d = r.data.data;
-      const pIdx = d.prizeIndex;
+      const pIdx = Math.max(0, Number(d.prizeIndex) || 0);
       const cw = viewRef.current?.offsetWidth || 360;
       const center = cw / 2;
       const loops = 6 + Math.floor(Math.random() * 4);
       const tgt = loops * prizes.length + pIdx;
-      setOffset(tgt * TOTAL_W - center + TOTAL_W / 2);
+      setOffset(tgt * TOTAL_W + ITEM_W / 2 - center);
 
       /* mid-spin haptics */
       const h1 = setTimeout(() => haptic.light(), 1500);
@@ -72,7 +73,7 @@ export default function WheelTab() {
       await new Promise(r => setTimeout(r, SPIN_MS + 300));
       clearTimeout(h1); clearTimeout(h2); clearTimeout(h3);
 
-      playSound('win'); haptic.notificationOccurred('success');
+      playSound('levelup'); haptic.notificationOccurred('success');
 
       /* confetti */
       const colors = ['#10b981', '#f59e0b', '#ec4899', '#6366f1', '#06b6d4', '#f97316', '#a855f7', '#e11d48'];
@@ -86,9 +87,14 @@ export default function WheelTab() {
         s: 6 + Math.random() * 8
       })));
 
-      setResult(d); setShowResult(true); refreshUser?.();
+      setResult(d); setShowResult(true);
+      if (user && typeof d.newBalance === 'number') setUser({ ...user, balance: d.newBalance });
     } catch (err) {
-      haptic.error(); toast.error(err.response?.data?.error || (isAr ? 'فشل' : 'Failed'));
+      haptic.error();
+      const msg = err.response?.status === 401
+        ? (isAr ? 'افتح المتجر من داخل تيليجرام للدوران' : 'Open the store from Telegram to spin')
+        : (err.response?.data?.error || (isAr ? 'فشل الدوران' : 'Spin failed'));
+      toast.error(msg);
     } finally { setSpinning(false); }
   };
 
@@ -144,7 +150,7 @@ export default function WheelTab() {
           className="wheel-top__back"><PremiumIcon name="left" /></button>
         <div className="wheel-top__info">
           <strong>{wheel.nameAr || wheel.name}</strong>
-          <small>{isAr ? 'رصيدك' : 'Balance'}: <b>${user.balance?.toFixed(2)}</b></small>
+          <small>{isAr ? 'رصيدك' : 'Balance'}: <b>${Number(user?.balance || 0).toFixed(2)}</b></small>
         </div>
         <span className="wheel-top__cost">${cost}</span>
       </div>
@@ -157,7 +163,7 @@ export default function WheelTab() {
       </div>
 
       {/* Wheel viewport */}
-      <div className="wheel-viewport" ref={viewRef}>
+      <div className="wheel-viewport" ref={viewRef} dir="ltr">
         <div className="wheel-viewport__glow" />
         <div className="wheel-fade wheel-fade--l" />
         <div className="wheel-fade wheel-fade--r" />
@@ -165,7 +171,7 @@ export default function WheelTab() {
         <div className={`wheel-strip ${spinning ? 'wheel-strip--go' : ''}`}
           style={{ transform: `translateX(-${offset}px)`, transition: spinning ? `transform ${SPIN_MS}ms cubic-bezier(.12,.8,.25,1)` : 'none' }}>
           {strip.map((item) => (
-            <div key={item._key} className="wheel-card" style={{ '--c': item.color, width: ITEM_W, marginRight: GAP }}>
+            <div key={item._key} className="wheel-card" style={{ '--c': item.color, width: ITEM_W, marginInlineEnd: GAP }}>
               <span className="wheel-card__icon">{item.icon || (item.value > 0 ? '💰' : '🎯')}</span>
               <span className="wheel-card__name">{item.labelAr || item.label}</span>
               {item.value > 0 && <span className="wheel-card__val">${item.value}</span>}
@@ -173,24 +179,24 @@ export default function WheelTab() {
           ))}
         </div>
 
-        {/* Center pointer */}
-        <div className="wheel-pointer">
-          <svg viewBox="0 0 36 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* Small pointer at the top, tip facing down onto the winning card */}
+        <div className="wheel-pointer" aria-hidden="true">
+          <svg viewBox="0 0 24 28" fill="none" xmlns="http://www.w3.org/2000/svg">
             <defs>
-              <linearGradient id="ptrGrad" x1="18" y1="0" x2="18" y2="48" gradientUnits="userSpaceOnUse">
-                <stop stopColor="#6ee7b7" /><stop offset="1" stopColor="#10b981" />
+              <linearGradient id="ptrGrad" x1="12" y1="0" x2="12" y2="28" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#6ee7b7" /><stop offset="1" stopColor="#059669" />
               </linearGradient>
-              <filter id="ptrGlow"><feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#10b981" floodOpacity="0.7" /></filter>
+              <filter id="ptrGlow"><feDropShadow dx="0" dy="1" stdDeviation="1.4" floodColor="#10b981" floodOpacity="0.7" /></filter>
             </defs>
-            <path d="M18 2L33 20H24V46H12V20H3L18 2Z" fill="url(#ptrGrad)" filter="url(#ptrGlow)" />
+            <path d="M12 26L3 14H8V3H16V14H21L12 26Z" fill="url(#ptrGrad)" filter="url(#ptrGlow)" />
           </svg>
         </div>
         <div className="wheel-pointer-ring" />
       </div>
 
       {/* Spin button */}
-      <motion.button type="button" onClick={spin} disabled={spinning || user.balance < cost}
-        whileTap={{ scale: 0.94 }} className={`wheel-spin ${spinning ? 'wheel-spin--go' : ''} ${user.balance < cost ? 'wheel-spin--no' : ''}`}>
+      <motion.button type="button" onClick={spin} disabled={spinning || Number(user?.balance || 0) < cost}
+        whileTap={{ scale: 0.94 }} className={`wheel-spin ${spinning ? 'wheel-spin--go' : ''} ${Number(user?.balance || 0) < cost ? 'wheel-spin--no' : ''}`}>
         {spinning
           ? <span className="wheel-spin__loader" />
           : <><span className="wheel-spin__txt">{isAr ? '  دور الآن' : '  SPIN'}</span><span className="wheel-spin__price">${cost}</span></>}
