@@ -1,5 +1,10 @@
 # دليل التغييرات — الإصدار 5.1 🚀
 
+## 🩹 إصلاح بناء Railway: حزمة `framer-motion` ناقصة في متجر العميل
+
+- `WheelTab.jsx` يستورد `framer-motion` بينما الحزمة كانت موجودة فقط في `miniapp/admin`.
+- أُضيفت `framer-motion@^11.1.9` إلى `miniapp/customer/package.json` حتى ينجح `vite build` على Railway.
+
 ## 🆕 تحديث الدفع: Binance فعّال تلقائياً + PayPal بسيط (5.1.1)
 
 ### 1) ⚡ Binance (USDT TRC20) أصبح «فعّالاً حقاً» بدون أي API
