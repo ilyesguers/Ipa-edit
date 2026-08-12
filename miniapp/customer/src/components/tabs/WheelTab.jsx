@@ -99,7 +99,7 @@ export default function WheelTab() {
         <section className="store-intro">
           <div>
             <p className="store-intro__eyebrow">{isAr ? 'العاب الحظ' : 'Luck Games'}</p>
-            <h1>{isAr ? 'عجلة الحظ' : 'Lucky Wheel'}</p>
+            <h1>{isAr ? 'عجلة الحظ' : 'Lucky Wheel'}</h1>
             <p>{isAr ? 'ادفع ودور واربح جوائز فورية' : 'Pay, spin & win instant prizes'}</p>
           </div>
         </section>
