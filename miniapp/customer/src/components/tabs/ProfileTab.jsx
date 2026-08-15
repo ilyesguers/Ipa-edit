@@ -9,7 +9,7 @@ import { haptic } from '../../utils/haptic';
 import { playSound, useSoundStore } from '../../utils/sound';
 
 export default function ProfileTab() {
-  const { user, locale, toggleLocale, setActiveTab, publicSettings } = useStore();
+  const { user, locale, toggleLocale, setActiveTab, publicSettings, logout } = useStore();
   const { muted, setMuted, volume, setVolume } = useSoundStore();
   const [balanceHistory, setBalanceHistory] = useState([]);
   const dateLocale = t(locale, 'dateLocale');
@@ -58,7 +58,7 @@ export default function ProfileTab() {
         <span className="profile-summary__avatar"><PremiumIcon name="user" size="1.8rem" /></span>
         <div className="min-w-0 flex-1">
           <h1>{user?.firstName || t(locale, 'user')}</h1>
-          <p>@{user?.username || 'guest'}</p>
+          <p>@{user?.accessUsername || user?.username || 'user'}</p>
         </div>
         <div className="profile-summary__balance">
           <small>{t(locale, 'balance')}</small>
@@ -176,11 +176,15 @@ export default function ProfileTab() {
         </div>
       </section>
 
-      {user?.role === 'admin' && (
+      {user?.isAdmin && (
         <a href="/admin#dashboard" target="_blank" rel="noreferrer" className="profile-admin-link">
           <PremiumIcon name="admin" /> {t(locale, 'adminPanel')}
         </a>
       )}
+
+      <button type="button" onClick={() => { playSound('tap'); logout(); }} className="profile-admin-link" style={{ width: '100%', color: '#fca5a5', borderColor: 'rgba(248,113,113,.25)', background: 'rgba(127,29,29,.08)' }}>
+        <PremiumIcon name="cancel" /> {locale === 'ar' ? 'تسجيل الخروج الآمن' : 'Secure sign out'}
+      </button>
 
       {balanceHistory.length > 0 && (
         <section>

@@ -6,6 +6,7 @@ import { canViewPage } from './utils/permissions';
 import Sidebar from './components/Sidebar';
 import LoadingScreen from './components/LoadingScreen';
 import AdminIcon from './components/AdminIcon';
+import AdminLogin from './components/AdminLogin';
 
 // Load each workspace only when it is opened. The dashboard remains responsive
 // on Telegram WebView and on slower Railway connections.
@@ -52,6 +53,17 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [maintenance, setMaintenance] = useState(false);
   const [unreadOrders, setUnreadOrders] = useState(0);
+
+  useEffect(() => {
+    const expireSession = () => {
+      setUser(null);
+      setAuthError(false);
+      setLoading(false);
+      toast.error('انتهت جلسة الإدارة — سجّل الدخول من جديد');
+    };
+    window.addEventListener('admin-auth-expired', expireSession);
+    return () => window.removeEventListener('admin-auth-expired', expireSession);
+  }, []);
 
   // Lock body scroll when mobile sidebar is open
   useEffect(() => {
@@ -130,28 +142,55 @@ export default function App() {
     if (window.location.hash !== nextHash) window.history.replaceState(null, '', nextHash);
   }, [activePage, routeQuery]);
 
-  useEffect(() => {
-    const tg = window.Telegram?.WebApp;
-    api.post('/auth/telegram', { initData: tg?.initData || '' })
-      .then((response) => {
-        if (!response.data.user?.isAdmin) {
-          setAuthError('غير مصرح لك بالوصول إلى لوحة الإدارة.');
-          setLoading(false);
-          return;
-        }
-        localStorage.setItem('admin_token', response.data.token);
-        setUser(response.data.user);
-        setLoading(false);
-      })
-      .catch((error) => {
-        setAuthError(error.response?.status === 401
-          ? 'تعذر التحقق من الهوية. افتح اللوحة من داخل تيليجرام.'
-          : 'تعذر الاتصال بالسيرفر. تحقق من الشبكة وحاول مرة أخرى.');
-        setLoading(false);
-      });
+  const acceptAdmin = (nextUser) => {
+    if (!nextUser?.isAdmin) {
+      setAuthError('هذا الحساب لا يملك صلاحية الوصول إلى لوحة الإدارة.');
+      setUser(null);
+    } else {
+      setAuthError(false);
+      setUser(nextUser);
+    }
+    setLoading(false);
+  };
 
-    api.get('/settings').then((response) => setMaintenance(Boolean(response.data.data?.maintenance_mode))).catch(() => {});
+  const loginWithTelegram = async () => {
+    const initData = window.Telegram?.WebApp?.initData || '';
+    if (!initData) return setLoading(false);
+    setLoading(true);
+    try {
+      const response = await api.post('/auth/telegram', { initData });
+      if (!response.data.user?.isAdmin) return acceptAdmin(null);
+      localStorage.setItem('admin_token', response.data.token);
+      acceptAdmin(response.data.user);
+    } catch (error) {
+      setAuthError(error.response?.status >= 500 ? 'تعذر الاتصال بالسيرفر. تحقق من الشبكة وحاول مرة أخرى.' : false);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+    const restore = async () => {
+      const storedToken = localStorage.getItem('admin_token');
+      if (storedToken) {
+        try {
+          const response = await api.get('/auth/me');
+          if (active && response.data.user?.isAdmin) return acceptAdmin(response.data.user);
+        } catch (_) {
+          localStorage.removeItem('admin_token');
+        }
+      }
+      if (active && window.Telegram?.WebApp?.initData) return loginWithTelegram();
+      if (active) setLoading(false);
+    };
+    restore();
+    return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    if (!user?.isAdmin) return;
+    api.get('/settings').then((response) => setMaintenance(Boolean(response.data.data?.maintenance_mode))).catch(() => {});
+  }, [user?.isAdmin]);
 
   const toggleMaintenance = async () => {
     const next = !maintenance;
@@ -172,11 +211,13 @@ export default function App() {
         <span className="admin-access-state__icon"><AdminIcon name="shield" size="2rem" /></span>
         <h1>تعذر فتح اللوحة</h1>
         <p>{authError}</p>
-        <button type="button" onClick={() => window.location.reload()} className="neon-btn inline-flex items-center gap-2"><AdminIcon name="refresh" /> إعادة المحاولة</button>
-        <small>افتح لوحة الإدارة من زر WebApp داخل البوت.</small>
+        <button type="button" onClick={() => { setAuthError(false); setLoading(false); }} className="neon-btn inline-flex items-center gap-2"><AdminIcon name="refresh" /> العودة لتسجيل الدخول</button>
+        <small>يمكنك الدخول بحساب أدمن صادر من المالك أو عبر تيليجرام.</small>
       </main>
     );
   }
+
+  if (!user) return <AdminLogin onAuthenticated={acceptAdmin} onTelegramLogin={loginWithTelegram} />;
 
   const pageMeta = PAGES[activePage] || PAGES.dashboard;
   const ActivePage = pageMeta.component;
@@ -201,6 +242,7 @@ export default function App() {
             <a href="/customer" target="_blank" rel="noreferrer" className="admin-topbar__store-link"><AdminIcon name="store" /><span>المتجر</span></a>
             <button type="button" onClick={toggleMaintenance} className={`admin-topbar__maintenance ${maintenance ? 'is-active' : ''}`} title="وضع الصيانة"><AdminIcon name="settings" /><span>{maintenance ? 'الصيانة مفعلة' : 'الصيانة'}</span></button>
             <span className="admin-topbar__user" title={user?.firstName}><i />{user?.firstName}</span>
+            <button type="button" className="admin-topbar__maintenance" title="تسجيل الخروج" onClick={() => { localStorage.removeItem('admin_token'); setUser(null); setAuthError(false); }}><AdminIcon name="close" /><span>خروج</span></button>
           </div>
         </header>
 

@@ -38,8 +38,7 @@ const publicUser = (user, isAdmin = false) => ({
   accessExpiresAt: user.accessExpiresAt
 });
 
-// Administrator-issued username/password login for the customer store.
-router.post('/login', credentialLoginLimiter, async (req, res) => {
+const credentialLogin = ({ requireAdmin = false } = {}) => async (req, res) => {
   try {
     const username = normalizeAccessUsername(req.body?.username);
     const password = String(req.body?.password || '');
@@ -53,7 +52,9 @@ router.post('/login', credentialLoginLimiter, async (req, res) => {
       ? await verifyPassword(password, user?.accessPasswordHash || DUMMY_PASSWORD_HASH)
       : false;
     const expired = user?.accessExpiresAt && new Date(user.accessExpiresAt).getTime() <= now;
-    const allowed = user && passwordValid && user.accessEnabled && !expired && !user.isBanned;
+    const ownerIds = (process.env.ADMIN_IDS || '').split(',').map((id) => parseInt(id.trim(), 10)).filter(Boolean);
+    const hasAdminRole = user && (ownerIds.includes(user.telegramId) || ['admin', 'superadmin'].includes(user.role));
+    const allowed = user && passwordValid && user.accessEnabled && !expired && !user.isBanned && (!requireAdmin || hasAdminRole);
 
     if (!allowed) {
       if (user && !locked && !passwordValid) {
@@ -64,7 +65,7 @@ router.post('/login', credentialLoginLimiter, async (req, res) => {
         }
         await user.save().catch(() => {});
       }
-      // A single generic response prevents account enumeration.
+      // A single generic response prevents account and role enumeration.
       return res.status(401).json({ success: false, error: 'Invalid or inactive login' });
     }
 
@@ -82,12 +83,17 @@ router.post('/login', credentialLoginLimiter, async (req, res) => {
     });
 
     res.set('Cache-Control', 'no-store');
-    res.json({ success: true, token, user: publicUser(user, false) });
+    res.json({ success: true, token, user: publicUser(user, Boolean(hasAdminRole)) });
   } catch (err) {
     console.error('Credential auth error:', err);
     res.status(500).json({ success: false, error: 'Authentication failed' });
   }
-});
+};
+
+// Separate endpoints keep customer and administration intent explicit. Both
+// share the same hardened verification and administrator-controlled sessions.
+router.post('/login', credentialLoginLimiter, credentialLogin());
+router.post('/admin-login', credentialLoginLimiter, credentialLogin({ requireAdmin: true }));
 
 // Authenticate via Telegram WebApp initData
 router.post('/telegram', async (req, res) => {
