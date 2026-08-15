@@ -150,10 +150,18 @@ app.use('/api/*', (req, res) => {
   res.status(404).json({ error: 'API endpoint not found - Check /health', code: 404 });
 });
 
-// SOCKET.IO
+// SOCKET.IO — admin events contain customer/order details, so joining the
+// room requires a valid admin JWT. A plain `admin_join` event is never enough.
+const { authenticateAdminSocket } = require('./middlewares/auth');
+io.use(async (socket, next) => {
+  const user = await authenticateAdminSocket(socket.handshake.auth?.token);
+  if (!user) return next(new Error('Unauthorized socket'));
+  socket.data.adminUser = { telegramId: user.telegramId, role: user.role };
+  next();
+});
 io.on('connection', (socket) => {
-  logger.info(`Socket connected: ${socket.id} 🎮`);
-  socket.on('admin_join', () => socket.join('admin_room'));
+  logger.info(`Authenticated admin socket connected: ${socket.id}`);
+  socket.join('admin_room');
   socket.on('disconnect', () => logger.info(`Socket disconnected: ${socket.id}`));
 });
 

@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
+import './admin-login.css';
 
 const tg = window.Telegram?.WebApp;
 if (tg) {

@@ -31,7 +31,7 @@ router.get('/', authMiddleware, adminOnly, requirePermission('settings'), async 
 // Only these settings may be changed through the API. Anything else (even a
 // typo) is rejected instead of silently creating junk keys in the database.
 const ALLOWED_SETTING_KEYS = new Set([
-  'bot_name', 'bot_username', 'channel_username', 'support_username', 'channel_id',
+  'bot_name', 'bot_username', 'channel_username', 'support_username', 'channel_id', 'access_login_enabled',
   'ui_theme_preset', 'ui_welcome_badge_ar', 'ui_welcome_badge_en', 'ui_welcome_title_ar',
   'ui_welcome_title_en', 'ui_welcome_subtitle_ar', 'ui_welcome_subtitle_en',
   'ui_footer_note_ar', 'ui_footer_note_en', 'admin_portal_label_ar', 'admin_portal_label_en',

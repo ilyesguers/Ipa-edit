@@ -30,13 +30,13 @@ const useStore = create((set, get) => ({
   // User
   user: null,
   token: null,
-  isLoading: true,
+  isLoading: false,
   isAuthenticated: false,
   locale: SAVED_LOCALE || 'ar',
 
-  // First visit deliberately stops at the language screen. The rest of the
-  // mini app is not rendered until an explicit choice is available.
-  needsLanguageSelect: !SAVED_LOCALE,
+  // Every fresh entry starts with language selection, followed by the secure
+  // administrator-issued login. Nothing from the store mounts before both.
+  needsLanguageSelect: true,
   showLanguagePicker: false,
 
   // Navigation
@@ -45,6 +45,8 @@ const useStore = create((set, get) => ({
 
   // Public settings / branding
   publicSettings: {},
+  publicSettingsLoaded: false,
+  authError: '',
 
   // Shop state
   categories: [],
@@ -69,7 +71,8 @@ const useStore = create((set, get) => ({
   // Actions
   setUser: (user) => set({ user }),
   setToken: (token) => {
-    try { localStorage.setItem('token', token); } catch (_) {}
+    // Keep store credentials in memory only. A refresh returns to the language
+    // and login gates instead of silently reusing a browser-stored bearer token.
     api.defaults.headers.common.Authorization = `Bearer ${token}`;
     set({ token });
   },
@@ -99,49 +102,56 @@ const useStore = create((set, get) => ({
   fetchPublicSettings: async () => {
     try {
       const res = await api.get('/settings/public');
-      set({ publicSettings: res.data.data || {} });
+      set({ publicSettings: res.data.data || {}, publicSettingsLoaded: true });
       return res.data.data || {};
     } catch (_) {
-      set({ publicSettings: {} });
+      set({ publicSettings: {}, publicSettingsLoaded: true });
       return {};
     }
   },
 
-  // Auth
-  login: async (initData) => {
+  // Auth — credentials are generated and controlled by the administrator.
+  credentialLogin: async (username, password) => {
     set({ isLoading: true });
+    try {
+      const res = await api.post('/auth/login', { username, password });
+      const { token, user } = res.data;
+      get().setToken(token);
+      const locale = get().locale;
+      set({
+        user: { ...user, preferredLanguage: locale, languageSelected: true },
+        isAuthenticated: true,
+        isLoading: false
+      });
+      api.put('/users/me', { preferredLanguage: locale }).catch(() => {});
+      return user;
+    } catch (err) {
+      set({ isLoading: false, isAuthenticated: false, user: null });
+      throw err;
+    }
+  },
+  telegramStoreLogin: async () => {
+    const initData = window.Telegram?.WebApp?.initData || '';
+    if (!initData) {
+      set({ authError: 'telegram_required' });
+      return null;
+    }
+    set({ isLoading: true, authError: '' });
     try {
       const res = await api.post('/auth/telegram', { initData });
       const { token, user } = res.data;
       get().setToken(token);
-
-      const savedLocale = readStoredLocale();
-      const hasLocalChoice = Boolean(savedLocale);
-      const hasServerChoice = Boolean(user.languageSelected);
-      const locale = hasLocalChoice
-        ? savedLocale
-        : normalizeLocale(user.preferredLanguage || window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code || get().locale);
-      const hasChoice = hasLocalChoice || hasServerChoice;
-
-      if (!hasLocalChoice && hasServerChoice) persistLocale(locale);
-      set({
-        user: { ...user, preferredLanguage: locale, languageSelected: hasChoice },
-        locale,
-        needsLanguageSelect: !hasChoice,
-        isAuthenticated: true,
-        isLoading: false
-      });
-
-      // A language picked in the web gate can beat the authentication request.
-      // Persist it after auth without making the UI wait for a second network call.
-      if (hasLocalChoice && (!hasServerChoice || normalizeLocale(user.preferredLanguage) !== locale)) {
-        api.put('/users/me', { preferredLanguage: locale }).catch(() => {});
-      }
+      set({ user, isAuthenticated: true, isLoading: false, authError: '' });
       return user;
-    } catch (err) {
-      set({ isLoading: false });
-      throw err;
+    } catch (error) {
+      set({ isLoading: false, isAuthenticated: false, authError: 'telegram_failed' });
+      throw error;
     }
+  },
+  logout: () => {
+    try { localStorage.removeItem('token'); } catch (_) {}
+    delete api.defaults.headers.common.Authorization;
+    set({ user: null, token: null, isAuthenticated: false, activeTab: 'products', authError: '' });
   },
 
   // Categories (cached 60s — instant tab switching, no repeated network hits)

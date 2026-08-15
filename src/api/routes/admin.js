@@ -10,7 +10,17 @@ const Order = require('../../models/Order');
 const Coupon = require('../../models/Coupon');
 const Settings = require('../../models/Settings');
 const Broadcast = require('../../models/Broadcast');
+const WalletTopup = require('../../models/WalletTopup');
 const orderService = require('../../services/orderService');
+const { creditTopup } = require('../../services/walletTopupService');
+const crypto = require('crypto');
+const {
+  normalizeAccessUsername,
+  validateAccessUsername,
+  validatePassword,
+  hashPassword,
+  generatePassword
+} = require('../../utils/passwords');
 
 router.use(authMiddleware, adminOnly);
 
@@ -77,6 +87,7 @@ router.use('/games', requirePermission('products'));
 router.use('/products', requirePermission('products'));
 router.use('/keys', requirePermission('inventory'));
 router.use('/users', requirePermission('users'));
+router.use('/wallet-topups', requirePermission('users'));
 router.use('/coupons', requirePermission('coupons'));
 router.use('/broadcast', requirePermission('broadcast'));
 router.use('/broadcasts', requirePermission('broadcast'));
@@ -410,7 +421,135 @@ router.put('/keys/:id', async (req, res) => {
   }
 });
 
+// ── WALLET TOP-UPS ─────────────────────────────────────────────────────────
+router.get('/wallet-topups', async (req, res) => {
+  try {
+    const query = {};
+    if (req.query.status) query.status = String(req.query.status);
+    const data = await WalletTopup.find(query).sort({ createdAt: -1 }).limit(100);
+    res.json({ success: true, data });
+  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+router.post('/wallet-topups/:id/approve', async (req, res) => {
+  try {
+    const result = await creditTopup(req.params.id, { verifiedBy: req.telegramId });
+    res.json({ success: true, data: { topup: result.topup, balance: result.user?.balance } });
+  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+});
+
+router.post('/wallet-topups/:id/reject', async (req, res) => {
+  try {
+    const topup = await WalletTopup.findOneAndUpdate(
+      { _id: req.params.id, status: { $in: ['pending', 'processing'] } },
+      { status: 'rejected', adminNotes: String(req.body.reason || 'تم رفض إثبات الدفع').slice(0, 500), verifiedBy: req.telegramId, verifiedAt: new Date() },
+      { new: true }
+    );
+    if (!topup) return res.status(404).json({ success: false, error: 'طلب الشحن غير موجود أو تمت معالجته' });
+    res.json({ success: true, data: topup });
+  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+});
+
 // ── USERS ──
+// ── Administrator-issued store logins ─────────────────────────────────────
+// Creates a standalone customer without requiring Telegram. A negative numeric
+// ID preserves compatibility with the existing orders/wallet data model.
+router.post('/users/access-account', async (req, res) => {
+  try {
+    const accessUsername = normalizeAccessUsername(req.body.accessUsername);
+    const password = String(req.body.password || '') || generatePassword();
+    const firstName = String(req.body.firstName || '').trim();
+    if (!firstName || firstName.length > 64) return res.status(400).json({ success: false, error: 'الاسم الأول مطلوب' });
+    if (!validateAccessUsername(accessUsername)) return res.status(400).json({ success: false, error: 'اسم الدخول يجب أن يكون 4-32 حرفاً إنجليزياً ويمكن استخدام . _ -' });
+    if (!validatePassword(password)) return res.status(400).json({ success: false, error: 'كلمة المرور يجب أن تكون بين 10 و128 حرفاً' });
+    if (await User.exists({ accessUsername })) return res.status(409).json({ success: false, error: 'اسم الدخول مستخدم بالفعل' });
+
+    let telegramId;
+    do {
+      telegramId = -crypto.randomInt(100000000, 2147483647);
+    } while (await User.exists({ telegramId }));
+
+    const preferredLanguage = String(req.body.preferredLanguage || 'ar').toLowerCase().split('-')[0];
+    const { isSupportedLanguage } = require('../../utils/languages');
+    if (!isSupportedLanguage(preferredLanguage)) return res.status(400).json({ success: false, error: 'لغة غير مدعومة' });
+    const balance = Number(req.body.balance || 0);
+    if (!Number.isFinite(balance) || balance < 0 || balance > 1000000) return res.status(400).json({ success: false, error: 'الرصيد غير صحيح' });
+    const sessionDays = Math.min(30, Math.max(1, parseInt(req.body.accessSessionDays, 10) || 7));
+    const expiresAt = req.body.accessExpiresAt ? new Date(req.body.accessExpiresAt) : null;
+    if (expiresAt && Number.isNaN(expiresAt.getTime())) return res.status(400).json({ success: false, error: 'تاريخ الانتهاء غير صحيح' });
+
+    const user = await User.create({
+      telegramId,
+      firstName,
+      lastName: String(req.body.lastName || '').trim().slice(0, 64),
+      username: null,
+      phone: String(req.body.phone || '').trim().slice(0, 32) || null,
+      balance,
+      totalDeposited: balance,
+      balanceHistory: balance > 0 ? [{ type: 'credit', amount: balance, description: 'الميزانية الأولية عند إنشاء الحساب', adminId: req.telegramId }] : [],
+      preferredLanguage,
+      languageSelected: true,
+      adminNotes: String(req.body.adminNotes || '').slice(0, 1000),
+      accessUsername,
+      accessPasswordHash: await hashPassword(password),
+      accessEnabled: req.body.accessEnabled !== false,
+      accessExpiresAt: expiresAt,
+      accessSessionDays: sessionDays,
+      accessCreatedBy: req.telegramId,
+      accessCreatedAt: new Date()
+    });
+
+    const safeUser = user.toObject();
+    delete safeUser.accessPasswordHash;
+    delete safeUser.accessFailedAttempts;
+    delete safeUser.accessLockedUntil;
+    res.status(201).json({ success: true, data: safeUser, credentials: { username: accessUsername, password } });
+  } catch (err) {
+    const message = err?.code === 11000 ? 'اسم الدخول مستخدم بالفعل' : err.message;
+    res.status(err?.code === 11000 ? 409 : 400).json({ success: false, error: message });
+  }
+});
+
+router.patch('/users/:id/access', async (req, res) => {
+  try {
+    const user = await User.findOne({ telegramId: parseInt(req.params.id, 10) }).select('+accessPasswordHash');
+    if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+
+    if (req.body.accessUsername !== undefined) {
+      const username = normalizeAccessUsername(req.body.accessUsername);
+      if (!validateAccessUsername(username)) return res.status(400).json({ success: false, error: 'اسم الدخول غير صحيح' });
+      const duplicate = await User.exists({ accessUsername: username, _id: { $ne: user._id } });
+      if (duplicate) return res.status(409).json({ success: false, error: 'اسم الدخول مستخدم بالفعل' });
+      user.accessUsername = username;
+    }
+    if (req.body.password) {
+      if (!validatePassword(req.body.password)) return res.status(400).json({ success: false, error: 'كلمة المرور يجب أن تكون 10 أحرف على الأقل' });
+      user.accessPasswordHash = await hashPassword(req.body.password);
+      user.accessSessionVersion = Number(user.accessSessionVersion || 0) + 1;
+    }
+    if (req.body.accessEnabled !== undefined) user.accessEnabled = Boolean(req.body.accessEnabled);
+    if (req.body.accessExpiresAt !== undefined) {
+      const date = req.body.accessExpiresAt ? new Date(req.body.accessExpiresAt) : null;
+      if (date && Number.isNaN(date.getTime())) return res.status(400).json({ success: false, error: 'تاريخ الانتهاء غير صحيح' });
+      user.accessExpiresAt = date;
+    }
+    if (req.body.accessSessionDays !== undefined) user.accessSessionDays = Math.min(30, Math.max(1, parseInt(req.body.accessSessionDays, 10) || 7));
+    if (req.body.revokeSessions === true) user.accessSessionVersion = Number(user.accessSessionVersion || 0) + 1;
+    if (user.accessEnabled && (!user.accessUsername || !user.accessPasswordHash)) {
+      return res.status(400).json({ success: false, error: 'يجب تعيين اسم دخول وكلمة مرور قبل تفعيل الحساب' });
+    }
+    if (!user.accessCreatedAt) { user.accessCreatedAt = new Date(); user.accessCreatedBy = req.telegramId; }
+    await user.save();
+    const safeUser = user.toObject();
+    delete safeUser.accessPasswordHash;
+    delete safeUser.accessFailedAttempts;
+    delete safeUser.accessLockedUntil;
+    res.json({ success: true, data: safeUser });
+  } catch (err) {
+    res.status(err?.code === 11000 ? 409 : 400).json({ success: false, error: err?.code === 11000 ? 'اسم الدخول مستخدم بالفعل' : err.message });
+  }
+});
+
 router.get('/users', async (req, res) => {
   try {
     const { search, role, banned } = req.query;
@@ -421,6 +560,7 @@ router.get('/users', async (req, res) => {
       const safe = escapeRegExp(search);
       query.$or = [
         { username: { $regex: safe, $options: 'i' } },
+        { accessUsername: { $regex: safe, $options: 'i' } },
         { firstName: { $regex: safe, $options: 'i' } },
         { telegramId: isNaN(search) ? -1 : parseInt(search) }
       ];
@@ -1011,7 +1151,7 @@ router.post('/orders/:id/refund', async (req, res) => {
       const Key = require('../../models/Key');
       const Product = require('../../models/Product');
       try {
-        await refundStarPayment(order.user, order.telegramPaymentChargeId);
+        await refundStarPayment(order.starsPaidByTelegramId || order.user, order.telegramPaymentChargeId);
       } catch (starsErr) {
         return res.status(400).json({ success: false, error: `فشل استرجاع النجوم من تيليجرام: ${starsErr.message}` });
       }

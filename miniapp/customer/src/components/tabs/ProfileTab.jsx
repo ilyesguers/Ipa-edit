@@ -7,11 +7,13 @@ import api from '../../utils/api';
 import { cachedFetch } from '../../utils/cache';
 import { haptic } from '../../utils/haptic';
 import { playSound, useSoundStore } from '../../utils/sound';
+import WalletTopupSheet from '../WalletTopupSheet';
 
 export default function ProfileTab() {
-  const { user, locale, toggleLocale, setActiveTab, publicSettings } = useStore();
+  const { user, locale, toggleLocale, setActiveTab, publicSettings, logout } = useStore();
   const { muted, setMuted, volume, setVolume } = useSoundStore();
   const [balanceHistory, setBalanceHistory] = useState([]);
+  const [showTopup, setShowTopup] = useState(false);
   const dateLocale = t(locale, 'dateLocale');
 
   useEffect(() => {
@@ -58,13 +60,17 @@ export default function ProfileTab() {
         <span className="profile-summary__avatar"><PremiumIcon name="user" size="1.8rem" /></span>
         <div className="min-w-0 flex-1">
           <h1>{user?.firstName || t(locale, 'user')}</h1>
-          <p>@{user?.username || 'guest'}</p>
+          <p>@{user?.accessUsername || user?.username || 'user'}</p>
         </div>
         <div className="profile-summary__balance">
           <small>{t(locale, 'balance')}</small>
           <strong>${Number(user?.balance || 0).toFixed(2)}</strong>
         </div>
       </section>
+
+      <button type="button" onClick={() => { haptic.medium(); playSound('tap'); setShowTopup(true); }} className="profile-admin-link" style={{ width: '100%', minHeight: 52, background: 'linear-gradient(100deg,rgba(16,185,129,.18),rgba(14,165,233,.10))' }}>
+        <PremiumIcon name="wallet" /> {locale === 'ar' ? 'إضافة ميزانية للحساب — نجوم وطرق دفع' : 'Add account balance — Stars & payments'}
+      </button>
 
       <section className="profile-stats">
         {stats.map((stat) => (
@@ -176,11 +182,15 @@ export default function ProfileTab() {
         </div>
       </section>
 
-      {user?.role === 'admin' && (
+      {user?.isAdmin && (
         <a href="/admin#dashboard" target="_blank" rel="noreferrer" className="profile-admin-link">
           <PremiumIcon name="admin" /> {t(locale, 'adminPanel')}
         </a>
       )}
+
+      <button type="button" onClick={() => { playSound('tap'); logout(); }} className="profile-admin-link" style={{ width: '100%', color: '#fca5a5', borderColor: 'rgba(248,113,113,.25)', background: 'rgba(127,29,29,.08)' }}>
+        <PremiumIcon name="cancel" /> {locale === 'ar' ? 'تسجيل الخروج الآمن' : 'Secure sign out'}
+      </button>
 
       {balanceHistory.length > 0 && (
         <section>
@@ -203,6 +213,8 @@ export default function ProfileTab() {
           </div>
         </section>
       )}
+
+      <WalletTopupSheet open={showTopup} onClose={() => setShowTopup(false)} />
     </div>
   );
 }

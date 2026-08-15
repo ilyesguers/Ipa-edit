@@ -4,7 +4,7 @@ const router = express.Router();
 const WheelGame = require('../../models/WheelGame');
 const WheelSpin = require('../../models/WheelSpin');
 const User = require('../../models/User');
-const { authMiddleware, adminOnly } = require('../../middlewares/auth');
+const { authMiddleware, credentialOnly, adminOnly } = require('../../middlewares/auth');
 const logger = require('../../utils/logger');
 
 const clampPage = (v, def = 1) => Math.min(Math.max(parseInt(v, 10) || def, 1), 10000);
@@ -125,7 +125,7 @@ router.delete('/:id', authMiddleware, adminOnly, async (req, res) => {
 
 // ── Customer routes ──
 
-router.get('/active', async (req, res) => {
+router.get('/active', authMiddleware, credentialOnly, async (req, res) => {
   try {
     const wheels = await WheelGame.find({ isActive: true, isHidden: false })
       .select('-createdBy')
@@ -136,7 +136,7 @@ router.get('/active', async (req, res) => {
   }
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', authMiddleware, credentialOnly, async (req, res) => {
   try {
     const wheel = await WheelGame.findById(req.params.id).select('-createdBy');
     if (!wheel || !wheel.isActive) return res.status(404).json({ success: false, error: 'Wheel not found' });
@@ -146,7 +146,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.post('/:id/spin', authMiddleware, async (req, res) => {
+router.post('/:id/spin', authMiddleware, credentialOnly, async (req, res) => {
   try {
     const wheel = await WheelGame.findById(req.params.id);
     if (!wheel || !wheel.isActive) return res.status(404).json({ success: false, error: 'العجلة غير موجودة أو معطّلة' });

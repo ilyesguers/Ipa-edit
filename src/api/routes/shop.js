@@ -4,7 +4,11 @@ const Category = require('../../models/Category');
 const Game = require('../../models/Game');
 const Product = require('../../models/Product');
 const Key = require('../../models/Key');
-const { authMiddleware } = require('../../middlewares/auth');
+const { authMiddleware, credentialOnly } = require('../../middlewares/auth');
+
+// The catalogue is private: an administrator-issued account is required even
+// for browsing, so bypassing the React login screen cannot expose the store.
+router.use(authMiddleware, credentialOnly);
 
 // GET all categories
 router.get('/categories', async (req, res) => {

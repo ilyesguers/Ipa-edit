@@ -46,6 +46,7 @@ const seedDefaults = async () => {
     { key: 'bot_username', value: 'your_bot', description: 'Bot username' },
     { key: 'welcome_message', value: 'منتجات أصلية 100% وتسليم فوري على مدار الساعة.\nاختر «فتح المتجر» للبدء.', description: 'Welcome message' },
     { key: 'maintenance_mode', value: false, description: 'Maintenance mode toggle' },
+    { key: 'access_login_enabled', value: true, description: 'Require administrator-issued login before opening the customer store' },
     { key: 'maintenance_message', value: '🔧 المتجر تحت الصيانة مؤقتاً — نعود للعمل خلال دقائق. / Maintenance in progress — back shortly.', description: 'Maintenance message' },
     { key: 'support_username', value: 'support', description: 'Support username' },
     { key: 'channel_username', value: '', description: 'Telegram channel username' },
