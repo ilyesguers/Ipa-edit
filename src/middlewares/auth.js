@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const User = require('../models/User');
+const { getCached: getCachedSetting } = require('../utils/settingsCache');
 const logger = require('../utils/logger');
 
 const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim())).filter(Boolean);
@@ -138,12 +139,20 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-const credentialOnly = (req, res, next) => {
-  if (req.authToken?.authType !== 'credential') {
-    return res.status(401).json({ success: false, error: 'Store login required' });
+// Store access supports two administrator-controlled modes:
+// 1) issued username/password credentials (default), or
+// 2) Telegram identity only while the owner has explicitly hidden the login gate.
+const storeAccessOnly = async (req, res, next) => {
+  if (req.authToken?.authType === 'credential') return next();
+  if (req.authToken?.authType === 'telegram_store') {
+    const loginEnabled = await getCachedSetting('access_login_enabled', true);
+    if (loginEnabled === false || String(loginEnabled) === 'false') return next();
   }
-  next();
+  return res.status(401).json({ success: false, error: 'Store login required' });
 };
+
+// Backward-compatible alias for internal imports while routes migrate.
+const credentialOnly = storeAccessOnly;
 
 const adminOnly = (req, res, next) => {
   if (!req.isAdmin) {
@@ -184,4 +193,22 @@ const generateToken = (telegramId, options = {}) => {
   return jwt.sign(payload, getJwtSecret(), { expiresIn: options.expiresIn || '7d' });
 };
 
-module.exports = { authMiddleware, credentialOnly, adminOnly, requirePermission, hasPermission, ALL_PERMISSIONS, generateToken, verifyTelegramWebApp };
+const authenticateAdminSocket = async (token) => {
+  if (!token) return null;
+  try {
+    const decoded = jwt.verify(String(token), getJwtSecret());
+    const user = await User.findOne({ telegramId: Number(decoded.telegramId) });
+    if (!user || user.isBanned) return null;
+    const isAdmin = ADMIN_IDS.includes(user.telegramId) || ['admin', 'superadmin'].includes(user.role);
+    if (!isAdmin) return null;
+    if (decoded.authType === 'credential') {
+      const expired = user.accessExpiresAt && new Date(user.accessExpiresAt).getTime() <= Date.now();
+      if (!user.accessEnabled || expired || Number(decoded.sessionVersion) !== Number(user.accessSessionVersion || 0)) return null;
+    }
+    return user;
+  } catch (_) {
+    return null;
+  }
+};
+
+module.exports = { authMiddleware, credentialOnly, storeAccessOnly, adminOnly, requirePermission, hasPermission, ALL_PERMISSIONS, generateToken, verifyTelegramWebApp, authenticateAdminSocket };

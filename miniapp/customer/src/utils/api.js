@@ -17,6 +17,8 @@ api.interceptors.response.use(
   (err) => {
     if (err.response?.status === 401) {
       localStorage.removeItem('token');
+      const isLoginRequest = String(err.config?.url || '').includes('/auth/');
+      if (!isLoginRequest) window.dispatchEvent(new CustomEvent('customer-auth-expired'));
     }
     return Promise.reject(err);
   }

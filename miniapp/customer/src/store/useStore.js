@@ -45,6 +45,8 @@ const useStore = create((set, get) => ({
 
   // Public settings / branding
   publicSettings: {},
+  publicSettingsLoaded: false,
+  authError: '',
 
   // Shop state
   categories: [],
@@ -100,10 +102,10 @@ const useStore = create((set, get) => ({
   fetchPublicSettings: async () => {
     try {
       const res = await api.get('/settings/public');
-      set({ publicSettings: res.data.data || {} });
+      set({ publicSettings: res.data.data || {}, publicSettingsLoaded: true });
       return res.data.data || {};
     } catch (_) {
-      set({ publicSettings: {} });
+      set({ publicSettings: {}, publicSettingsLoaded: true });
       return {};
     }
   },
@@ -128,10 +130,28 @@ const useStore = create((set, get) => ({
       throw err;
     }
   },
+  telegramStoreLogin: async () => {
+    const initData = window.Telegram?.WebApp?.initData || '';
+    if (!initData) {
+      set({ authError: 'telegram_required' });
+      return null;
+    }
+    set({ isLoading: true, authError: '' });
+    try {
+      const res = await api.post('/auth/telegram', { initData });
+      const { token, user } = res.data;
+      get().setToken(token);
+      set({ user, isAuthenticated: true, isLoading: false, authError: '' });
+      return user;
+    } catch (error) {
+      set({ isLoading: false, isAuthenticated: false, authError: 'telegram_failed' });
+      throw error;
+    }
+  },
   logout: () => {
     try { localStorage.removeItem('token'); } catch (_) {}
     delete api.defaults.headers.common.Authorization;
-    set({ user: null, token: null, isAuthenticated: false, activeTab: 'products' });
+    set({ user: null, token: null, isAuthenticated: false, activeTab: 'products', authError: '' });
   },
 
   // Categories (cached 60s — instant tab switching, no repeated network hits)

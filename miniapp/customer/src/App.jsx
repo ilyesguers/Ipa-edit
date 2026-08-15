@@ -7,6 +7,7 @@ import LoadingScreen from './components/LoadingScreen';
 import LanguagePicker from './components/LanguagePicker';
 import LoginGate from './components/LoginGate';
 import SpaceBackground from './components/SpaceBackground';
+import PremiumIcon from './components/PremiumIcon';
 import { isRTL } from './i18n';
 import { initSoundUnlock } from './utils/sound';
 
@@ -36,6 +37,11 @@ const TAB_COMPONENTS = {
 export default function App() {
   const {
     fetchPublicSettings,
+    telegramStoreLogin,
+    logout,
+    publicSettings,
+    publicSettingsLoaded,
+    authError,
     isLoading,
     isAuthenticated,
     activeTab,
@@ -70,6 +76,19 @@ export default function App() {
   }, [fetchPublicSettings]);
 
   useEffect(() => {
+    const expireSession = () => logout();
+    window.addEventListener('customer-auth-expired', expireSession);
+    return () => window.removeEventListener('customer-auth-expired', expireSession);
+  }, [logout]);
+
+  useEffect(() => {
+    const loginEnabled = publicSettings?.access_login_enabled !== false && String(publicSettings?.access_login_enabled) !== 'false';
+    if (publicSettingsLoaded && !loginEnabled && !needsLanguageSelect && !isAuthenticated && !isLoading && !authError) {
+      telegramStoreLogin().catch(() => {});
+    }
+  }, [publicSettingsLoaded, publicSettings?.access_login_enabled, needsLanguageSelect, isAuthenticated, isLoading, authError, telegramStoreLogin]);
+
+  useEffect(() => {
     const rtl = isRTL(locale);
     document.documentElement.lang = locale;
     document.documentElement.dir = rtl ? 'rtl' : 'ltr';
@@ -89,8 +108,26 @@ export default function App() {
   // This must stay before LoadingScreen and the shell. On first use the
   // language picker is literally the only rendered application interface.
   if (needsLanguageSelect || (showLanguagePicker && !isAuthenticated)) return <LanguagePicker blocking />;
-  if (!isAuthenticated) return <LoginGate />;
-  if (isLoading) return <LoadingScreen />;
+  if (!publicSettingsLoaded || isLoading) return <LoadingScreen />;
+  const loginEnabled = publicSettings?.access_login_enabled !== false && String(publicSettings?.access_login_enabled) !== 'false';
+  if (!isAuthenticated && loginEnabled) return <LoginGate />;
+  if (!isAuthenticated && !loginEnabled) {
+    const support = String(publicSettings?.support_username || 'support').replace(/^@/, '').replace(/[^a-zA-Z0-9_]/g, '');
+    return (
+      <main className="login-gate" dir={isRTL(locale) ? 'rtl' : 'ltr'}>
+        <div className="login-gate__aurora login-gate__aurora--one" />
+        <div className="login-gate__grid" />
+        <section className="login-card">
+          <div className="login-card__shield"><PremiumIcon name="shield" size="1.7rem" /><span /></div>
+          <p className="login-card__eyebrow">TELEGRAM ACCESS</p>
+          <h1>{locale === 'ar' ? 'الدخول عبر تيليجرام' : 'Open with Telegram'}</h1>
+          <p className="login-card__subtitle">{locale === 'ar' ? 'أخفى الأدمن شاشة Login. افتح المتجر من زر البوت ليتم التحقق من هويتك بأمان.' : 'The admin disabled the login screen. Open the store from the bot for secure identity verification.'}</p>
+          <button type="button" className="login-form__submit" onClick={() => telegramStoreLogin().catch(() => {})}><span>{locale === 'ar' ? 'إعادة التحقق' : 'Verify again'}</span></button>
+          <a className="login-card__support" href={`https://t.me/${support || 'support'}`} target="_blank" rel="noreferrer"><PremiumIcon name="chat" />{locale === 'ar' ? 'تواصل مع الدعم' : 'Contact support'}</a>
+        </section>
+      </main>
+    );
+  }
 
   const ActiveTab = TAB_COMPONENTS[activeTab] || ProductsTab;
 

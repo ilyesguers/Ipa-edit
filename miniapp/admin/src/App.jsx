@@ -52,6 +52,8 @@ export default function App() {
   const [authError, setAuthError] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [maintenance, setMaintenance] = useState(false);
+  const [loginGateEnabled, setLoginGateEnabled] = useState(true);
+  const [loginGateBusy, setLoginGateBusy] = useState(false);
   const [unreadOrders, setUnreadOrders] = useState(0);
 
   useEffect(() => {
@@ -85,8 +87,10 @@ export default function App() {
 
   useEffect(() => {
     if (!user?.isAdmin) return undefined;
-    const socket = io('/', { transports: ['websocket', 'polling'] });
-    socket.on('connect', () => socket.emit('admin_join'));
+    const socket = io('/', {
+      transports: ['websocket', 'polling'],
+      auth: { token: localStorage.getItem('admin_token') || '' }
+    });
     socket.on('new_order', (data) => {
       setUnreadOrders((count) => count + 1);
       toast(
@@ -189,7 +193,12 @@ export default function App() {
 
   useEffect(() => {
     if (!user?.isAdmin) return;
-    api.get('/settings').then((response) => setMaintenance(Boolean(response.data.data?.maintenance_mode))).catch(() => {});
+    api.get('/settings').then((response) => {
+      const maintenanceValue = response.data.data?.maintenance_mode;
+      setMaintenance(maintenanceValue === true || String(maintenanceValue) === 'true');
+      const value = response.data.data?.access_login_enabled;
+      setLoginGateEnabled(value !== false && String(value) !== 'false');
+    }).catch(() => {});
   }, [user?.isAdmin]);
 
   const toggleMaintenance = async () => {
@@ -201,6 +210,24 @@ export default function App() {
     } catch (_) {
       toast.error('تعذر تعديل وضع الصيانة');
     }
+  };
+
+  const toggleLoginGate = async () => {
+    if (loginGateBusy) return;
+    const next = !loginGateEnabled;
+    const message = next
+      ? 'سيظهر Login للمستخدمين ولن يدخل أحد دون حساب صادر من الإدارة.'
+      : 'ستختفي شاشة Login وسيصبح الدخول متاحاً فقط عبر تحقق تيليجرام. هل تريد المتابعة؟';
+    if (!window.confirm(message)) return;
+    setLoginGateBusy(true);
+    try {
+      await api.put('/settings/access_login_enabled', { value: next });
+      setLoginGateEnabled(next);
+      toast.success(next ? 'تم إظهار Login وتفعيله' : 'تم إخفاء Login — الدخول عبر تيليجرام فقط');
+    } catch (_) {
+      toast.error('تعذر تغيير حالة Login');
+    }
+    setLoginGateBusy(false);
   };
 
   if (loading) return <LoadingScreen />;
@@ -240,6 +267,7 @@ export default function App() {
           </div>
           <div className="admin-topbar__actions">
             <a href="/customer" target="_blank" rel="noreferrer" className="admin-topbar__store-link"><AdminIcon name="store" /><span>المتجر</span></a>
+            <button type="button" onClick={toggleLoginGate} disabled={loginGateBusy} className={`admin-topbar__login-toggle ${loginGateEnabled ? 'is-active' : 'is-hidden'}`} title={loginGateEnabled ? 'Login ظاهر ومطلوب' : 'Login مخفي — الدخول عبر تيليجرام'}><AdminIcon name="shield" /><span>{loginGateEnabled ? 'Login ظاهر' : 'Login مخفي'}</span><i /></button>
             <button type="button" onClick={toggleMaintenance} className={`admin-topbar__maintenance ${maintenance ? 'is-active' : ''}`} title="وضع الصيانة"><AdminIcon name="settings" /><span>{maintenance ? 'الصيانة مفعلة' : 'الصيانة'}</span></button>
             <span className="admin-topbar__user" title={user?.firstName}><i />{user?.firstName}</span>
             <button type="button" className="admin-topbar__maintenance" title="تسجيل الخروج" onClick={() => { localStorage.removeItem('admin_token'); setUser(null); setAuthError(false); }}><AdminIcon name="close" /><span>خروج</span></button>

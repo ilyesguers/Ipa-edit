@@ -132,7 +132,7 @@ router.post('/telegram', async (req, res) => {
       return res.status(403).json({ success: false, error: 'User is banned', reason: user.banReason });
     }
 
-    const token = generateToken(user.telegramId);
+    const token = generateToken(user.telegramId, { authType: (isAdmin || ['admin', 'superadmin'].includes(user.role)) ? 'telegram_admin' : 'telegram_store' });
 
     res.json({
       success: true,
