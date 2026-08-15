@@ -25,8 +25,8 @@ const Wheel = lazy(() => import('./pages/Wheel'));
 const PAGES = {
   dashboard: { component: Dashboard, title: 'لوحة التحكم', subtitle: 'نظرة مركزة على ما يحتاج المتابعة', icon: 'dashboard' },
   categories: { component: Categories, title: 'الأقسام والألعاب', subtitle: 'تنظيم مسار العرض والبيع', icon: 'categories' },
-  products: { component: Products, title: 'المنتجات', subtitle: 'الأسعار والمدد والتفاصيل', icon: 'product' },
-  inventory: { component: Inventory, title: 'المخزون', subtitle: 'إضافة المفاتيح ومتابعة التوفر', icon: 'inventory' },
+  products: { component: Products, title: 'المنتجات والأكواد', subtitle: 'المنتج والمدة والمخزون في مكان واحد', icon: 'product' },
+  inventory: { component: Inventory, title: 'المخزون المتقدم', subtitle: 'مراجعة الأكواد وحالاتها', icon: 'inventory' },
   wheel: { component: Wheel, title: 'عجلة الحظ', subtitle: 'الجوائز والألعاب التفاعلية', icon: 'gift' },
   orders: { component: Orders, title: 'الطلبات', subtitle: 'المدفوعات والتسليم', icon: 'orders' },
   users: { component: Users, title: 'المستخدمون', subtitle: 'الحسابات والأرصدة والدعم', icon: 'users' },
@@ -41,6 +41,19 @@ const parseLocationState = () => {
   const [pageRaw, searchRaw = ''] = raw.split('?');
   const page = PAGES[pageRaw] ? pageRaw : 'dashboard';
   return { page, query: Object.fromEntries(new URLSearchParams(searchRaw).entries()) };
+};
+
+// Login has its own clean URL and full-page layout. The built Express fallback
+// serves both /admin/ and /admin/login, so refresh/deep links stay reliable.
+const showLoginPath = () => {
+  if (window.location.pathname !== '/admin/login') window.history.replaceState(null, '', '/admin/login');
+  document.title = 'تسجيل دخول الإدارة | Gamer Store';
+};
+const showPanelPath = (page = 'dashboard') => {
+  if (window.location.pathname !== '/admin/' && window.location.pathname !== '/admin') {
+    window.history.replaceState(null, '', `/admin/#${page}`);
+  }
+  document.title = 'لوحة الإدارة | Gamer Store';
 };
 
 export default function App() {
@@ -61,6 +74,7 @@ export default function App() {
       setUser(null);
       setAuthError(false);
       setLoading(false);
+      showLoginPath();
       toast.error('انتهت جلسة الإدارة — سجّل الدخول من جديد');
     };
     window.addEventListener('admin-auth-expired', expireSession);
@@ -150,9 +164,11 @@ export default function App() {
     if (!nextUser?.isAdmin) {
       setAuthError('هذا الحساب لا يملك صلاحية الوصول إلى لوحة الإدارة.');
       setUser(null);
+      showLoginPath();
     } else {
       setAuthError(false);
       setUser(nextUser);
+      showPanelPath(activePage);
     }
     setLoading(false);
   };
@@ -168,6 +184,7 @@ export default function App() {
       acceptAdmin(response.data.user);
     } catch (error) {
       setAuthError(error.response?.status >= 500 ? 'تعذر الاتصال بالسيرفر. تحقق من الشبكة وحاول مرة أخرى.' : false);
+      showLoginPath();
       setLoading(false);
     }
   };
@@ -185,7 +202,10 @@ export default function App() {
         }
       }
       if (active && window.Telegram?.WebApp?.initData) return loginWithTelegram();
-      if (active) setLoading(false);
+      if (active) {
+        showLoginPath();
+        setLoading(false);
+      }
     };
     restore();
     return () => { active = false; };
@@ -266,11 +286,13 @@ export default function App() {
             </div>
           </div>
           <div className="admin-topbar__actions">
-            <a href="/customer" target="_blank" rel="noreferrer" className="admin-topbar__store-link"><AdminIcon name="store" /><span>المتجر</span></a>
-            <button type="button" onClick={toggleLoginGate} disabled={loginGateBusy} className={`admin-topbar__login-toggle ${loginGateEnabled ? 'is-active' : 'is-hidden'}`} title={loginGateEnabled ? 'Login ظاهر ومطلوب' : 'Login مخفي — الدخول عبر تيليجرام'}><AdminIcon name="shield" /><span>{loginGateEnabled ? 'Login ظاهر' : 'Login مخفي'}</span><i /></button>
-            <button type="button" onClick={toggleMaintenance} className={`admin-topbar__maintenance ${maintenance ? 'is-active' : ''}`} title="وضع الصيانة"><AdminIcon name="settings" /><span>{maintenance ? 'الصيانة مفعلة' : 'الصيانة'}</span></button>
             <span className="admin-topbar__user" title={user?.firstName}><i />{user?.firstName}</span>
-            <button type="button" className="admin-topbar__maintenance" title="تسجيل الخروج" onClick={() => { localStorage.removeItem('admin_token'); setUser(null); setAuthError(false); }}><AdminIcon name="close" /><span>خروج</span></button>
+            <div className="admin-topbar__action-dock" aria-label="إجراءات سريعة">
+              <a href="/customer" target="_blank" rel="noreferrer" className="action-green" title="فتح المتجر" aria-label="فتح المتجر"><AdminIcon name="store" /></a>
+              <button type="button" onClick={toggleLoginGate} disabled={loginGateBusy} className={loginGateEnabled ? 'action-orange' : 'action-slate'} title={loginGateEnabled ? 'دخول العملاء مفعّل' : 'دخول العملاء مخفي'} aria-label="تبديل دخول العملاء"><AdminIcon name="lock" /></button>
+              <button type="button" onClick={toggleMaintenance} className={maintenance ? 'action-amber is-active' : 'action-slate'} title={maintenance ? 'إيقاف وضع الصيانة' : 'تفعيل وضع الصيانة'} aria-label="وضع الصيانة"><AdminIcon name="refresh" /></button>
+              <button type="button" className="action-red" title="تسجيل الخروج" aria-label="تسجيل الخروج" onClick={() => { localStorage.removeItem('admin_token'); setUser(null); setAuthError(false); showLoginPath(); }}><AdminIcon name="logout" /></button>
+            </div>
           </div>
         </header>
 

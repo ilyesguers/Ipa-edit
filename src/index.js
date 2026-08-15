@@ -71,6 +71,13 @@ app.get('/', (req, res) => {
   if (hasDist) {
     return res.redirect('/customer');
   }
+  // An admin-only local build should still open a useful interface instead of
+  // returning raw service metadata. Production builds include the customer app
+  // and continue to redirect to /customer above.
+  const hasAdminDist = fs.existsSync(path.join(process.cwd(), 'miniapp', 'admin', 'dist'));
+  if (hasAdminDist) {
+    return res.redirect('/admin/login');
+  }
   res.json({
     name: 'GAMER STORE',
     version: '5.0.0',
