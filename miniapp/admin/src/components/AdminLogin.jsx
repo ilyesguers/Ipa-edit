@@ -4,22 +4,28 @@ import AdminIcon from './AdminIcon';
 
 const COPY = {
   ar: {
-    dir: 'rtl', badge: 'منطقة الإدارة المحمية', title: 'تسجيل دخول الإدارة',
-    subtitle: 'وصول مخصص للمشرفين المصرح لهم فقط. جميع المحاولات محمية ومراقبة.',
-    username: 'اسم دخول الأدمن', password: 'كلمة المرور', submit: 'فتح لوحة التحكم',
-    loading: 'جاري التحقق الآمن…', invalid: 'البيانات غير صحيحة، الحساب معطّل، أو لا يملك صلاحية الإدارة.',
-    telegram: 'الدخول الآمن عبر تيليجرام', or: 'أو استخدم حساب الإدارة',
-    note: 'ينشئ المالك بيانات دخول الأدمن من: المستخدمون ← إدارة Login.',
-    secure: 'تشفير قوي · قفل المحاولات · إبطال فوري للجلسات'
+    dir: 'rtl', langButton: 'EN', eyebrow: 'بوابة الإدارة الآمنة', title: 'أهلاً بعودتك',
+    subtitle: 'سجّل الدخول لإدارة المتجر والطلبات والمخزون من مكان واحد.',
+    username: 'اسم دخول الأدمن', password: 'كلمة المرور', submit: 'دخول لوحة التحكم',
+    loading: 'جاري التحقق…', invalid: 'بيانات الدخول غير صحيحة أو الحساب لا يملك صلاحية الإدارة.',
+    telegram: 'الدخول عبر تيليجرام', or: 'أو ببيانات الإدارة',
+    imageTitle: 'إدارة أبسط. عمل أسرع.',
+    imageText: 'كل ما يحتاجه الأدمن في لوحة واضحة وآمنة، من المنتج حتى تسليم الكود.',
+    features: ['المنتجات والمدد والأكواد معًا', 'الطلبات والمدفوعات لحظة بلحظة', 'حسابات وصلاحيات محمية'],
+    note: 'بيانات الدخول ينشئها المالك من صفحة المستخدمين.',
+    secure: 'اتصال آمن وجلسة محمية'
   },
   en: {
-    dir: 'ltr', badge: 'Protected administration area', title: 'Administrator sign in',
-    subtitle: 'Restricted to authorized administrators. Every access attempt is protected and monitored.',
-    username: 'Admin username', password: 'Password', submit: 'Open control panel',
-    loading: 'Securely verifying…', invalid: 'Invalid details, disabled account, or no administrator permission.',
-    telegram: 'Secure sign in with Telegram', or: 'or use admin credentials',
-    note: 'The owner creates admin credentials under Users → Manage Login.',
-    secure: 'Strong encryption · Attempt lockout · Instant session revocation'
+    dir: 'ltr', langButton: 'عربي', eyebrow: 'Secure admin portal', title: 'Welcome back',
+    subtitle: 'Sign in to manage your store, orders and inventory in one place.',
+    username: 'Admin username', password: 'Password', submit: 'Open dashboard',
+    loading: 'Verifying…', invalid: 'Invalid credentials or this account has no administrator access.',
+    telegram: 'Continue with Telegram', or: 'or use admin credentials',
+    imageTitle: 'Simpler management. Faster work.',
+    imageText: 'Everything an administrator needs in one clear and secure workspace, from product to key delivery.',
+    features: ['Products, durations and keys together', 'Live orders and payment management', 'Protected accounts and permissions'],
+    note: 'The owner creates credentials from the Users page.',
+    secure: 'Secure connection and protected session'
   }
 };
 
@@ -36,41 +42,76 @@ export default function AdminLogin({ onAuthenticated, onTelegramLogin }) {
   const submit = async (event) => {
     event.preventDefault();
     if (!username.trim() || !password) return setError(text.invalid);
-    setBusy(true); setError('');
+    setBusy(true);
+    setError('');
     try {
       const response = await api.post('/auth/admin-login', { username, password });
       localStorage.setItem('admin_token', response.data.token);
       onAuthenticated(response.data.user);
-    } catch (_) { setError(text.invalid); }
-    finally { setBusy(false); }
+    } catch (_) {
+      setError(text.invalid);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
     <main className="admin-login" dir={text.dir}>
-      <div className="admin-login__mesh" aria-hidden="true" />
-      <div className="admin-login__glow admin-login__glow--one" aria-hidden="true" />
-      <div className="admin-login__glow admin-login__glow--two" aria-hidden="true" />
-      <section className="admin-login__card" aria-labelledby="admin-login-title">
+      <section className="admin-login__visual" aria-label={text.imageTitle}>
+        <img src="/public/banner.png" alt="" className="admin-login__visual-image" />
+        <div className="admin-login__visual-shade" aria-hidden="true" />
+        <div className="admin-login__visual-content">
+          <span className="admin-login__visual-badge"><AdminIcon name="sparkles" /> GAMER STORE</span>
+          <h2>{text.imageTitle}</h2>
+          <p>{text.imageText}</p>
+          <div className="admin-login__features">
+            {text.features.map((feature, index) => (
+              <div key={feature}><span><AdminIcon name={['product', 'orders', 'shield'][index]} /></span><b>{feature}</b></div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="admin-login__panel">
         <header className="admin-login__brand">
-          <span><i /> GAMER STORE</span>
-          <button type="button" onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}>{language === 'ar' ? 'EN' : 'عربي'}</button>
+          <a href="/customer" aria-label="Gamer Store"><span><AdminIcon name="shield" /></span><b>GAMER STORE</b></a>
+          <button type="button" onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}>{text.langButton}</button>
         </header>
-        <div className="admin-login__crest"><AdminIcon name="shield" size="2rem" /><b>ADMIN</b></div>
-        <p className="admin-login__badge">{text.badge}</p>
-        <h1 id="admin-login-title">{text.title}</h1>
-        <p className="admin-login__subtitle">{text.subtitle}</p>
 
-        {hasTelegram && <button type="button" className="admin-login__telegram" onClick={onTelegramLogin} disabled={busy}><AdminIcon name="shield" />{text.telegram}</button>}
-        {hasTelegram && <div className="admin-login__or"><span>{text.or}</span></div>}
+        <div className="admin-login__card">
+          <span className="admin-login__eyebrow"><i />{text.eyebrow}</span>
+          <h1>{text.title}</h1>
+          <p className="admin-login__subtitle">{text.subtitle}</p>
 
-        <form className="admin-login__form" onSubmit={submit}>
-          <label><span>{text.username}</span><div><AdminIcon name="users" /><input dir="ltr" value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" autoCapitalize="none" maxLength="32" placeholder="admin.username" /></div></label>
-          <label><span>{text.password}</span><div><AdminIcon name="shield" /><input dir="ltr" type={visible ? 'text' : 'password'} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" maxLength="128" placeholder="••••••••••••" /><button type="button" onClick={() => setVisible(!visible)}>{visible ? '◉' : '○'}</button></div></label>
-          {error && <p className="admin-login__error" role="alert"><b>!</b>{error}</p>}
-          <button className="admin-login__submit" disabled={busy} type="submit"><AdminIcon name={busy ? 'refresh' : 'shield'} />{busy ? text.loading : text.submit}</button>
-        </form>
-        <p className="admin-login__note">{text.note}</p>
-        <footer><AdminIcon name="check" />{text.secure}</footer>
+          {hasTelegram && (
+            <button type="button" className="admin-login__telegram" onClick={onTelegramLogin} disabled={busy}>
+              <AdminIcon name="shield" />{text.telegram}
+            </button>
+          )}
+          {hasTelegram && <div className="admin-login__or"><span>{text.or}</span></div>}
+
+          <form className="admin-login__form" onSubmit={submit}>
+            <label>
+              <span>{text.username}</span>
+              <div><AdminIcon name="users" /><input dir="ltr" value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" autoCapitalize="none" maxLength="32" placeholder="admin.username" autoFocus /></div>
+            </label>
+            <label>
+              <span>{text.password}</span>
+              <div>
+                <AdminIcon name="lock" />
+                <input dir="ltr" type={visible ? 'text' : 'password'} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" maxLength="128" placeholder="••••••••••••" />
+                <button type="button" onClick={() => setVisible(!visible)} aria-label={visible ? 'Hide password' : 'Show password'}><AdminIcon name={visible ? 'eyeOff' : 'eye'} /></button>
+              </div>
+            </label>
+            {error && <p className="admin-login__error" role="alert"><AdminIcon name="warning" />{error}</p>}
+            <button className="admin-login__submit" disabled={busy} type="submit">
+              <AdminIcon name={busy ? 'refresh' : 'lock'} />{busy ? text.loading : text.submit}
+            </button>
+          </form>
+
+          <p className="admin-login__note"><AdminIcon name="users" />{text.note}</p>
+          <footer><AdminIcon name="check" />{text.secure}</footer>
+        </div>
       </section>
     </main>
   );

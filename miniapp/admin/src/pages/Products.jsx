@@ -1,19 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
 import ImagePicker from '../components/ImagePicker';
 import Sheet, { SheetActions } from '../components/Sheet';
+import AdminIcon from '../components/AdminIcon';
 import { haptic } from '../utils/haptic';
+import { hasPermission } from '../utils/permissions';
 
-const emptyProduct = { name: '', nameAr: '', game: '', category: '', description: '', features: [], durations: [], isActive: true, isFeatured: false, productType: 'panel_key', logo: null, banner: null };
-const emptyDuration = { name: '', nameAr: '', days: 1, price: '', isActive: true };
+const emptyProduct = {
+  name: '', nameAr: '', game: '', category: '', description: '', features: [], durations: [],
+  isActive: true, isFeatured: false, productType: 'panel_key', logo: null, banner: null
+};
+const emptyDuration = { name: '', nameAr: '', days: 1, price: '', isActive: true, pendingKeys: '' };
 
 const makeSlug = (name) => String(name || '')
-  .trim()
-  .toLowerCase()
-  .replace(/[^a-z0-9\u0600-\u06ff]+/gi, '-')
-  .replace(/^-+|-+$/g, '') || `product-${Date.now()}`;
+  .trim().toLowerCase().replace(/[^a-z0-9\u0600-\u06ff]+/gi, '-').replace(/^-+|-+$/g, '') || `product-${Date.now()}`;
 
 const normalizeDuration = (duration) => ({
   ...(duration._id ? { _id: duration._id } : {}),
@@ -21,7 +23,7 @@ const normalizeDuration = (duration) => ({
   nameAr: String(duration.nameAr || '').trim(),
   days: Math.max(1, parseInt(duration.days, 10) || 1),
   price: Math.max(0, Number.parseFloat(duration.price) || 0),
-  originalPrice: duration.originalPrice === '' || duration.originalPrice === undefined || duration.originalPrice === null ? null : Math.max(0, Number.parseFloat(duration.originalPrice) || 0),
+  originalPrice: duration.originalPrice === '' || duration.originalPrice == null ? null : Math.max(0, Number.parseFloat(duration.originalPrice) || 0),
   isActive: duration.isActive !== false,
   stockCount: Math.max(0, parseInt(duration.stockCount, 10) || 0),
   soldCount: Math.max(0, parseInt(duration.soldCount, 10) || 0),
@@ -30,18 +32,16 @@ const normalizeDuration = (duration) => ({
 
 const buildProductPayload = (form, games, editing) => {
   const selectedGame = games.find((game) => game._id === form.game);
-  const category = form.category || selectedGame?.category?._id || selectedGame?.category || '';
+  const visibleName = String(form.name || form.nameAr || '').trim();
   return {
-    name: String(form.name || '').trim(),
+    name: visibleName,
     nameAr: String(form.nameAr || '').trim(),
-    slug: editing ? (form.slug || makeSlug(form.name)) : `${makeSlug(form.name)}-${Date.now()}`,
+    slug: editing ? (form.slug || makeSlug(visibleName)) : `${makeSlug(visibleName)}-${Date.now()}`,
     game: form.game,
-    category,
-    description: String(form.description || ''),
+    category: form.category || selectedGame?.category?._id || selectedGame?.category || '',
+    description: String(form.description || '').trim(),
     features: (form.features || []).map((feature) => ({
-      text: String(feature.text || '').trim(),
-      icon: feature.icon || '✅',
-      isHighlighted: Boolean(feature.isHighlighted)
+      text: String(feature.text || '').trim(), icon: feature.icon || '✓', isHighlighted: Boolean(feature.isHighlighted)
     })).filter((feature) => feature.text),
     durations: (form.durations || []).map(normalizeDuration).filter((duration) => duration.name),
     productType: form.productType || 'panel_key',
@@ -56,449 +56,463 @@ const buildProductPayload = (form, games, editing) => {
   };
 };
 
+const parseKeys = (value = '') => {
+  const seen = new Set();
+  return String(value).split(/\r?\n/).map((key) => key.trim()).filter((key) => {
+    if (!key) return false;
+    const normalized = key.toLowerCase();
+    if (seen.has(normalized)) return false;
+    seen.add(normalized);
+    return true;
+  });
+};
+
+const cleanDurationDraft = (duration) => ({
+  ...duration,
+  name: String(duration.name || duration.nameAr || '').trim(),
+  nameAr: String(duration.nameAr || '').trim(),
+  days: Math.max(1, parseInt(duration.days, 10) || 1),
+  price: Math.max(0, parseFloat(duration.price) || 0)
+});
+
 const getMinPrice = (durations = []) => {
-  const prices = durations
-    .filter((duration) => duration.isActive !== false)
-    .map((duration) => Number(duration.price))
-    .filter(Number.isFinite);
+  const prices = durations.filter((duration) => duration.isActive !== false).map((duration) => Number(duration.price)).filter(Number.isFinite);
   return prices.length ? Math.min(...prices) : 0;
 };
 
-export default function Products() {
+export default function Products({ currentUser }) {
   const [products, setProducts] = useState([]);
   const [games, setGames] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyProduct);
   const [editing, setEditing] = useState(null);
   const [filterGame, setFilterGame] = useState('');
+  const [search, setSearch] = useState('');
   const [newDuration, setNewDuration] = useState(emptyDuration);
-  const [editingDurationIndex, setEditingDurationIndex] = useState(null); // inline duration editing
+  const [editingDurationIndex, setEditingDurationIndex] = useState(null);
   const [showDurationForm, setShowDurationForm] = useState(false);
   const [featureInput, setFeatureInput] = useState('');
   const [saving, setSaving] = useState(false);
-
-  // ── Batch selection & bulk actions ──
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkMode, setBulkMode] = useState(false);
-  const [showBulkSheet, setShowBulkSheet] = useState(false);
-  const [bulkLogo, setBulkLogo] = useState(null);
-  const [bulkBanner, setBulkBanner] = useState(null);
   const [bulkProcessing, setBulkProcessing] = useState(false);
-
-  const toggleSelect = (id) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-  const selectAll = () => {
-    if (selectedIds.size === products.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(products.map((p) => p._id)));
-    }
-  };
+  const canManageKeys = hasPermission(currentUser, 'inventory');
 
   const load = async () => {
-    const [pr, gr, cr] = await Promise.all([
-      api.get(`/admin/products${filterGame ? `?gameId=${filterGame}` : ''}`),
-      api.get('/admin/games'),
-      api.get('/admin/categories')
-    ]);
-    setProducts(pr.data.data || []);
-    setGames(gr.data.data || []);
-    setCategories(cr.data.data || []);
+    try {
+      const [productsResponse, gamesResponse] = await Promise.all([
+        api.get(`/admin/products${filterGame ? `?gameId=${filterGame}` : ''}`),
+        api.get('/admin/games')
+      ]);
+      setProducts(productsResponse.data.data || []);
+      setGames(gamesResponse.data.data || []);
+    } catch (_) {
+      toast.error('تعذر تحميل المنتجات');
+    }
   };
 
   useEffect(() => { load(); }, [filterGame]);
 
-  const handleSave = async () => {
-    if (!form.name || !form.game) return toast.error('اسم المنتج واللعبة مطلوبان');
-    const data = buildProductPayload(form, games, editing);
-    if (!data.category) return toast.error('اختر لعبة مرتبطة بقسم صالح');
-    setSaving(true);
-    try {
-      if (editing) {
-        await api.put(`/admin/products/${editing}`, data);
-        toast.success('✅ تم حفظ كل التعديلات');
-      } else {
-        await api.post('/admin/products', data);
-        toast.success('✅ تم الإنشاء');
-      }
-      haptic.success();
-      setShowForm(false);
-      setForm(emptyProduct);
-      setEditing(null);
-      await load();
-    } catch (err) { haptic.error(); toast.error(err.response?.data?.error || 'فشل الحفظ'); }
-    setSaving(false);
+  const visibleProducts = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return products;
+    return products.filter((product) => [product.name, product.nameAr, product.game?.name, product.game?.nameAr]
+      .some((value) => String(value || '').toLowerCase().includes(term)));
+  }, [products, search]);
+
+  const totals = useMemo(() => ({
+    active: products.filter((product) => product.isActive).length,
+    durations: products.reduce((sum, product) => sum + (product.durations?.length || 0), 0),
+    stock: products.reduce((sum, product) => sum + (product.durations || []).reduce((durationSum, duration) => durationSum + Number(duration.stockCount || 0), 0), 0)
+  }), [products]);
+
+  const resetDurationEditor = (open = false) => {
+    setNewDuration(emptyDuration);
+    setEditingDurationIndex(null);
+    setShowDurationForm(open);
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('حذف هذا المنتج؟')) return;
-    await api.delete(`/admin/products/${id}`);
-    toast.success('🗑️ تم الحذف');
-    load();
-  };
-
-  const handleToggle = async (p) => {
-    await api.put(`/admin/products/${p._id}`, { isActive: !p.isActive });
-    load();
-  };
-
-  const handleEdit = (p) => {
-    setForm({ ...p, game: p.game?._id || p.game, category: p.category?._id || p.category });
-    setEditing(p._id);
+  const openNew = () => {
+    setForm(emptyProduct);
+    setEditing(null);
+    setFeatureInput('');
+    resetDurationEditor(true);
     setShowForm(true);
   };
 
-  // ── Bulk operations ──
-  const bulkSetActive = async (isActive) => {
-    if (!selectedIds.size) return toast.error('حدد منتجات أولاً');
-    setBulkProcessing(true);
-    haptic.medium();
-    let success = 0;
-    for (const id of selectedIds) {
-      try {
-        await api.put(`/admin/products/${id}`, { isActive });
-        success++;
-      } catch (_) {}
-    }
-    toast.success(`✅ تم ${isActive ? 'تفعيل' : 'تعطيل'} ${success} منتج`);
-    setSelectedIds(new Set());
-    setBulkMode(false);
-    await load();
-    setBulkProcessing(false);
-  };
-
-  const bulkSetFeatured = async (isFeatured) => {
-    if (!selectedIds.size) return toast.error('حدد منتجات أولاً');
-    setBulkProcessing(true);
-    haptic.medium();
-    let success = 0;
-    for (const id of selectedIds) {
-      try {
-        await api.put(`/admin/products/${id}`, { isFeatured });
-        success++;
-      } catch (_) {}
-    }
-    toast.success(`⭐ تم ${isFeatured ? 'جعل' : 'إلغاء'} ${success} منتج كمميز`);
-    setSelectedIds(new Set());
-    setBulkMode(false);
-    await load();
-    setBulkProcessing(false);
-  };
-
-  const bulkApplyImage = async () => {
-    if (!selectedIds.size) return toast.error('حدد منتجات أولاً');
-    if (!bulkLogo && !bulkBanner) return toast.error('اختر صورة واحدة على الأقل');
-    setBulkProcessing(true);
-    haptic.medium();
-    let success = 0;
-    for (const id of selectedIds) {
-      try {
-        const update = {};
-        if (bulkLogo) update.logo = bulkLogo;
-        if (bulkBanner) update.banner = bulkBanner;
-        await api.put(`/admin/products/${id}`, update);
-        success++;
-      } catch (_) {}
-    }
-    toast.success(`🖼️ تم تحديث صور ${success} منتج`);
-    setShowBulkSheet(false);
-    setBulkLogo(null);
-    setBulkBanner(null);
-    setSelectedIds(new Set());
-    setBulkMode(false);
-    await load();
-    setBulkProcessing(false);
-  };
-
-  const bulkDelete = async () => {
-    if (!selectedIds.size) return toast.error('حدد منتجات أولاً');
-    if (!confirm(`⚠️ حذف ${selectedIds.size} منتج نهائياً؟`)) return;
-    setBulkProcessing(true);
-    haptic.medium();
-    let success = 0;
-    for (const id of selectedIds) {
-      try {
-        await api.delete(`/admin/products/${id}`);
-        success++;
-      } catch (_) {}
-    }
-    toast.success(`🗑️ تم حذف ${success} منتج`);
-    setSelectedIds(new Set());
-    setBulkMode(false);
-    await load();
-    setBulkProcessing(false);
-  };
-
-  const duplicateProduct = async (p) => {
-    haptic.light();
-    try {
-      const data = buildProductPayload({ ...p, name: `${p.name} (copy)`, nameAr: `${p.nameAr || p.name} (نسخة)`, slug: '' }, games, false);
-      await api.post('/admin/products', data);
-      toast.success('📋 تم نسخ المنتج');
-      await load();
-    } catch (err) {
-      toast.error('فشل النسخ');
-    }
-  };
-
-  const addFeature = () => {
-    if (!featureInput.trim()) return;
-    setForm(f => ({ ...f, features: [...(f.features || []), { text: featureInput.trim(), icon: '✅' }] }));
+  const openEdit = (product, openCodes = false) => {
+    const durations = (product.durations || []).map((duration) => ({ ...duration, pendingKeys: '' }));
+    setForm({
+      ...product,
+      game: product.game?._id || product.game,
+      category: product.category?._id || product.category,
+      durations
+    });
+    setEditing(product._id);
     setFeatureInput('');
+    if (openCodes && durations.length === 1) {
+      setNewDuration(durations[0]);
+      setEditingDurationIndex(0);
+      setShowDurationForm(true);
+    } else {
+      resetDurationEditor(openCodes && !durations.length);
+    }
+    setShowForm(true);
+  };
+
+  const uploadPendingKeys = async (savedProduct, drafts) => {
+    const failures = [];
+    let added = 0;
+    for (let index = 0; index < drafts.length; index += 1) {
+      const keys = parseKeys(drafts[index].pendingKeys);
+      if (!keys.length) continue;
+      const savedDuration = drafts[index]._id
+        ? savedProduct.durations?.find((duration) => String(duration._id) === String(drafts[index]._id))
+        : savedProduct.durations?.[index];
+      if (!savedDuration?._id) {
+        failures.push(index);
+        continue;
+      }
+      try {
+        const response = await api.post('/admin/keys/bulk', {
+          productId: savedProduct._id,
+          durationId: savedDuration._id,
+          durationName: savedDuration.nameAr || savedDuration.name,
+          keys
+        });
+        added += Number(response.data.added || keys.length);
+      } catch (_) {
+        failures.push(index);
+      }
+    }
+    return { added, failures };
+  };
+
+  const handleSave = async () => {
+    if (!(form.name || form.nameAr) || !form.game) return toast.error('اسم المنتج واللعبة مطلوبان');
+
+    // If the duration editor is still open, the main Save button includes it
+    // automatically. The admin never has to wonder which of two save buttons
+    // should be pressed first.
+    const durationDrafts = [...(form.durations || [])].map((duration) => ({ ...duration }));
+    const editorHasContent = showDurationForm && Boolean(newDuration.name || newDuration.nameAr || newDuration.price !== '' || parseKeys(newDuration.pendingKeys).length);
+    if (editorHasContent) {
+      if (!(newDuration.name || newDuration.nameAr) || newDuration.price === '' || newDuration.price == null) return toast.error('أكمل اسم المدة وسعرها');
+      const clean = cleanDurationDraft(newDuration);
+      if (editingDurationIndex !== null && durationDrafts[editingDurationIndex]) durationDrafts[editingDurationIndex] = { ...durationDrafts[editingDurationIndex], ...clean };
+      else durationDrafts.push(clean);
+    }
+    if (!durationDrafts.length) return toast.error('أضف مدة واحدة على الأقل');
+
+    const workingForm = { ...form, durations: durationDrafts };
+    const data = buildProductPayload(workingForm, games, editing);
+    if (!data.category) return toast.error('اختر لعبة مرتبطة بقسم صالح');
+    const pendingCount = durationDrafts.reduce((sum, duration) => sum + parseKeys(duration.pendingKeys).length, 0);
+    if (pendingCount && !canManageKeys) return toast.error('حسابك لا يملك صلاحية إضافة الأكواد');
+
+    setSaving(true);
+    try {
+      const response = editing
+        ? await api.put(`/admin/products/${editing}`, data)
+        : await api.post('/admin/products', data);
+      const savedProduct = response.data.data;
+      const result = await uploadPendingKeys(savedProduct, durationDrafts);
+
+      if (result.failures.length) {
+        const failedSet = new Set(result.failures);
+        setEditing(savedProduct._id);
+        setForm({
+          ...savedProduct,
+          game: savedProduct.game?._id || savedProduct.game,
+          category: savedProduct.category?._id || savedProduct.category,
+          durations: (savedProduct.durations || []).map((duration, index) => ({
+            ...duration,
+            pendingKeys: failedSet.has(index) ? durationDrafts[index]?.pendingKeys || '' : ''
+          }))
+        });
+        toast.error(`تم حفظ المنتج، لكن تعذر رفع أكواد ${result.failures.length} مدة. حاول الحفظ مرة أخرى.`);
+        await load();
+        return;
+      }
+
+      haptic.success();
+      toast.success(result.added ? `تم حفظ المنتج وإضافة ${result.added} كود` : 'تم حفظ المنتج');
+      setShowForm(false);
+      setForm(emptyProduct);
+      setEditing(null);
+      resetDurationEditor(false);
+      await load();
+    } catch (error) {
+      haptic.error();
+      toast.error(error.response?.data?.error || 'فشل حفظ المنتج');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const addDuration = () => {
-    if (!newDuration.name || newDuration.price === '' || newDuration.price === null) return toast.error('اسم وسعر مطلوبان للمدة');
-    const clean = { ...newDuration, price: parseFloat(newDuration.price) };
-    setForm(f => {
-      const durations = [...(f.durations || [])];
-      if (editingDurationIndex !== null && durations[editingDurationIndex]) {
-        durations[editingDurationIndex] = { ...durations[editingDurationIndex], ...clean };
-      } else {
-        durations.push(clean);
-      }
-      return { ...f, durations };
+    if (!(newDuration.name || newDuration.nameAr) || newDuration.price === '' || newDuration.price == null) {
+      return toast.error('اسم المدة والسعر مطلوبان');
+    }
+    const clean = cleanDurationDraft(newDuration);
+    setForm((current) => {
+      const durations = [...(current.durations || [])];
+      if (editingDurationIndex !== null && durations[editingDurationIndex]) durations[editingDurationIndex] = { ...durations[editingDurationIndex], ...clean };
+      else durations.push(clean);
+      return { ...current, durations };
     });
-    setNewDuration(emptyDuration);
-    setEditingDurationIndex(null);
-    setShowDurationForm(false);
-    if (editingDurationIndex !== null) toast.success('✅ تم تحديث المدة');
+    toast.success(editingDurationIndex !== null ? 'تم تحديث المدة والأكواد' : 'تمت إضافة المدة');
+    resetDurationEditor(false);
   };
 
   const editDuration = (index) => {
     const duration = form.durations?.[index];
     if (!duration) return;
-    setNewDuration({ name: duration.name || '', nameAr: duration.nameAr || '', days: duration.days || 1, price: duration.price ?? '', isActive: duration.isActive !== false });
+    setNewDuration({
+      ...duration,
+      name: duration.name || '', nameAr: duration.nameAr || '', days: duration.days || 1,
+      price: duration.price ?? '', isActive: duration.isActive !== false, pendingKeys: duration.pendingKeys || ''
+    });
     setEditingDurationIndex(index);
     setShowDurationForm(true);
   };
 
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <h2 className="text-xl font-black text-white">🔑 المنتجات</h2>
-        <div className="flex gap-2 flex-wrap">
-          <motion.button whileTap={{ scale: 0.95 }} onClick={() => { setBulkMode(!bulkMode); setSelectedIds(new Set()); }} className={`text-xs px-3 py-2 rounded-xl border font-bold transition-all ${bulkMode ? 'bg-gold/20 border-gold/40 text-gold' : 'bg-card border-border text-muted hover:text-white'}`}>
-            {bulkMode ? '✅ تحديد جماعي' : '☑️ تحديد جماعي'}
-          </motion.button>
-          <motion.button whileTap={{ scale: 0.95 }} onClick={() => { setForm(emptyProduct); setEditing(null); setShowForm(true); }} className="neon-btn">
-            + إنشاء منتج جديد
-          </motion.button>
-        </div>
-      </div>
+  const readKeysFile = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      setNewDuration((duration) => ({ ...duration, pendingKeys: [duration.pendingKeys, text].filter(Boolean).join('\n') }));
+      toast.success(`تمت قراءة ${parseKeys(text).length} كود من الملف`);
+    } catch (_) {
+      toast.error('تعذر قراءة الملف');
+    }
+    event.target.value = '';
+  };
 
-      {/* Bulk actions toolbar */}
+  const addFeature = () => {
+    if (!featureInput.trim()) return;
+    setForm((current) => ({ ...current, features: [...(current.features || []), { text: featureInput.trim(), icon: '✓' }] }));
+    setFeatureInput('');
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('حذف هذا المنتج نهائيًا؟')) return;
+    try {
+      await api.delete(`/admin/products/${id}`);
+      toast.success('تم حذف المنتج');
+      await load();
+    } catch (_) { toast.error('تعذر حذف المنتج'); }
+  };
+
+  const handleToggle = async (product) => {
+    try {
+      await api.put(`/admin/products/${product._id}`, { isActive: !product.isActive });
+      toast.success(product.isActive ? 'تم إيقاف المنتج' : 'تم تفعيل المنتج');
+      await load();
+    } catch (_) { toast.error('تعذر تغيير حالة المنتج'); }
+  };
+
+  const duplicateProduct = async (product) => {
+    try {
+      const data = buildProductPayload({
+        ...product,
+        name: `${product.name} copy`,
+        nameAr: `${product.nameAr || product.name} - نسخة`,
+        slug: '',
+        game: product.game?._id || product.game,
+        category: product.category?._id || product.category,
+        durations: (product.durations || []).map(({ _id, ...duration }) => duration)
+      }, games, false);
+      await api.post('/admin/products', data);
+      toast.success('تم إنشاء نسخة من المنتج');
+      await load();
+    } catch (_) { toast.error('تعذر نسخ المنتج'); }
+  };
+
+  const toggleSelect = (id) => setSelectedIds((previous) => {
+    const next = new Set(previous);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
+  const runBulk = async (action) => {
+    if (!selectedIds.size) return;
+    if (action === 'delete' && !window.confirm(`حذف ${selectedIds.size} منتج نهائيًا؟`)) return;
+    setBulkProcessing(true);
+    let success = 0;
+    for (const id of selectedIds) {
+      try {
+        if (action === 'delete') await api.delete(`/admin/products/${id}`);
+        else await api.put(`/admin/products/${id}`, { isActive: action === 'activate' });
+        success += 1;
+      } catch (_) {}
+    }
+    toast.success(`تم تحديث ${success} منتج`);
+    setSelectedIds(new Set());
+    setBulkMode(false);
+    await load();
+    setBulkProcessing(false);
+  };
+
+  return (
+    <div className="admin-products-page">
+      <header className="admin-page-heading">
+        <div>
+          <span className="admin-page-heading__icon"><AdminIcon name="product" /></span>
+          <div><h2>المنتجات</h2><p>أنشئ المنتج، المدة والأكواد في صفحة واحدة.</p></div>
+        </div>
+        <div className="admin-page-heading__actions">
+          <button type="button" onClick={() => { setBulkMode(!bulkMode); setSelectedIds(new Set()); }} className={`admin-secondary-button ${bulkMode ? 'is-active' : ''}`}><AdminIcon name="check" />{bulkMode ? 'إنهاء التحديد' : 'تحديد'}</button>
+          <button type="button" onClick={openNew} className="admin-primary-button"><AdminIcon name="plus" />منتج جديد</button>
+        </div>
+      </header>
+
+      <section className="admin-product-summary" aria-label="ملخص المنتجات">
+        <div><span className="tone-violet"><AdminIcon name="product" /></span><b>{products.length}</b><small>كل المنتجات</small></div>
+        <div><span className="tone-green"><AdminIcon name="check" /></span><b>{totals.active}</b><small>منتج نشط</small></div>
+        <div><span className="tone-amber"><AdminIcon name="clock" /></span><b>{totals.durations}</b><small>مدة بيع</small></div>
+        <div><span className="tone-cyan"><AdminIcon name="key" /></span><b>{totals.stock}</b><small>كود متاح</small></div>
+      </section>
+
+      <section className="admin-product-filters">
+        <label className="admin-search-field"><AdminIcon name="search" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="ابحث عن منتج أو لعبة…" /></label>
+        <select value={filterGame} onChange={(event) => setFilterGame(event.target.value)} className="input-admin">
+          <option value="">كل الألعاب</option>
+          {games.map((game) => <option key={game._id} value={game._id}>{game.nameAr || game.name}</option>)}
+        </select>
+      </section>
+
       <AnimatePresence>
         {bulkMode && selectedIds.size > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -10, height: 0 }}
-            animate={{ opacity: 1, y: 0, height: 'auto' }}
-            exit={{ opacity: 0, y: -10, height: 0 }}
-            className="admin-card bg-gradient-to-r from-gold/10 to-neon/10 border-gold/30 space-y-3"
-          >
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <p className="text-sm font-black text-white">📦 تم تحديد <span className="text-gold">{selectedIds.size}</span> منتج</p>
-              <div className="flex gap-2 flex-wrap">
-                <button onClick={() => setShowBulkSheet(true)} className="text-xs px-3 py-1.5 rounded-lg bg-neon/20 border border-neon/30 text-neon font-bold">🖼️ تعيين صور</button>
-                <button onClick={() => bulkSetActive(true)} className="text-xs px-3 py-1.5 rounded-lg bg-green/20 border border-green/30 text-green font-bold">✅ تفعيل الكل</button>
-                <button onClick={() => bulkSetActive(false)} className="text-xs px-3 py-1.5 rounded-lg bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 font-bold">⏸️ تعطيل الكل</button>
-                <button onClick={() => bulkSetFeatured(true)} className="text-xs px-3 py-1.5 rounded-lg bg-gold/20 border border-gold/30 text-gold font-bold">⭐ مميز</button>
-                <button onClick={() => bulkDelete()} className="text-xs px-3 py-1.5 rounded-lg bg-red/20 border border-red/30 text-red font-bold">🗑️ حذف المحدد</button>
-                <button onClick={selectAll} className="text-xs px-3 py-1.5 rounded-lg bg-card border border-border text-muted font-bold">{selectedIds.size === products.length ? 'إلغاء الكل' : 'تحديد الكل'}</button>
-              </div>
+          <motion.section initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="admin-bulk-bar">
+            <b>تم تحديد {selectedIds.size}</b>
+            <div>
+              <button disabled={bulkProcessing} onClick={() => runBulk('activate')} className="tone-green"><AdminIcon name="check" /> تفعيل</button>
+              <button disabled={bulkProcessing} onClick={() => runBulk('deactivate')} className="tone-amber"><AdminIcon name="power" /> إيقاف</button>
+              <button disabled={bulkProcessing} onClick={() => runBulk('delete')} className="tone-red"><AdminIcon name="trash" /> حذف</button>
             </div>
-            {bulkProcessing && <div className="text-xs text-gold animate-pulse">⏳ جاري المعالجة...</div>}
-          </motion.div>
+          </motion.section>
         )}
       </AnimatePresence>
 
-      {/* Quick guide */}
-      <div className="rounded-2xl border border-purple/20 bg-gradient-to-br from-purple/10 to-emerald-500/5 p-3 text-xs text-muted space-y-1">
-        <p className="text-white font-bold text-sm mb-1">📋 كيفية إضافة منتج جديد:</p>
-        <p>1️⃣ اذهب إلى <span className="text-purple-400 font-bold">الأقسام والألعاب</span> أولاً وأنشئ القسم واللعبة</p>
-        <p>2️⃣ ارجع إلى <span className="text-purple-400 font-bold">المنتجات</span> واضغط "إنشاء منتج جديد"</p>
-        <p>3️⃣ اختر اللعبة، أضف اسم المنتج، المميزات، والمدد (كل مدة = مفتاح بفترة صلاحية مختلفة)</p>
-        <p>4️⃣ بعد حفظ المنتج، اذهب إلى <span className="text-purple-400 font-bold">المخزون</span> لإضافة المفاتيح الفعلية</p>
-      </div>
-
-      <select value={filterGame} onChange={e => setFilterGame(e.target.value)} className="input-admin">
-        <option value="">جميع الألعاب</option>
-        {games.map(g => <option key={g._id} value={g._id}>{g.nameAr || g.name}</option>)}
-      </select>
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        {products.map((p, i) => (
-          <motion.div key={p._id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-            className={`admin-card border flex items-start gap-3 transition-all ${bulkMode && selectedIds.has(p._id) ? 'border-gold/60 bg-gold/5' : 'border-border'}`}>
-            {bulkMode && (
-              <button
-                onClick={() => toggleSelect(p._id)}
-                className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 mt-1 transition-all ${selectedIds.has(p._id) ? 'bg-gold border-gold text-white' : 'bg-bg border-border'}`}
-              >
-                {selectedIds.has(p._id) && <span className="text-xs">✓</span>}
-              </button>
-            )}
-            {p.logo ? <img src={p.logo} alt={p.name} className="w-12 h-12 rounded-xl object-cover flex-shrink-0" /> :
-              <div className="w-12 h-12 rounded-xl bg-neon/10 border border-neon/20 flex items-center justify-center text-xl flex-shrink-0">🔑</div>}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1 flex-wrap">
-                <p className="font-bold text-white text-sm">{p.nameAr || p.name}</p>
-                {p.isFeatured && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gold/10 text-gold border border-gold/20">⭐ مميز</span>}
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${p.isActive ? 'bg-green/10 text-green border-green/20' : 'bg-red/10 text-red border-red/20'}`}>{p.isActive ? 'نشط' : 'معطّل'}</span>
+      <section className="admin-product-grid">
+        {visibleProducts.map((product, index) => (
+          <motion.article key={product._id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index * .035, .24) }} className={`admin-product-card ${bulkMode && selectedIds.has(product._id) ? 'is-selected' : ''}`}>
+            <button type="button" className="admin-product-card__cover" onClick={() => bulkMode ? toggleSelect(product._id) : openEdit(product)} aria-label={`فتح ${product.nameAr || product.name}`}>
+              {product.banner || product.logo ? <img src={product.banner || product.logo} alt="" /> : <span className="admin-product-card__placeholder"><AdminIcon name="key" /></span>}
+              <i className={product.isActive ? 'is-active' : ''}>{product.isActive ? 'نشط' : 'متوقف'}</i>
+              {bulkMode && <b className="admin-product-card__select"><AdminIcon name={selectedIds.has(product._id) ? 'check' : 'plus'} /></b>}
+            </button>
+            <div className="admin-product-card__body">
+              <div className="admin-product-card__title">
+                {product.logo && <img src={product.logo} alt="" />}
+                <div><h3>{product.nameAr || product.name}</h3><p>{product.game?.nameAr || product.game?.name || 'بدون لعبة'}</p></div>
               </div>
-              <p className="text-xs text-muted">{p.game?.nameAr || p.game?.name || '—'} · {p.durations?.length} مدة</p>
-              <p className="text-xs text-neon font-semibold">من ${getMinPrice(p.durations).toFixed(2)}</p>
+              <div className="admin-product-card__meta">
+                <span><b>{product.durations?.length || 0}</b> مدد</span>
+                <span><b>{(product.durations || []).reduce((sum, duration) => sum + Number(duration.stockCount || 0), 0)}</b> كود</span>
+                <span>من <b>${getMinPrice(product.durations).toFixed(2)}</b></span>
+              </div>
+              <div className="admin-product-card__actions" aria-label="إجراءات المنتج">
+                <button type="button" className="action-green" onClick={() => openEdit(product)} title="تعديل المنتج" aria-label="تعديل المنتج"><AdminIcon name="edit" /></button>
+                <button type="button" className="action-orange" onClick={() => openEdit(product, true)} title="المدد والأكواد" aria-label="المدد والأكواد"><AdminIcon name="key" /></button>
+                <button type="button" className="action-slate" onClick={() => duplicateProduct(product)} title="نسخ المنتج" aria-label="نسخ المنتج"><AdminIcon name="copy" /></button>
+                <button type="button" className="action-amber" onClick={() => handleToggle(product)} title={product.isActive ? 'إيقاف المنتج' : 'تفعيل المنتج'} aria-label={product.isActive ? 'إيقاف المنتج' : 'تفعيل المنتج'}><AdminIcon name="power" /></button>
+                <button type="button" className="action-red" onClick={() => handleDelete(product._id)} title="حذف المنتج" aria-label="حذف المنتج"><AdminIcon name="trash" /></button>
+              </div>
             </div>
-            <div className="flex flex-col gap-1 flex-shrink-0">
-              <button onClick={() => handleEdit(p)} className="text-xs text-neon border border-neon/20 rounded-lg px-2 py-1">✏️</button>
-              <button onClick={() => duplicateProduct(p)} className="text-xs border rounded-lg px-2 py-1 text-muted border-border" title="نسخ المنتج">📋</button>
-              <button onClick={() => handleToggle(p)} className="text-xs border rounded-lg px-2 py-1 text-muted border-border">👁</button>
-              <button onClick={() => handleDelete(p._id)} className="text-xs text-red border border-red/20 rounded-lg px-2 py-1">🗑</button>
-            </div>
-          </motion.div>
+          </motion.article>
         ))}
-      </div>
+      </section>
 
-      {/* Product Form Sheet — the save button lives in the sticky footer so it
-          is always reachable from a phone, no matter how long the form gets. */}
+      {!visibleProducts.length && <div className="admin-products-empty"><span><AdminIcon name="product" /></span><h3>لا توجد منتجات</h3><p>أنشئ أول منتج وأضف مدته وأكواده مباشرة.</p><button type="button" onClick={openNew} className="admin-primary-button"><AdminIcon name="plus" />منتج جديد</button></div>}
+
       <Sheet
         open={showForm}
         onClose={() => setShowForm(false)}
-        title={editing ? '✏️ تعديل المنتج' : '➕ إنشاء منتج جديد'}
+        title={editing ? 'تعديل المنتج' : 'منتج جديد'}
+        icon={<AdminIcon name="product" />}
         wide
-        footer={<SheetActions saveLabel="💾 حفظ ونشر" onSave={handleSave} saving={saving} onCancel={() => setShowForm(false)} />}
+        footer={<SheetActions saveLabel={<><AdminIcon name="check" /> حفظ المنتج</>} onSave={handleSave} saving={saving} onCancel={() => setShowForm(false)} />}
       >
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div><label className="label-admin">اسم المنتج (EN)</label><input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="input-admin mt-1" placeholder="Silent Cheats" /></div>
-                  <div><label className="label-admin">اسم المنتج (AR)</label><input value={form.nameAr} onChange={e => setForm(f => ({ ...f, nameAr: e.target.value }))} className="input-admin mt-1" placeholder="سايلنت تشيتس" /></div>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="label-admin">اللعبة</label>
-                    <select value={form.game} onChange={e => { const g = games.find(x => x._id === e.target.value); setForm(f => ({ ...f, game: e.target.value, category: g?.category?._id || g?.category || '' })); }} className="input-admin mt-1">
-                      <option value="">اختر اللعبة</option>
-                      {games.map(g => <option key={g._id} value={g._id}>{g.nameAr || g.name}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="label-admin">النوع</label>
-                    <select value={form.productType} onChange={e => setForm(f => ({ ...f, productType: e.target.value }))} className="input-admin mt-1">
-                      <option value="panel_key">Panel Key</option>
-                      <option value="subscription">Subscription</option>
-                      <option value="service">Service</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Product images: logo (card) + banner (detail sheet header) */}
-                <ImagePicker label="🖼️ شعار المنتج" value={form.logo} onChange={(url) => setForm((current) => ({ ...current, logo: url }))} hint="يظهر داخل بطاقة المنتج في كل مكان بالمتجر." />
-                <ImagePicker label="🌅 بانر المنتج (اختياري)" value={form.banner} onChange={(url) => setForm((current) => ({ ...current, banner: url }))} hint="صورة عريضة تظهر أعلى صفحة خيارات المنتج." aspect="wide" />
-
-                {/* Description */}
-                <div>
-                  <label className="label-admin">الوصف</label>
-                  <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="input-admin mt-1 resize-none" rows={2} />
-                </div>
-
-                {/* Features */}
-                <div>
-                  <label className="label-admin">المميزات</label>
-                  <div className="flex gap-2 mt-1">
-                    <input value={featureInput} onChange={e => setFeatureInput(e.target.value)} placeholder="أضف ميزة..." className="input-admin flex-1" onKeyDown={e => e.key === 'Enter' && addFeature()} />
-                    <button onClick={addFeature} className="neon-btn px-3">+</button>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {form.features?.map((f, i) => (
-                      <span key={i} className="flex items-center gap-1 text-xs bg-neon/5 border border-neon/20 text-neon px-2 py-1 rounded-lg">
-                        {f.icon} {f.text}
-                        <button onClick={() => setForm(x => ({ ...x, features: x.features.filter((_, j) => j !== i) }))} className="text-red ml-1">×</button>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Durations — add, inline-edit and remove */}
-                <div>
-                  <div className="flex items-center justify-between">
-                    <label className="label-admin">المدد والأسعار</label>
-                    <button onClick={() => { setEditingDurationIndex(null); setNewDuration(emptyDuration); setShowDurationForm(!showDurationForm); }} className="text-xs text-neon border border-neon/20 px-2 py-1 rounded-lg">+ مدة</button>
-                  </div>
-                  {showDurationForm && (
-                    <div className="grid gap-2 mt-2 bg-bg border border-border rounded-xl p-3">
-                      <p className="text-[10px] text-muted font-bold">{editingDurationIndex !== null ? '✏️ تعديل مدة موجودة' : '➕ إضافة مدة جديدة'}</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        <input value={newDuration.name} onChange={e => setNewDuration(d => ({ ...d, name: e.target.value }))} placeholder="1 Day" className="input-admin text-xs" />
-                        <input value={newDuration.nameAr} onChange={e => setNewDuration(d => ({ ...d, nameAr: e.target.value }))} placeholder="يوم واحد" className="input-admin text-xs" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <input type="number" value={newDuration.days} onChange={e => setNewDuration(d => ({ ...d, days: parseInt(e.target.value) }))} placeholder="عدد الأيام" className="input-admin text-xs" />
-                        <input type="number" step="0.01" value={newDuration.price} onChange={e => setNewDuration(d => ({ ...d, price: e.target.value }))} placeholder="السعر $" className="input-admin text-xs" />
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={addDuration} className="success-btn flex-1 py-2 rounded-xl text-sm font-bold">{editingDurationIndex !== null ? 'حفظ التعديل ✓' : 'إضافة المدة ✓'}</button>
-                        {editingDurationIndex !== null && <button onClick={() => { setEditingDurationIndex(null); setNewDuration(emptyDuration); setShowDurationForm(false); }} className="px-3 border border-border rounded-xl text-muted text-xs">إلغاء</button>}
-                      </div>
-                    </div>
-                  )}
-                  <div className="space-y-1 mt-2">
-                    {form.durations?.map((d, i) => (
-                      <div key={i} className="flex items-center justify-between bg-bg border border-border rounded-lg px-3 py-2 text-xs">
-                        <span className="text-white">{d.nameAr || d.name}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-neon font-bold">${parseFloat(d.price).toFixed(2)}</span>
-                          <button onClick={() => editDuration(i)} className="text-neon border border-neon/20 rounded-md px-1.5 py-0.5" title="تعديل">✏️</button>
-                          <button onClick={() => setForm(f => ({ ...f, durations: f.durations.filter((_, j) => j !== i) }))} className="text-red" title="حذف">×</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Toggles */}
-                <div className="flex gap-4">
-                  {[['نشط', 'isActive'], ['مميز', 'isFeatured']].map(([l, k]) => (
-                    <label key={k} className="flex items-center gap-2 cursor-pointer">
-                      <div onClick={() => setForm(f => ({ ...f, [k]: !f[k] }))}
-                        className={`w-10 h-5 rounded-full transition-colors ${form[k] ? 'bg-neon' : 'bg-border'} relative`}>
-                        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${form[k] ? 'right-0.5' : 'left-0.5'}`} />
-                      </div>
-                      <span className="text-sm text-muted">{l}</span>
-                    </label>
-                  ))}
-                </div>
-
-      </Sheet>
-
-      {/* Bulk Image Assignment Sheet */}
-      <Sheet
-        open={showBulkSheet}
-        onClose={() => setShowBulkSheet(false)}
-        title={`🖼️ تعيين صور لـ ${selectedIds.size} منتج`}
-        footer={<SheetActions saveLabel="✅ تطبيق على الكل" onSave={bulkApplyImage} saving={bulkProcessing} onCancel={() => setShowBulkSheet(false)} />}
-      >
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-neon/20 bg-neon/5 p-3 text-[11px] text-white leading-6">
-            <p className="font-bold text-neon">💡 كيف يعمل؟</p>
-            <p>• اختر صورة الشعار (الصورة المصغّرة) أو البانر (الصورة العريضة) أو كلاهما.</p>
-            <p>• سيتم تطبيق الصور المختارة على جميع المنتجات المحددة دفعة واحدة.</p>
-            <p>• إذا أردت تغيير صورة واحدة فقط، اترك الحقل الآخر فارغاً.</p>
+        <section className="product-form-section">
+          <div className="product-form-section__heading"><span>1</span><div><h4>معلومات المنتج</h4><p>الاسم واللعبة فقط هما المطلوبان.</p></div></div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div><label className="label-admin">اسم المنتج</label><input value={form.nameAr} onChange={(event) => setForm((current) => ({ ...current, nameAr: event.target.value }))} className="input-admin" placeholder="مثال: اشتراك بريميوم" /></div>
+            <div><label className="label-admin">الاسم الإنجليزي (اختياري)</label><input dir="ltr" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} className="input-admin" placeholder="Premium subscription" /></div>
           </div>
-          <ImagePicker label="🖼️ شعار جديد للمنتجات المحددة" value={bulkLogo} onChange={setBulkLogo} hint="سيتم تعيينه لجميع المنتجات المحددة" />
-          <ImagePicker label="🌅 بانر جديد للمنتجات المحددة" value={bulkBanner} onChange={setBulkBanner} hint="صورة عريضة تظهر أعلى صفحة المنتج" aspect="wide" />
-          <div className="text-xs text-muted">
-            <p>📦 المنتجات المحددة: {selectedIds.size}</p>
-            <p className="mt-1 text-[10px]">ملاحظة: الصور الفارغة لن يتم تغييرها — فقط الحقول المملوءة ستُطبّق.</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div><label className="label-admin">اللعبة</label><select value={form.game} onChange={(event) => { const game = games.find((item) => item._id === event.target.value); setForm((current) => ({ ...current, game: event.target.value, category: game?.category?._id || game?.category || '' })); }} className="input-admin"><option value="">اختر اللعبة</option>{games.map((game) => <option key={game._id} value={game._id}>{game.nameAr || game.name}</option>)}</select></div>
+            <div><label className="label-admin">نوع المنتج</label><select value={form.productType} onChange={(event) => setForm((current) => ({ ...current, productType: event.target.value }))} className="input-admin"><option value="panel_key">كود رقمي</option><option value="subscription">اشتراك</option><option value="service">خدمة</option><option value="other">أخرى</option></select></div>
           </div>
-        </div>
+        </section>
+
+        <section className="product-form-section product-form-section--accent">
+          <div className="product-form-section__heading">
+            <span>2</span><div><h4>المدد والأكواد</h4><p>أضف كل مدة وسعرها وأكوادها في نفس المكان.</p></div>
+            <button type="button" onClick={() => resetDurationEditor(!showDurationForm)}><AdminIcon name="plus" /> مدة جديدة</button>
+          </div>
+
+          {showDurationForm && (
+            <div className="duration-editor">
+              <div className="duration-editor__title"><span><AdminIcon name="clock" /></span><div><b>{editingDurationIndex !== null ? 'تعديل المدة' : 'إضافة مدة'}</b><small>الأكواد اختيارية، وزر حفظ المنتج يحفظ هذه المدة تلقائيًا.</small></div></div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input value={newDuration.nameAr} onChange={(event) => setNewDuration((duration) => ({ ...duration, nameAr: event.target.value }))} placeholder="اسم المدة: شهر واحد" className="input-admin" />
+                <input dir="ltr" value={newDuration.name} onChange={(event) => setNewDuration((duration) => ({ ...duration, name: event.target.value }))} placeholder="English name (optional)" className="input-admin" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <label><span>عدد الأيام</span><input type="number" min="1" value={newDuration.days} onChange={(event) => setNewDuration((duration) => ({ ...duration, days: event.target.value }))} className="input-admin" /></label>
+                <label><span>السعر بالدولار</span><input type="number" min="0" step="0.01" value={newDuration.price} onChange={(event) => setNewDuration((duration) => ({ ...duration, price: event.target.value }))} className="input-admin" placeholder="0.00" /></label>
+              </div>
+              {canManageKeys && (
+                <div className="duration-editor__keys">
+                  <div><label>أكواد هذه المدة</label><span>{parseKeys(newDuration.pendingKeys).length} كود</span></div>
+                  <textarea dir="ltr" value={newDuration.pendingKeys} onChange={(event) => setNewDuration((duration) => ({ ...duration, pendingKeys: event.target.value }))} rows="6" className="input-admin" placeholder={'ضع كل كود في سطر مستقل\nABCD-1234-EFGH\nWXYZ-5678-IJKL'} />
+                  <label className="duration-editor__upload"><AdminIcon name="upload" /><span>رفع ملف TXT</span><input type="file" accept=".txt,text/plain" onChange={readKeysFile} /></label>
+                </div>
+              )}
+              <div className="duration-editor__actions">
+                <button type="button" onClick={addDuration} className="admin-primary-button"><AdminIcon name="check" />{editingDurationIndex !== null ? 'حفظ التعديل' : 'إضافة المدة'}</button>
+                <button type="button" onClick={() => resetDurationEditor(false)} className="admin-secondary-button">إلغاء</button>
+              </div>
+            </div>
+          )}
+
+          <div className="duration-list">
+            {form.durations?.map((duration, index) => {
+              const pending = parseKeys(duration.pendingKeys).length;
+              return (
+                <div key={duration._id || `${duration.name}-${index}`} className="duration-list__item">
+                  <span className="duration-list__icon"><AdminIcon name="clock" /></span>
+                  <div className="duration-list__copy"><b>{duration.nameAr || duration.name}</b><small>{duration.days || 1} يوم · المخزون {duration.stockCount || 0}{pending ? ` · ${pending} كود جديد` : ''}</small></div>
+                  <strong>${Number(duration.price || 0).toFixed(2)}</strong>
+                  <button type="button" onClick={() => editDuration(index)} title="تعديل وإضافة أكواد"><AdminIcon name="edit" /></button>
+                  <button type="button" onClick={() => setForm((current) => ({ ...current, durations: current.durations.filter((_, itemIndex) => itemIndex !== index) }))} title="حذف المدة"><AdminIcon name="trash" /></button>
+                </div>
+              );
+            })}
+            {!form.durations?.length && !showDurationForm && <button type="button" className="duration-list__empty" onClick={() => resetDurationEditor(true)}><AdminIcon name="plus" /><span><b>أضف أول مدة</b><small>السعر والأكواد في خطوة واحدة</small></span></button>}
+          </div>
+        </section>
+
+        <section className="product-form-section">
+          <div className="product-form-section__heading"><span>3</span><div><h4>الصور والتفاصيل</h4><p>اختيارية، لكنها تجعل المنتج أوضح للعميل.</p></div></div>
+          <div className="product-image-grid">
+            <ImagePicker label="صورة المنتج" value={form.logo} onChange={(url) => setForm((current) => ({ ...current, logo: url }))} hint="تظهر في بطاقة المنتج." />
+            <ImagePicker label="بانر المنتج" value={form.banner} onChange={(url) => setForm((current) => ({ ...current, banner: url }))} hint="صورة عريضة أعلى صفحة المنتج." aspect="wide" />
+          </div>
+          <div><label className="label-admin">وصف قصير (اختياري)</label><textarea value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} className="input-admin resize-none" rows="2" placeholder="ما الذي يحصل عليه العميل؟" /></div>
+          <div>
+            <label className="label-admin">المميزات (اختياري)</label>
+            <div className="flex gap-2"><input value={featureInput} onChange={(event) => setFeatureInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addFeature(); } }} className="input-admin" placeholder="مثال: تسليم فوري" /><button type="button" onClick={addFeature} className="admin-icon-add" aria-label="إضافة ميزة"><AdminIcon name="plus" /></button></div>
+            <div className="product-feature-list">{form.features?.map((feature, index) => <span key={`${feature.text}-${index}`}><AdminIcon name="check" />{feature.text}<button type="button" onClick={() => setForm((current) => ({ ...current, features: current.features.filter((_, itemIndex) => itemIndex !== index) }))}><AdminIcon name="close" /></button></span>)}</div>
+          </div>
+          <div className="product-form-toggles">
+            <label><input type="checkbox" checked={form.isActive !== false} onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))} /><span><b>المنتج نشط</b><small>يظهر ويمكن شراؤه</small></span></label>
+            <label><input type="checkbox" checked={Boolean(form.isFeatured)} onChange={(event) => setForm((current) => ({ ...current, isFeatured: event.target.checked }))} /><span><b>منتج مميز</b><small>يظهر في الواجهة</small></span></label>
+          </div>
+        </section>
       </Sheet>
     </div>
   );

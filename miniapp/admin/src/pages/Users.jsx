@@ -7,6 +7,7 @@ import { PERMISSION_LABELS } from '../utils/permissions';
 import Sheet, { SheetActions } from '../components/Sheet';
 import { CreateAccessAccount, AccessControlCard } from '../components/AccessAccountManager';
 import WalletTopupsPanel from '../components/WalletTopupsPanel';
+import AdminIcon from '../components/AdminIcon';
 
 const DATE_LOCALE = 'ar-IQ-u-nu-latn'; // Latin digits everywhere — no Arabic-Indic numerals
 
@@ -195,20 +196,20 @@ export default function Users({ routeQuery = {}, setRouteQuery, currentUser }) {
     <div className="flex flex-col gap-4 lg:flex-row">
       {/* Users List */}
       <div className={`space-y-3 ${selected ? 'lg:w-1/2' : 'w-full'}`}>
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-xl font-black text-white">👥 المستخدمون</h2>
-          <button type="button" onClick={() => setCreateAccessOpen(true)} className="neon-btn px-3 py-2 text-xs whitespace-nowrap">🔐 إنشاء Login</button>
+        <div className="admin-page-heading">
+          <div><span className="admin-page-heading__icon"><AdminIcon name="users" /></span><div><h2>المستخدمون</h2><p>الحسابات والأرصدة والصلاحيات.</p></div></div>
+          <button type="button" onClick={() => setCreateAccessOpen(true)} className="admin-primary-button"><AdminIcon name="lock" /> حساب دخول</button>
         </div>
         <WalletTopupsPanel />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 بحث بالاسم أو Login أو ID..." className="input-admin" />
+        <label className="admin-search-field"><AdminIcon name="search" /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="بحث بالاسم أو Login أو ID…" /></label>
 
         <div className="space-y-2">
           {users.map((user, i) => (
             <motion.button key={user._id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}
               onClick={() => loadUser(user)} whileTap={{ scale: 0.98 }}
               className={`w-full flex items-center gap-3 admin-card text-right border transition-all ${selected?.telegramId === user.telegramId ? 'border-neon/40' : 'border-transparent'}`}>
-              <div className="w-10 h-10 rounded-xl bg-neon/10 border border-neon/20 flex items-center justify-center text-base flex-shrink-0">
-                {user.role === 'admin' || user.role === 'superadmin' ? '👑' : '👤'}
+              <div className="w-10 h-10 rounded-xl bg-purple/10 border border-purple/20 text-purple-300 flex items-center justify-center text-base flex-shrink-0">
+                <AdminIcon name={user.role === 'admin' || user.role === 'superadmin' ? 'shield' : 'users'} />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-white text-sm truncate">{user.firstName} {user.lastName || ''}</p>
@@ -232,16 +233,16 @@ export default function Users({ routeQuery = {}, setRouteQuery, currentUser }) {
           <div className="flex items-center justify-between">
             <h3 className="font-black text-white">ملف المستخدم</h3>
             <div className="flex gap-2">
-              <button onClick={openEdit} className="neon-btn text-xs px-3 py-1.5">✏️ تعديل البيانات</button>
-              <button onClick={() => setSelected(null)} className="text-muted hover:text-white text-sm px-2">✕</button>
+              <button onClick={openEdit} className="admin-secondary-button"><AdminIcon name="edit" /> تعديل</button>
+              <button onClick={() => setSelected(null)} className="admin-icon-add !w-9 !h-9 !min-h-9 !bg-transparent !text-muted !border-border" aria-label="إغلاق"><AdminIcon name="close" /></button>
             </div>
           </div>
 
           {/* Profile Card */}
           <div className="admin-card space-y-3">
             <div className="flex items-center gap-3">
-              <div className="w-14 h-14 rounded-2xl bg-neon/10 border border-neon/20 flex items-center justify-center text-2xl shrink-0">
-                {selected.role === 'admin' || selected.role === 'superadmin' ? '👑' : '👤'}
+              <div className="w-14 h-14 rounded-2xl bg-purple/10 border border-purple/20 text-purple-300 flex items-center justify-center text-2xl shrink-0">
+                <AdminIcon name={selected.role === 'admin' || selected.role === 'superadmin' ? 'shield' : 'users'} />
               </div>
               <div className="min-w-0">
                 <p className="font-black text-white truncate">{selected.firstName} {selected.lastName || ''}</p>
@@ -315,41 +316,15 @@ export default function Users({ routeQuery = {}, setRouteQuery, currentUser }) {
             </div>
           )}
 
-          {/* Actions */}
-          <div className="grid grid-cols-2 gap-2">
-            <motion.button whileTap={{ scale: 0.95 }} onClick={() => setBalanceModal({ type: 'add' })}
-              className="success-btn py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-1">
-              ➕ إضافة رصيد
-            </motion.button>
-            <motion.button whileTap={{ scale: 0.95 }} onClick={() => setBalanceModal({ type: 'deduct' })}
-              className="danger-btn py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-1">
-              ➖ خصم رصيد
-            </motion.button>
-            <motion.button whileTap={{ scale: 0.95 }} onClick={openEdit}
-              className="neon-btn py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-1 col-span-2">
-              ✏️ تعديل البيانات والرصيد والملاحظات
-            </motion.button>
-            <motion.button whileTap={{ scale: 0.95 }} onClick={() => setShowDM(true)}
-              className="purple-btn py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-1 col-span-2">
-              ✉️ إرسال رسالة خاصة
-            </motion.button>
-            <motion.button whileTap={{ scale: 0.95 }} onClick={() => setBanModal(true)}
-              className={`py-3 rounded-xl font-bold text-sm border transition-all
-                ${selected.isBanned ? 'bg-green/10 border-green/30 text-green' : 'bg-red/10 border-red/30 text-red'}`}>
-              {selected.isBanned ? '✅ رفع الحظر' : '🚫 حظر المستخدم'}
-            </motion.button>
-            {selected.role !== 'superadmin' && (
-              <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleRole(selected.role === 'admin' ? 'customer' : 'admin')}
-                className="py-3 rounded-xl font-bold text-sm border transition-all bg-gold/10 border-gold/30 text-gold">
-                {selected.role === 'admin' ? '⬇️ إلغاء الأدمن' : '👑 ترقية لأدمن'}
-              </motion.button>
-            )}
-            {selected.role === 'admin' && (
-              <motion.button whileTap={{ scale: 0.95 }} onClick={openPermModal}
-                className="py-3 rounded-xl font-bold text-sm border transition-all bg-neon-blue/10 border-neon-blue/30 text-neon-blue col-span-2">
-                🎛️ ضبط الصلاحيات {selected.permissions?.length ? `(${selected.permissions.length})` : '(كل الصلاحيات)'}
-              </motion.button>
-            )}
+          {/* Clear icon actions — compact on mobile, labelled for clarity. */}
+          <div className="admin-user-action-grid">
+            <motion.button whileTap={{ scale: 0.96 }} onClick={() => setBalanceModal({ type: 'add' })} className="tone-green"><span><AdminIcon name="wallet" /></span><b>إضافة رصيد</b></motion.button>
+            <motion.button whileTap={{ scale: 0.96 }} onClick={() => setBalanceModal({ type: 'deduct' })} className="tone-orange"><span><AdminIcon name="wallet" /></span><b>خصم رصيد</b></motion.button>
+            <motion.button whileTap={{ scale: 0.96 }} onClick={openEdit} className="tone-slate"><span><AdminIcon name="edit" /></span><b>تعديل الحساب</b></motion.button>
+            <motion.button whileTap={{ scale: 0.96 }} onClick={() => setShowDM(true)} className="tone-violet"><span><AdminIcon name="broadcast" /></span><b>رسالة خاصة</b></motion.button>
+            <motion.button whileTap={{ scale: 0.96 }} onClick={() => setBanModal(true)} className={selected.isBanned ? 'tone-green' : 'tone-red'}><span><AdminIcon name={selected.isBanned ? 'refresh' : 'power'} /></span><b>{selected.isBanned ? 'رفع الحظر' : 'حظر الحساب'}</b></motion.button>
+            {selected.role !== 'superadmin' && <motion.button whileTap={{ scale: 0.96 }} onClick={() => handleRole(selected.role === 'admin' ? 'customer' : 'admin')} className="tone-amber"><span><AdminIcon name="shield" /></span><b>{selected.role === 'admin' ? 'إلغاء الأدمن' : 'ترقية لأدمن'}</b></motion.button>}
+            {selected.role === 'admin' && <motion.button whileTap={{ scale: 0.96 }} onClick={openPermModal} className="tone-cyan"><span><AdminIcon name="lock" /></span><b>الصلاحيات {selected.permissions?.length ? `(${selected.permissions.length})` : ''}</b></motion.button>}
           </div>
 
           {/* Balance History */}

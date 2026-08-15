@@ -51,10 +51,10 @@ export default function Dashboard() {
   ] : [];
 
   const quickActions = [
-    { label: 'إضافة مفاتيح', hint: 'تحديث المخزون', icon: 'inventory', page: 'inventory' },
-    { label: 'منتج جديد', hint: 'إضافة عرض', icon: 'product', page: 'products' },
+    { label: 'منتج + أكواد', hint: 'كل شيء في صفحة واحدة', icon: 'product', page: 'products' },
+    { label: 'مراجعة الطلبات', hint: 'الدفع والتسليم', icon: 'orders', page: 'orders' },
     { label: 'رسالة جديدة', hint: 'إذاعة للمستخدمين', icon: 'broadcast', page: 'broadcast' },
-    { label: 'إعدادات المتجر', hint: 'هوية وبوت', icon: 'settings', page: 'settings' }
+    { label: 'إعدادات المتجر', hint: 'الهوية وطرق الدفع', icon: 'settings', page: 'settings' }
   ];
 
   return (
