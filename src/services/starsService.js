@@ -44,6 +44,18 @@ const usdToStars = (usdAmount, perUsd) => Math.max(1, Math.ceil(Number(usdAmount
  * @param {number} starsAmount - whole Stars to charge
  * @returns {Promise<{invoiceUrl: string}>}
  */
+const requestInvoiceLink = async (payload) => {
+  try {
+    const { data } = await axios.post(TELEGRAM_API('createInvoiceLink'), payload, { timeout: 12000 });
+    if (!data?.ok || !data.result) throw new Error(data?.description || 'Telegram did not return an invoice link');
+    return { invoiceUrl: data.result };
+  } catch (err) {
+    const description = err.response?.data?.description || err.message;
+    logger.error('createInvoiceLink failed:', description);
+    throw new Error(`تعذر إنشاء رابط الدفع بالنجوم: ${description}`);
+  }
+};
+
 const createInvoiceLink = async (order, starsAmount) => {
   if (!process.env.BOT_TOKEN) throw new Error('BOT_TOKEN is not configured');
 
@@ -55,17 +67,18 @@ const createInvoiceLink = async (order, starsAmount) => {
     prices: [{ label: `${order.productName}`.slice(0, 32), amount: starsAmount }]
   };
 
-  try {
-    const { data } = await axios.post(TELEGRAM_API('createInvoiceLink'), payload, { timeout: 12000 });
-    if (!data?.ok || !data.result) {
-      throw new Error(data?.description || 'Telegram did not return an invoice link');
-    }
-    return { invoiceUrl: data.result };
-  } catch (err) {
-    const description = err.response?.data?.description || err.message;
-    logger.error('createInvoiceLink failed:', description);
-    throw new Error(`تعذر إنشاء رابط الدفع بالنجوم: ${description}`);
-  }
+  return requestInvoiceLink(payload);
+};
+
+const createTopupInvoiceLink = async (topup, starsAmount) => {
+  if (!process.env.BOT_TOKEN) throw new Error('BOT_TOKEN is not configured');
+  return requestInvoiceLink({
+    title: `Wallet top-up — $${Number(topup.amount).toFixed(2)}`,
+    description: `Add $${Number(topup.amount).toFixed(2)} to your Gamer Store wallet`,
+    payload: `topup:${topup._id}`,
+    currency: 'XTR',
+    prices: [{ label: 'Wallet balance', amount: starsAmount }]
+  });
 };
 
 /**
@@ -87,5 +100,6 @@ module.exports = {
   getStarsConfig,
   usdToStars,
   createInvoiceLink,
+  createTopupInvoiceLink,
   refundStarPayment
 };

@@ -37,6 +37,7 @@ const orderSchema = new mongoose.Schema({
   starsAmount: { type: Number, default: null },
   telegramPaymentChargeId: { type: String, default: null },
   providerPaymentChargeId: { type: String, default: null },
+  starsPaidByTelegramId: { type: Number, default: null },
   starsRefundedAt: { type: Date, default: null },
   paymentProof: { type: String, default: null },
   paymentVerifiedAt: { type: Date, default: null },

@@ -6,6 +6,7 @@ import { haptic } from '../utils/haptic';
 import { PERMISSION_LABELS } from '../utils/permissions';
 import Sheet, { SheetActions } from '../components/Sheet';
 import { CreateAccessAccount, AccessControlCard } from '../components/AccessAccountManager';
+import WalletTopupsPanel from '../components/WalletTopupsPanel';
 
 const DATE_LOCALE = 'ar-IQ-u-nu-latn'; // Latin digits everywhere — no Arabic-Indic numerals
 
@@ -198,7 +199,8 @@ export default function Users({ routeQuery = {}, setRouteQuery, currentUser }) {
           <h2 className="text-xl font-black text-white">👥 المستخدمون</h2>
           <button type="button" onClick={() => setCreateAccessOpen(true)} className="neon-btn px-3 py-2 text-xs whitespace-nowrap">🔐 إنشاء Login</button>
         </div>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 بحث بالاسم أو @يوزر أو ID..." className="input-admin" />
+        <WalletTopupsPanel />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 بحث بالاسم أو Login أو ID..." className="input-admin" />
 
         <div className="space-y-2">
           {users.map((user, i) => (

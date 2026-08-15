@@ -10,7 +10,9 @@ const Order = require('../../models/Order');
 const Coupon = require('../../models/Coupon');
 const Settings = require('../../models/Settings');
 const Broadcast = require('../../models/Broadcast');
+const WalletTopup = require('../../models/WalletTopup');
 const orderService = require('../../services/orderService');
+const { creditTopup } = require('../../services/walletTopupService');
 const crypto = require('crypto');
 const {
   normalizeAccessUsername,
@@ -85,6 +87,7 @@ router.use('/games', requirePermission('products'));
 router.use('/products', requirePermission('products'));
 router.use('/keys', requirePermission('inventory'));
 router.use('/users', requirePermission('users'));
+router.use('/wallet-topups', requirePermission('users'));
 router.use('/coupons', requirePermission('coupons'));
 router.use('/broadcast', requirePermission('broadcast'));
 router.use('/broadcasts', requirePermission('broadcast'));
@@ -418,6 +421,35 @@ router.put('/keys/:id', async (req, res) => {
   }
 });
 
+// ── WALLET TOP-UPS ─────────────────────────────────────────────────────────
+router.get('/wallet-topups', async (req, res) => {
+  try {
+    const query = {};
+    if (req.query.status) query.status = String(req.query.status);
+    const data = await WalletTopup.find(query).sort({ createdAt: -1 }).limit(100);
+    res.json({ success: true, data });
+  } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+router.post('/wallet-topups/:id/approve', async (req, res) => {
+  try {
+    const result = await creditTopup(req.params.id, { verifiedBy: req.telegramId });
+    res.json({ success: true, data: { topup: result.topup, balance: result.user?.balance } });
+  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+});
+
+router.post('/wallet-topups/:id/reject', async (req, res) => {
+  try {
+    const topup = await WalletTopup.findOneAndUpdate(
+      { _id: req.params.id, status: { $in: ['pending', 'processing'] } },
+      { status: 'rejected', adminNotes: String(req.body.reason || 'تم رفض إثبات الدفع').slice(0, 500), verifiedBy: req.telegramId, verifiedAt: new Date() },
+      { new: true }
+    );
+    if (!topup) return res.status(404).json({ success: false, error: 'طلب الشحن غير موجود أو تمت معالجته' });
+    res.json({ success: true, data: topup });
+  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+});
+
 // ── USERS ──
 // ── Administrator-issued store logins ─────────────────────────────────────
 // Creates a standalone customer without requiring Telegram. A negative numeric
@@ -453,6 +485,8 @@ router.post('/users/access-account', async (req, res) => {
       username: null,
       phone: String(req.body.phone || '').trim().slice(0, 32) || null,
       balance,
+      totalDeposited: balance,
+      balanceHistory: balance > 0 ? [{ type: 'credit', amount: balance, description: 'الميزانية الأولية عند إنشاء الحساب', adminId: req.telegramId }] : [],
       preferredLanguage,
       languageSelected: true,
       adminNotes: String(req.body.adminNotes || '').slice(0, 1000),
@@ -1117,7 +1151,7 @@ router.post('/orders/:id/refund', async (req, res) => {
       const Key = require('../../models/Key');
       const Product = require('../../models/Product');
       try {
-        await refundStarPayment(order.user, order.telegramPaymentChargeId);
+        await refundStarPayment(order.starsPaidByTelegramId || order.user, order.telegramPaymentChargeId);
       } catch (starsErr) {
         return res.status(400).json({ success: false, error: `فشل استرجاع النجوم من تيليجرام: ${starsErr.message}` });
       }

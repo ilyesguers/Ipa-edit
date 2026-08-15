@@ -7,11 +7,13 @@ import api from '../../utils/api';
 import { cachedFetch } from '../../utils/cache';
 import { haptic } from '../../utils/haptic';
 import { playSound, useSoundStore } from '../../utils/sound';
+import WalletTopupSheet from '../WalletTopupSheet';
 
 export default function ProfileTab() {
   const { user, locale, toggleLocale, setActiveTab, publicSettings, logout } = useStore();
   const { muted, setMuted, volume, setVolume } = useSoundStore();
   const [balanceHistory, setBalanceHistory] = useState([]);
+  const [showTopup, setShowTopup] = useState(false);
   const dateLocale = t(locale, 'dateLocale');
 
   useEffect(() => {
@@ -65,6 +67,10 @@ export default function ProfileTab() {
           <strong>${Number(user?.balance || 0).toFixed(2)}</strong>
         </div>
       </section>
+
+      <button type="button" onClick={() => { haptic.medium(); playSound('tap'); setShowTopup(true); }} className="profile-admin-link" style={{ width: '100%', minHeight: 52, background: 'linear-gradient(100deg,rgba(16,185,129,.18),rgba(14,165,233,.10))' }}>
+        <PremiumIcon name="wallet" /> {locale === 'ar' ? 'إضافة ميزانية للحساب — نجوم وطرق دفع' : 'Add account balance — Stars & payments'}
+      </button>
 
       <section className="profile-stats">
         {stats.map((stat) => (
@@ -207,6 +213,8 @@ export default function ProfileTab() {
           </div>
         </section>
       )}
+
+      <WalletTopupSheet open={showTopup} onClose={() => setShowTopup(false)} />
     </div>
   );
 }

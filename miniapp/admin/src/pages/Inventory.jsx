@@ -34,7 +34,9 @@ export default function Inventory() {
 
   const handleAddKeys = async () => {
     const keyArray = manualKeys.split('\n').map(k => k.trim()).filter(k => k.length > 0);
-    if (!keyArray.length) return toast.error('❌ أضف مفاتيح أولاً');
+    if (!selectedProduct) return toast.error('اختر المنتج أولاً');
+    if (!selectedDuration) return toast.error('اختر المدة أولاً');
+    if (!keyArray.length) return toast.error('❌ أضف الأكواد أولاً');
 
     // Duplicate detection inside the paste buffer
     const seen = new Set();
@@ -120,20 +122,12 @@ export default function Inventory() {
         <h2 className="text-xl font-black text-white">📦 المخزون - إدارة المفاتيح</h2>
       </div>
 
-      {/* Step-by-step Guide */}
-      <div className="rounded-2xl border border-purple/20 bg-gradient-to-br from-purple/10 to-emerald-500/5 p-4 space-y-2">
-        <p className="text-sm font-black text-white flex items-center gap-2">📋 <span>كيفية إضافة مفاتيح - خطوة بخطوة</span></p>
-        <div className="grid gap-2 text-xs text-muted">
-          <p className="flex items-center gap-2"><span className="w-6 h-6 rounded-full bg-purple/20 flex items-center justify-center text-purple font-black shrink-0">1</span> اختر <span className="text-white font-bold">المنتج</span> المناسب من القائمة الأولى</p>
-          <p className="flex items-center gap-2"><span className="w-6 h-6 rounded-full bg-purple/20 flex items-center justify-center text-purple font-black shrink-0">2</span> اختر <span className="text-white font-bold">المدة</span> المناسبة من القائمة الثانية</p>
-          <p className="flex items-center gap-2"><span className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-black shrink-0">3</span> اضغط <span className="text-white font-bold">➕ إضافة مفاتيح جديدة</span> للبدء</p>
-          <p className="flex items-center gap-2"><span className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-black shrink-0">4</span> يمكنك <span className="text-white font-bold">رفع ملف .txt</span> أو <span className="text-white font-bold">الكتابة يدوياً</span> (كل مفتاح في سطر)</p>
-          <p className="flex items-center gap-2"><span className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-black shrink-0">5</span> اضغط <span className="text-white font-bold">✅ إضافة المفاتيح</span> للحفظ</p>
-        </div>
+      <div className="rounded-xl border border-neon/20 bg-neon/5 px-3 py-2 text-xs text-muted">
+        <b className="text-neon">إضافة سريعة:</b> اختر المنتج والمدة من الخانتين المتجاورتين، ثم الصق الأكواد أو ارفع ملف TXT.
       </div>
 
       {/* Select Product */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
         <div>
           <label className="text-xs text-muted font-semibold block mb-1">📦 اختر المنتج (الخطوة 1)</label>
           <select value={selectedProduct?._id || ''} onChange={e => { const p = products.find(x => x._id === e.target.value); setSelectedProduct(p); setSelectedDuration(null); }} className="input-admin">
@@ -142,17 +136,16 @@ export default function Inventory() {
           </select>
         </div>
 
-        {selectedProduct && (
-          <div>
-            <label className="text-xs text-muted font-semibold block mb-1">⏱ اختر المدة (الخطوة 2)</label>
-            <select value={selectedDuration?._id || ''} onChange={e => setSelectedDuration(selectedProduct.durations.find(d => d._id === e.target.value))} className="input-admin">
-              <option value="">-- اختر المدة --</option>
-              {selectedProduct.durations?.filter(d => d.isActive).map(d => (
-                <option key={d._id} value={d._id}>{d.nameAr || d.name} - ${d.price}</option>
-              ))}
-            </select>
-          </div>
-        )}
+        <div>
+          <label className="text-xs text-muted font-semibold block mb-1">⏱ المدة (الخطوة 2)</label>
+          <select disabled={!selectedProduct} value={selectedDuration?._id || ''} onChange={e => setSelectedDuration(selectedProduct?.durations.find(d => d._id === e.target.value))} className="input-admin disabled:opacity-50">
+            <option value="">-- اختر المدة --</option>
+            {selectedProduct?.durations?.filter(d => d.isActive).map(d => (
+              <option key={d._id} value={d._id}>{d.nameAr || d.name} - ${d.price}</option>
+            ))}
+          </select>
+        </div>
+        <button type="button" onClick={() => setShowAddModal(true)} className="success-btn min-h-[46px] px-4 whitespace-nowrap">➕ إضافة الأكواد</button>
       </div>
 
       {/* Stock Actions */}
@@ -258,9 +251,9 @@ export default function Inventory() {
                 <button onClick={() => setShowAddModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-card border border-border text-muted hover:text-white text-sm">✕</button>
               </div>
               <div className="p-4 flex-1 space-y-4 overflow-y-auto">
-                <div className="rounded-xl bg-gradient-to-br from-emerald-500/10 to-purple-500/10 border border-emerald-500/20 p-3">
-                  <label className="text-xs text-emerald-400 font-semibold block mb-1">📋 المنتج / المدة</label>
-                  <p className="text-white text-sm font-bold">{selectedProduct?.nameAr || selectedProduct?.name} <span className="text-purple-400">—</span> {selectedDuration?.nameAr || selectedDuration?.name}</p>
+                <div className="grid grid-cols-2 gap-2 rounded-xl bg-gradient-to-br from-emerald-500/10 to-purple-500/10 border border-emerald-500/20 p-3">
+                  <div><label className="text-xs text-emerald-400 font-semibold block mb-1">📦 المنتج</label><select value={selectedProduct?._id || ''} onChange={e => { const p=products.find(x=>x._id===e.target.value); setSelectedProduct(p); setSelectedDuration(null); }} className="input-admin text-xs"><option value="">اختر المنتج</option>{products.map(p=><option key={p._id} value={p._id}>{p.nameAr||p.name}</option>)}</select></div>
+                  <div><label className="text-xs text-purple-400 font-semibold block mb-1">⏱ المدة</label><select disabled={!selectedProduct} value={selectedDuration?._id || ''} onChange={e=>setSelectedDuration(selectedProduct?.durations.find(d=>d._id===e.target.value))} className="input-admin text-xs disabled:opacity-50"><option value="">اختر المدة</option>{selectedProduct?.durations?.filter(d=>d.isActive).map(d=><option key={d._id} value={d._id}>{d.nameAr||d.name} · ${d.price}</option>)}</select></div>
                 </div>
 
                 {/* File Upload */}

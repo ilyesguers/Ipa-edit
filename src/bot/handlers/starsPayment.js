@@ -12,8 +12,10 @@
  */
 
 const Order = require('../../models/Order');
+const WalletTopup = require('../../models/WalletTopup');
 const User = require('../../models/User');
 const orderService = require('../../services/orderService');
+const { creditTopup } = require('../../services/walletTopupService');
 const { refundStarPayment } = require('../../services/starsService');
 const logger = require('../../utils/logger');
 const { botLocale } = require('./language');
@@ -37,9 +39,20 @@ const preCheckoutHandler = async (ctx) => {
   try {
     if (query.currency !== 'XTR') return fail('عملة غير مدعومة', 'Unsupported currency');
 
-    const order = await Order.findById(String(query.invoice_payload || ''));
+    const invoicePayload = String(query.invoice_payload || '');
+    if (invoicePayload.startsWith('topup:')) {
+      const topup = await WalletTopup.findById(invoicePayload.slice(6));
+      if (!topup || topup.method !== 'telegram_stars') return fail('طلب الشحن غير موجود', 'Top-up request not found');
+      if (topup.status !== 'pending') return fail('تمت معالجة طلب الشحن مسبقاً', 'This top-up was already processed');
+      if (Number(query.total_amount) !== Number(topup.starsAmount)) return fail('مبلغ النجوم غير مطابق', 'Stars amount mismatch');
+      return ok();
+    }
+
+    const order = await Order.findById(invoicePayload);
     if (!order) return fail('الطلب غير موجود. أنشئ طلباً جديداً من المتجر.', 'Order not found. Please create a new one in the store.');
-    if (order.user !== query.from.id) return fail('هذا الطلب لا يخصك', 'This order does not belong to you');
+    // The store account may be administrator-issued and therefore not share
+    // Telegram's numeric ID. Whoever opens the one-time invoice may pay it,
+    // while delivery remains bound to the authenticated store account.
     if (order.status !== 'pending') return fail('انتهت صلاحية هذا الطلب. أنشئ طلباً جديداً.', 'This order has expired. Please create a new one.');
     if (Number(query.total_amount) !== Number(order.starsAmount)) return fail('مبلغ النجوم غير مطابق', 'Stars amount mismatch');
 
@@ -61,6 +74,38 @@ const successfulPaymentHandler = async (ctx) => {
   const lang = botLocale(ctx.dbUser?.preferredLanguage || 'ar');
 
   try {
+    const invoicePayload = String(payment.invoice_payload || '');
+    if (invoicePayload.startsWith('topup:')) {
+      const topup = await WalletTopup.findOne({ _id: invoicePayload.slice(6), method: 'telegram_stars' });
+      if (!topup) return logger.warn(`successful_payment for unknown top-up: ${invoicePayload}`);
+      if (Number(payment.total_amount) !== Number(topup.starsAmount)) return logger.warn(`Stars amount mismatch for top-up ${topup.topupNumber}`);
+      try {
+        const result = await creditTopup(topup._id, {
+          chargeId: payment.telegram_payment_charge_id,
+          providerChargeId: payment.provider_payment_charge_id,
+          paidByTelegramId: ctx.from?.id
+        });
+        if (result.alreadyCompleted) return;
+        await ctx.reply(
+          `✅ <b>${t(lang, 'تم شحن المحفظة بنجاح', 'Wallet topped up successfully')}</b>\n\n` +
+          `💰 ${t(lang, 'المبلغ المضاف', 'Amount added')}: <b>$${Number(topup.amount).toFixed(2)}</b>\n` +
+          `⭐ ${t(lang, 'المدفوع', 'Paid')}: <b>${topup.starsAmount} Stars</b>\n` +
+          `🧾 <code>${topup.topupNumber}</code>\n\n` +
+          `${t(lang, 'الرصيد أصبح متاحاً الآن داخل حساب المتجر.', 'Your balance is now available in your store account.')}`,
+          { parse_mode: 'HTML' }
+        ).catch(() => {});
+        logger.info(`⭐ Wallet top-up ${topup.topupNumber} credited $${topup.amount} to ${topup.user}`);
+        return;
+      } catch (creditError) {
+        await refundStarPayment(ctx.from.id, payment.telegram_payment_charge_id).catch(() => {});
+        topup.status = 'cancelled';
+        topup.adminNotes = `تعذر شحن الحساب وتمت محاولة إعادة النجوم: ${creditError.message}`;
+        await topup.save().catch(() => {});
+        await ctx.reply(t(lang, 'تعذر شحن الحساب وتم إرجاع النجوم. تواصل مع الدعم.', 'Top-up failed and the Stars were refunded. Contact support.')).catch(() => {});
+        return;
+      }
+    }
+
     const order = await Order.findOne({
       _id: String(payment.invoice_payload || ''),
       paymentMethod: 'telegram_stars'
@@ -75,6 +120,7 @@ const successfulPaymentHandler = async (ctx) => {
 
     order.telegramPaymentChargeId = payment.telegram_payment_charge_id || null;
     order.providerPaymentChargeId = payment.provider_payment_charge_id || null;
+    order.starsPaidByTelegramId = ctx.from?.id || null;
 
     // A cancelled/expired order that still got paid → refund the Stars, no delivery.
     if (!['pending', 'processing'].includes(order.status)) {
@@ -94,6 +140,7 @@ const successfulPaymentHandler = async (ctx) => {
       await Order.findByIdAndUpdate(order._id, {
         telegramPaymentChargeId: order.telegramPaymentChargeId,
         providerPaymentChargeId: order.providerPaymentChargeId,
+        starsPaidByTelegramId: order.starsPaidByTelegramId,
         paymentVerifiedAt: new Date()
       });
 
@@ -136,7 +183,7 @@ const successfulPaymentHandler = async (ctx) => {
 /** Refund the Stars and mark the order failed/cancelled with a clear reason. */
 const autoRefundStars = async (ctx, order, payment, lang, cause = null) => {
   try {
-    await refundStarPayment(order.user, payment.telegram_payment_charge_id);
+    await refundStarPayment(ctx.from?.id || order.starsPaidByTelegramId || order.user, payment.telegram_payment_charge_id);
     order.starsRefundedAt = new Date();
     order.status = 'cancelled';
     order.adminNotes = cause

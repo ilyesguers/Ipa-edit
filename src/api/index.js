@@ -10,6 +10,7 @@ const uploadRoutes = require('./routes/upload');
 const paymentRoutes = require('./routes/payment');
 const settingsRoutes = require('./routes/settings');
 const wheelRoutes = require('./routes/wheel');
+const walletRoutes = require('./routes/wallet');
 
 router.use('/auth', authRoutes);
 router.use('/admin', adminRoutes);
@@ -20,5 +21,6 @@ router.use('/upload', uploadRoutes);
 router.use('/payment', paymentRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/wheel', wheelRoutes);
+router.use('/wallet', walletRoutes);
 
 module.exports = router;
