@@ -98,6 +98,7 @@ const authMiddleware = async (req, res, next) => {
         const decoded = jwt.verify(token, getJwtSecret());
         if (Number.isFinite(Number(decoded.telegramId))) {
           telegramUser = { id: Number(decoded.telegramId) };
+          req.authToken = decoded;
         }
       }
     }
@@ -116,6 +117,17 @@ const authMiddleware = async (req, res, next) => {
     if (!user) return res.status(401).json({ success: false, error: 'User not found' });
     if (user.isBanned) return res.status(403).json({ success: false, error: 'User is banned' });
 
+    // Credential sessions remain under administrator control after issuance.
+    // Disabling, expiring or revoking an account invalidates its JWT on the
+    // very next API call rather than waiting for the token to expire.
+    if (req.authToken?.authType === 'credential') {
+      const expired = user.accessExpiresAt && new Date(user.accessExpiresAt).getTime() <= Date.now();
+      const wrongVersion = Number(req.authToken.sessionVersion) !== Number(user.accessSessionVersion || 0);
+      if (!user.accessEnabled || expired || wrongVersion) {
+        return res.status(401).json({ success: false, error: 'Access session is no longer valid' });
+      }
+    }
+
     req.user = user;
     req.telegramId = user.telegramId;
     req.isAdmin = ADMIN_IDS.includes(user.telegramId) || ['admin', 'superadmin'].includes(user.role);
@@ -124,6 +136,13 @@ const authMiddleware = async (req, res, next) => {
     logger.error('Auth error:', err.message);
     return res.status(401).json({ success: false, error: 'Authentication failed' });
   }
+};
+
+const credentialOnly = (req, res, next) => {
+  if (req.authToken?.authType !== 'credential') {
+    return res.status(401).json({ success: false, error: 'Store login required' });
+  }
+  next();
 };
 
 const adminOnly = (req, res, next) => {
@@ -158,8 +177,11 @@ const requirePermission = (permission) => (req, res, next) => {
   next();
 };
 
-const generateToken = (telegramId) => {
-  return jwt.sign({ telegramId: Number(telegramId) }, getJwtSecret(), { expiresIn: '7d' });
+const generateToken = (telegramId, options = {}) => {
+  const payload = { telegramId: Number(telegramId) };
+  if (options.authType) payload.authType = options.authType;
+  if (options.sessionVersion !== undefined) payload.sessionVersion = Number(options.sessionVersion);
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: options.expiresIn || '7d' });
 };
 
-module.exports = { authMiddleware, adminOnly, requirePermission, hasPermission, ALL_PERMISSIONS, generateToken, verifyTelegramWebApp };
+module.exports = { authMiddleware, credentialOnly, adminOnly, requirePermission, hasPermission, ALL_PERMISSIONS, generateToken, verifyTelegramWebApp };

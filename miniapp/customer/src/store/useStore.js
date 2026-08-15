@@ -30,13 +30,13 @@ const useStore = create((set, get) => ({
   // User
   user: null,
   token: null,
-  isLoading: true,
+  isLoading: false,
   isAuthenticated: false,
   locale: SAVED_LOCALE || 'ar',
 
-  // First visit deliberately stops at the language screen. The rest of the
-  // mini app is not rendered until an explicit choice is available.
-  needsLanguageSelect: !SAVED_LOCALE,
+  // Every fresh entry starts with language selection, followed by the secure
+  // administrator-issued login. Nothing from the store mounts before both.
+  needsLanguageSelect: true,
   showLanguagePicker: false,
 
   // Navigation
@@ -69,7 +69,8 @@ const useStore = create((set, get) => ({
   // Actions
   setUser: (user) => set({ user }),
   setToken: (token) => {
-    try { localStorage.setItem('token', token); } catch (_) {}
+    // Keep store credentials in memory only. A refresh returns to the language
+    // and login gates instead of silently reusing a browser-stored bearer token.
     api.defaults.headers.common.Authorization = `Bearer ${token}`;
     set({ token });
   },
@@ -107,41 +108,30 @@ const useStore = create((set, get) => ({
     }
   },
 
-  // Auth
-  login: async (initData) => {
+  // Auth — credentials are generated and controlled by the administrator.
+  credentialLogin: async (username, password) => {
     set({ isLoading: true });
     try {
-      const res = await api.post('/auth/telegram', { initData });
+      const res = await api.post('/auth/login', { username, password });
       const { token, user } = res.data;
       get().setToken(token);
-
-      const savedLocale = readStoredLocale();
-      const hasLocalChoice = Boolean(savedLocale);
-      const hasServerChoice = Boolean(user.languageSelected);
-      const locale = hasLocalChoice
-        ? savedLocale
-        : normalizeLocale(user.preferredLanguage || window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code || get().locale);
-      const hasChoice = hasLocalChoice || hasServerChoice;
-
-      if (!hasLocalChoice && hasServerChoice) persistLocale(locale);
+      const locale = get().locale;
       set({
-        user: { ...user, preferredLanguage: locale, languageSelected: hasChoice },
-        locale,
-        needsLanguageSelect: !hasChoice,
+        user: { ...user, preferredLanguage: locale, languageSelected: true },
         isAuthenticated: true,
         isLoading: false
       });
-
-      // A language picked in the web gate can beat the authentication request.
-      // Persist it after auth without making the UI wait for a second network call.
-      if (hasLocalChoice && (!hasServerChoice || normalizeLocale(user.preferredLanguage) !== locale)) {
-        api.put('/users/me', { preferredLanguage: locale }).catch(() => {});
-      }
+      api.put('/users/me', { preferredLanguage: locale }).catch(() => {});
       return user;
     } catch (err) {
-      set({ isLoading: false });
+      set({ isLoading: false, isAuthenticated: false, user: null });
       throw err;
     }
+  },
+  logout: () => {
+    try { localStorage.removeItem('token'); } catch (_) {}
+    delete api.defaults.headers.common.Authorization;
+    set({ user: null, token: null, isAuthenticated: false, activeTab: 'products' });
   },
 
   // Categories (cached 60s — instant tab switching, no repeated network hits)

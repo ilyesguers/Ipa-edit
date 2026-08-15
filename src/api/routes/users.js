@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { authMiddleware } = require('../../middlewares/auth');
+const { authMiddleware, credentialOnly } = require('../../middlewares/auth');
 const User = require('../../models/User');
 const Order = require('../../models/Order');
 
-router.use(authMiddleware);
+router.use(authMiddleware, credentialOnly);
 
 // Get own profile
 router.get('/me', async (req, res) => {

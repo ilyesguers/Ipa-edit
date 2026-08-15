@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authMiddleware } = require('../../middlewares/auth');
+const { authMiddleware, credentialOnly } = require('../../middlewares/auth');
 const Order = require('../../models/Order');
 const Coupon = require('../../models/Coupon');
 const User = require('../../models/User');
@@ -11,7 +11,7 @@ const starsService = require('../../services/starsService');
 const Settings = require('../../models/Settings');
 const { getAdminPortalUrl } = require('../../utils/uiConfig');
 
-router.use(authMiddleware);
+router.use(authMiddleware, credentialOnly);
 
 // Sensitive endpoints get their own small buckets on top of the global
 // limiter: coupon brute-forcing and fake proof spam stay expensive even if

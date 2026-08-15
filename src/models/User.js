@@ -52,7 +52,21 @@ const userSchema = new mongoose.Schema({
   captchaPassedAt: { type: Date, default: null },
   // Private admin-only notes about this account (support context, warnings…).
   // Never exposed through any customer-facing endpoint.
-  adminNotes: { type: String, default: '', maxlength: 1000 }
+  adminNotes: { type: String, default: '', maxlength: 1000 },
+
+  // Store access issued by an administrator. Passwords are never stored in
+  // plaintext and `select: false` prevents hashes leaking from normal queries.
+  accessUsername: { type: String, lowercase: true, trim: true, unique: true, sparse: true, index: true },
+  accessPasswordHash: { type: String, select: false, default: null },
+  accessEnabled: { type: Boolean, default: false },
+  accessExpiresAt: { type: Date, default: null },
+  accessSessionDays: { type: Number, min: 1, max: 30, default: 7 },
+  accessSessionVersion: { type: Number, default: 0 },
+  accessFailedAttempts: { type: Number, default: 0, select: false },
+  accessLockedUntil: { type: Date, default: null, select: false },
+  accessLastLoginAt: { type: Date, default: null },
+  accessCreatedBy: { type: Number, default: null },
+  accessCreatedAt: { type: Date, default: null }
 }, {
   timestamps: true,
   toJSON: { virtuals: true },

@@ -5,17 +5,12 @@ const api = axios.create({
   timeout: 15000,
 });
 
-const token = localStorage.getItem('token');
-if (token) api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+// Customer bearer tokens live in memory and are attached after a successful
+// credential login. They are deliberately not restored from localStorage.
 
-// Add Telegram initData to all requests
-api.interceptors.request.use((config) => {
-  const tg = window.Telegram?.WebApp;
-  if (tg?.initData) {
-    config.headers['x-telegram-init-data'] = tg.initData;
-  }
-  return config;
-});
+// Customer requests intentionally use only the administrator-issued JWT.
+// Telegram initData must not override the credential identity after login.
+api.interceptors.request.use((config) => config);
 
 api.interceptors.response.use(
   (res) => res,

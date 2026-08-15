@@ -5,6 +5,7 @@ import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import LoadingScreen from './components/LoadingScreen';
 import LanguagePicker from './components/LanguagePicker';
+import LoginGate from './components/LoginGate';
 import SpaceBackground from './components/SpaceBackground';
 import { isRTL } from './i18n';
 import { initSoundUnlock } from './utils/sound';
@@ -32,19 +33,11 @@ const TAB_COMPONENTS = {
   support: SupportTab
 };
 
-const GuestUser = {
-  firstName: 'Guest',
-  username: 'guest',
-  balance: 0,
-  role: 'customer',
-  totalOrders: 0
-};
-
 export default function App() {
   const {
-    login,
     fetchPublicSettings,
     isLoading,
+    isAuthenticated,
     activeTab,
     locale,
     showDurationSheet,
@@ -60,7 +53,6 @@ export default function App() {
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
-    const initData = tg?.initData || '';
 
     if (tg) {
       try {
@@ -71,25 +63,11 @@ export default function App() {
       } catch (_) {}
     }
 
-    // Settings and auth start in parallel. The language gate remains the only
-    // visible screen while this happens, rather than rendering the store under
-    // an overlay and wasting work on product cards.
+    // Only public branding/support settings are fetched before login. Customer
+    // identity is never inferred from Telegram and there is no guest bypass.
     fetchPublicSettings().catch(() => {});
-    login(initData).catch(() => {
-      useStore.setState({ user: GuestUser, isAuthenticated: true, isLoading: false });
-    });
     initSoundUnlock();
-
-    // Never leave a user at a loading screen when a slow Railway connection
-    // takes too long. They can still browse as a guest and retry actions later.
-    const authTimeout = window.setTimeout(() => {
-      if (useStore.getState().isLoading) {
-        useStore.setState({ user: GuestUser, isAuthenticated: true, isLoading: false });
-      }
-    }, 8_000);
-
-    return () => window.clearTimeout(authTimeout);
-  }, [fetchPublicSettings, login]);
+  }, [fetchPublicSettings]);
 
   useEffect(() => {
     const rtl = isRTL(locale);
@@ -110,7 +88,8 @@ export default function App() {
 
   // This must stay before LoadingScreen and the shell. On first use the
   // language picker is literally the only rendered application interface.
-  if (needsLanguageSelect) return <LanguagePicker blocking />;
+  if (needsLanguageSelect || (showLanguagePicker && !isAuthenticated)) return <LanguagePicker blocking />;
+  if (!isAuthenticated) return <LoginGate />;
   if (isLoading) return <LoadingScreen />;
 
   const ActiveTab = TAB_COMPONENTS[activeTab] || ProductsTab;

@@ -5,6 +5,7 @@ import api from '../utils/api';
 import { haptic } from '../utils/haptic';
 import { PERMISSION_LABELS } from '../utils/permissions';
 import Sheet, { SheetActions } from '../components/Sheet';
+import { CreateAccessAccount, AccessControlCard } from '../components/AccessAccountManager';
 
 const DATE_LOCALE = 'ar-IQ-u-nu-latn'; // Latin digits everywhere — no Arabic-Indic numerals
 
@@ -43,6 +44,7 @@ export default function Users({ routeQuery = {}, setRouteQuery, currentUser }) {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [busy, setBusy] = useState(false);
+  const [createAccessOpen, setCreateAccessOpen] = useState(false);
 
   // ── Full profile editor ──
   const [editOpen, setEditOpen] = useState(false);
@@ -192,8 +194,9 @@ export default function Users({ routeQuery = {}, setRouteQuery, currentUser }) {
     <div className="flex flex-col gap-4 lg:flex-row">
       {/* Users List */}
       <div className={`space-y-3 ${selected ? 'lg:w-1/2' : 'w-full'}`}>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <h2 className="text-xl font-black text-white">👥 المستخدمون</h2>
+          <button type="button" onClick={() => setCreateAccessOpen(true)} className="neon-btn px-3 py-2 text-xs whitespace-nowrap">🔐 إنشاء Login</button>
         </div>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 بحث بالاسم أو @يوزر أو ID..." className="input-admin" />
 
@@ -265,6 +268,8 @@ export default function Users({ routeQuery = {}, setRouteQuery, currentUser }) {
               <Stat label="آخر طلب" value={selected.stats?.lastOrderAt ? fmtDate(selected.stats.lastOrderAt) : '—'} />
             </div>
           </div>
+
+          <AccessControlCard user={selected} onUpdated={(data) => setSelected((prev) => ({ ...prev, ...data }))} />
 
           {/* Deep info card */}
           <div className="admin-card space-y-2">
@@ -500,6 +505,12 @@ export default function Users({ routeQuery = {}, setRouteQuery, currentUser }) {
           </>
         )}
       </Sheet>
+
+      <CreateAccessAccount
+        open={createAccessOpen}
+        onClose={() => setCreateAccessOpen(false)}
+        onCreated={() => { setPage(1); fetchUsers(search, 1); }}
+      />
     </div>
   );
 }
